@@ -7,63 +7,23 @@ import CosmicWords from './components/CosmicWords';
 const SPORTS_LEAGUES = {
   mlb: {
     label: 'MLB Baseball',
-    path: 'baseball/mlb',
-    icon: 'baseball',
     url: 'https://site.api.espn.com/apis/site/v2/sports/baseball/mlb/scoreboard',
-  },
-  atptennis: {
-    label: "ATP Tennis",
-    path: 'tennis/atp',
-    icon: 'dribbble',
-    url: 'https://site.api.espn.com/apis/site/v2/sports/tennis/atp/scoreboard',
-  },
-  wtatennis: {
-    label: "WTA Tennis",
-    path: 'tennis/wta',
-    icon: 'dribbble',
-    url: 'https://site.api.espn.com/apis/site/v2/sports/tennis/wta/scoreboard',
-  },
-  golf: {
-    label: "PGA TOUR Golf",
-    path: 'golf/pga',
-    icon: 'flag',
-    url: 'https://site.api.espn.com/apis/site/v2/sports/golf/pga/scoreboard',
-  },
-  wnba: {
-    label: "WNBA",
-    path: 'basketball/wnba',
-    icon: 'basketball',
-    url: 'https://site.api.espn.com/apis/site/v2/sports/basketball/wnba/scoreboard',
-  },
-  nwsl: {
-    label: "NWSL Soccer",
-    path: 'soccer/usa.w.1',
-    icon: 'trophy',
-    url: 'https://site.api.espn.com/apis/site/v2/sports/soccer/usa.w.1/scoreboard',
-  },
-  worldcup: {
-    label: "FIFA World Cup",
-    path: 'soccer/fifa.world',
-    icon: 'globe',
-    url: 'https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/scoreboard',
   },
   eng1: {
     label: 'Premier League',
-    path: 'soccer/eng.1',
-    icon: 'medal',
     url: 'https://site.api.espn.com/apis/site/v2/sports/soccer/eng.1/scoreboard',
   },
   nba: {
     label: 'NBA Basketball',
-    path: 'basketball/nba',
-    icon: 'star',
     url: 'https://site.api.espn.com/apis/site/v2/sports/basketball/nba/scoreboard',
   },
   nfl: {
     label: 'NFL Football',
-    path: 'football/nfl',
-    icon: 'shield',
     url: 'https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard',
+  },
+  nhl: {
+    label: 'NHL Hockey',
+    url: 'https://site.api.espn.com/apis/site/v2/sports/hockey/nhl/scoreboard',
   },
 };
 
@@ -87,54 +47,6 @@ interface Parlay {
   savedAt: string;
   status: 'won' | 'lost' | 'live' | 'pending' | 'push';
 }
-
-const inlineStyles = `
-  @keyframes blink {
-    50% { opacity: 0; }
-  }
-  .cursor-blink {
-    animation: blink 1s step-start infinite;
-  }
-  .lcd-glow {
-    box-shadow: inset 0 0 15px rgba(0, 0, 0, 0.2);
-  }
-  .glossy-btn {
-    background: linear-gradient(180deg, rgba(255,255,255,0.15) 0%, rgba(0,0,0,0.15) 100%);
-    box-shadow: 
-      inset 0 1px 0 rgba(255,255,255,0.25),
-      0 3px 0 rgba(0,0,0,0.4),
-      0 4px 6px rgba(0,0,0,0.3);
-  }
-  .glossy-btn:active {
-    transform: translateY(2px);
-    box-shadow: 
-      inset 0 1px 0 rgba(255,255,255,0.1),
-      0 1px 0 rgba(0,0,0,0.4),
-      0 2px 3px rgba(0,0,0,0.3);
-  }
-  /* Retro Boot Bar Animation */
-  @keyframes loadBar {
-    0% { width: 0%; }
-    50% { width: 70%; }
-    100% { width: 100%; }
-  }
-  .animate-loading-bar {
-    animation: loadBar 2s ease-in-out infinite;
-  }
-  /* Grid layouts for Retro Games */
-  .grid-cols-20 {
-    grid-template-columns: repeat(20, minmax(0, 1fr));
-  }
-  .grid-rows-12 {
-    grid-template-rows: repeat(12, minmax(0, 1fr));
-  }
-  .grid-cols-10 {
-    grid-template-columns: repeat(10, minmax(0, 1fr));
-  }
-  .grid-rows-15 {
-    grid-template-rows: repeat(15, minmax(0, 1fr));
-  }
-`;
 
 // Global storage helper
 const store = {
@@ -163,25 +75,12 @@ const store = {
 };
 
 export default function App() {
-  // Pre-seed default users (with creator trxy6: 1234)
+  // Pre-seed default users (with creator trxy6: 5234)
   useState(() => {
-    const defaultUsers = [{ userId: 'trxy6', pin: '1234', isCreator: true }];
-    try {
-      const raw = localStorage.getItem('portal_users');
-      if (!raw) {
-        localStorage.setItem('portal_users', JSON.stringify(defaultUsers));
-      } else {
-        const users = JSON.parse(raw);
-        const trxy = users.find((u: any) => u.userId === 'trxy6');
-        if (trxy) {
-          trxy.pin = '1234';
-          localStorage.setItem('portal_users', JSON.stringify(users));
-        } else {
-          users.push(defaultUsers[0]);
-          localStorage.setItem('portal_users', JSON.stringify(users));
-        }
-      }
-    } catch {}
+    const defaultUsers = [{ userId: 'trxy6', pin: '5234', isCreator: true }];
+    if (!localStorage.getItem('portal_users')) {
+      localStorage.setItem('portal_users', JSON.stringify(defaultUsers));
+    } else {
       // Check if "blackmama" exists and remove all instances of it
       try {
         const raw = localStorage.getItem('portal_users');
@@ -201,13 +100,11 @@ export default function App() {
       } catch (e) {
         console.error(e);
       }
+    }
   });
 
   const [currentUser, setCurrentUser] = useState<string | null>(() => localStorage.getItem('portal_current_user') || null);
   const [showStartScreen, setShowStartScreen] = useState(() => !localStorage.getItem('portal_current_user'));
-  const [notiPermission, setNotiPermission] = useState<string>(() => {
-    return typeof Notification !== 'undefined' ? Notification.permission : 'unsupported';
-  });
   
   const [loginTab, setLoginTab] = useState<'login' | 'signup'>('login');
   const [loginUser, setLoginUser] = useState('');
@@ -258,62 +155,6 @@ export default function App() {
     }
   });
 
-  const fetchFeedbackList = useCallback(async () => {
-    let localList: any[] = [];
-    try {
-      const gv = localStorage.getItem('global_feedback_ideas');
-      if (gv) {
-        localList = JSON.parse(gv);
-      }
-    } catch {}
-
-    try {
-      const dbv = localStorage.getItem('trxy6_secure_terminal_db');
-      if (dbv) {
-        const db = JSON.parse(dbv);
-        const messages = Array.isArray(db) ? db : (db && Array.isArray(db.messages) ? db.messages : []);
-        messages.forEach((msg: any) => {
-          if (msg && msg.id && !localList.some(item => item.id === msg.id)) {
-            localList.push({
-              id: msg.id,
-              sender: msg.sender || 'anonymous',
-              text: msg.text || '',
-              timestamp: msg.timestamp || new Date().toLocaleString()
-            });
-          }
-        });
-      }
-    } catch {}
-
-    // Sort newest first
-    localList.sort((a, b) => b.id.localeCompare(a.id));
-    setFeedbackList(localList);
-
-    try {
-      const res = await fetch('/api/feedback');
-      if (res.ok) {
-        const data = await res.json();
-        if (Array.isArray(data.feedback)) {
-          const merged = [...data.feedback];
-          localList.forEach(item => {
-            if (!merged.some(m => m.id === item.id)) {
-              merged.push(item);
-            }
-          });
-          merged.sort((a, b) => b.id.localeCompare(a.id));
-          setFeedbackList(merged);
-          localStorage.setItem('global_feedback_ideas', JSON.stringify(merged));
-        }
-      }
-    } catch (e) {
-      console.warn("Failed to fetch feedback from server, using local cache");
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchFeedbackList();
-  }, [fetchFeedbackList]);
-
   const [githubUrl, setGithubUrl] = useState(() => {
     return localStorage.getItem('portal_github_site_url') || 'https://Treydog-ramirez.github.io/dnd-portal/';
   });
@@ -323,8 +164,6 @@ export default function App() {
   const haptic = (pattern: number | number[]) => {
     if (typeof (window as any).haptic === 'function') {
       (window as any).haptic(pattern);
-    } else if (typeof navigator !== 'undefined' && navigator.vibrate) {
-      navigator.vibrate(pattern);
     }
   };
 
@@ -334,107 +173,9 @@ export default function App() {
     }
   };
 
-  function sendNotification(title: string, body: string, delayMs?: number) {
-    if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
-      const options: any = {
-        body,
-        icon: './icon.svg',
-        badge: './icon.svg',
-        vibrate: [100, 50, 100],
-      };
-
-      if (delayMs && typeof (window as any).TimestampTrigger !== 'undefined') {
-        options.showTrigger = new (window as any).TimestampTrigger(Date.now() + delayMs);
-      }
-
-      const show = () => {
-        if (typeof navigator !== 'undefined' && navigator.serviceWorker && navigator.serviceWorker.ready) {
-          navigator.serviceWorker.ready.then(reg => {
-            reg.showNotification(title, options);
-          }).catch(() => {
-            new Notification(title, { body: options.body, icon: options.icon });
-          });
-        } else {
-          new Notification(title, { body: options.body, icon: options.icon });
-        }
-      };
-
-      if (delayMs && !options.showTrigger) {
-        setTimeout(show, delayMs);
-      } else {
-        show();
-      }
-    }
-  }
-
-  const requestNotificationPermission = async () => {
-    haptic(15);
-    if (typeof Notification === 'undefined') {
-      toast("⚠️ Notifications not supported on this device.", "error");
-      return;
-    }
-    try {
-      const permission = await Notification.requestPermission();
-      setNotiPermission(permission);
-      if (permission === 'granted') {
-        toast("✨ Rift Link Established! Signal Authorized.", "success");
-        sendNotification("Rift Connection Active", "You are now connected to the Portal alerts network.");
-      } else if (permission === 'denied') {
-        toast("⚠️ Signal Disrupted. Permission denied.", "warn");
-      }
-    } catch (e) {
-      toast("⚠️ Signal request failed.", "error");
-    }
-  };
-
-  const testNotification = () => {
-    haptic([15, 30]);
-    if (typeof Notification === 'undefined' || Notification.permission !== 'granted') {
-      toast("⚠️ Authorize the signal first!", "warn");
-      return;
-    }
-    toast("🔮 Transmitting test beacon in 3 seconds...", "success");
-    setTimeout(() => {
-      sendNotification("🔮 Rift Beacon", "The Portal signal is active and running beautifully!");
-    }, 3000);
-  };
-
   const [activeSportsLeague, setActiveSportsLeague] = useState<SportsLeague>('mlb');
-  const [sportsGamesMap, setSportsGamesMap] = useState<Record<SportsLeague, any[]>>({
-    mlb: [],
-    atptennis: [],
-    wtatennis: [],
-    golf: [],
-    wnba: [],
-    nwsl: [],
-    worldcup: [],
-    eng1: [],
-    nba: [],
-    nfl: [],
-  });
-  const sportsGames = sportsGamesMap[activeSportsLeague] || [];
+  const [sportsGames, setSportsGames] = useState<any[]>([]);
   const [sportsSubTab, setSportsSubTab] = useState<'scores' | 'schedule'>('scores');
-  const [sportsDateOffset, setSportsDateOffset] = useState<number>(0);
-  const [sportsViewFilter, setSportsViewFilter] = useState<'all' | 'scores' | 'schedule'>('all');
-  const [sportsSearchQuery, setSportsSearchQuery] = useState<string>('');
-  const [sportsPinnedGames, setSportsPinnedGames] = useState<string[]>(() => {
-    try {
-      return JSON.parse(localStorage.getItem('sportcast_pinned') || '[]');
-    } catch {
-      return [];
-    }
-  });
-  const [selectedGameId, setSelectedGameId] = useState<string | null>(null);
-  const [sportsActivityLog, setSportsActivityLog] = useState<Array<{ type: string; msg: string; time: string }>>([
-    { type: 'System', msg: 'Secure FreeGate initialized. Loaded 0-cost feed.', time: new Date().toLocaleTimeString() }
-  ]);
-
-  const logSportsActivity = (type: string, msg: string) => {
-    setSportsActivityLog(prev => [
-      { type, msg, time: new Date().toLocaleTimeString() },
-      ...prev.slice(0, 49)
-    ]);
-  };
   const [sportsStatus, setSportsStatus] = useState('Initiating zero-cost feed connection...');
   const [sportsUpdated, setSportsUpdated] = useState('Just Now');
   const [sportsFavorites, setSportsFavorites] = useState<string[]>(() => {
@@ -455,725 +196,6 @@ export default function App() {
       return [];
     }
   });
-
-  // --- TI-84 Plus CE Graphing Calculator States ---
-  const [mathLoaded, setMathLoaded] = useState(false);
-  const [currentScreen, setCurrentScreen] = useState('HOME');
-  const [inputVal, setInputVal] = useState('');
-  const [cursorIndex, setCursorIndex] = useState(0);
-  const [history, setHistory] = useState([
-    { input: '2 * cos(pi / 3)', output: '1' },
-    { input: 'sin(pi / 2) + 5^2', output: '26' }
-  ]);
-  const [lastAnswer, setLastAnswer] = useState('26');
-
-  const [equations, setEquations] = useState<Record<string, string>>({
-    Y1: 'x^2 - 4',
-    Y2: '2 * sin(x)',
-    Y3: '',
-    Y4: ''
-  });
-  const [activeEqIndex, setActiveEqIndex] = useState('Y1');
-
-  const [windowSettings, setWindowSettings] = useState<Record<string, number>>({
-    Xmin: -10,
-    Xmax: 10,
-    Xscl: 1,
-    Ymin: -10,
-    Ymax: 10,
-    Yscl: 1
-  });
-  const [activeWindowIndex, setActiveWindowIndex] = useState('Xmin');
-
-  const [tblSettings, setTblSettings] = useState<Record<string, number>>({
-    TblStart: 0,
-    dTbl: 1
-  });
-  const [activeTblIndex, setActiveTblIndex] = useState('TblStart');
-  const [tableOffset, setTableOffset] = useState(0);
-
-  const [angleMode, setAngleMode] = useState('RADIAN');
-  const [numberFormat, setNumberFormat] = useState('NORMAL');
-  const [decimalPlaces, setDecimalPlaces] = useState('FLOAT');
-  const [is2nd, setIs2nd] = useState(false);
-  const [isAlpha, setIsAlpha] = useState(false);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
-
-  const [isTracing, setIsTracing] = useState(false);
-  const [traceX, setTraceX] = useState(0);
-  const [traceEquationIndex, setTraceEquationIndex] = useState('Y1');
-
-  const [programList] = useState(['SNAKE', 'TETRIS']);
-  const [activeProgIndex, setActiveProgIndex] = useState(0);
-
-  const [snake, setSnake] = useState<Array<{x: number, y: number}>>([]);
-  const [snakeDir, setSnakeDir] = useState({ x: 1, y: 0 });
-  const [snakeFood, setSnakeFood] = useState({ x: 5, y: 5 });
-  const [snakeScore, setSnakeScore] = useState(0);
-  const [snakeHighScore, setSnakeHighScore] = useState(0);
-  const [snakeOver, setSnakeOver] = useState(false);
-
-  const [tetrisBoard, setTetrisBoard] = useState<Array<Array<number>>>([]);
-  const [tetrisPiece, setTetrisPiece] = useState<any>(null);
-  const [tetrisPos, setTetrisPos] = useState({ x: 0, y: 0 });
-  const [tetrisScore, setTetrisScore] = useState(0);
-  const [tetrisOver, setTetrisOver] = useState(false);
-
-  const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const lcdScreenRef = useRef<HTMLDivElement | null>(null);
-
-  // --- TI-84 Plus CE Graphs & Calculation Kernels ---
-  useEffect(() => {
-    const styleSheet = document.createElement("style");
-    styleSheet.innerText = inlineStyles;
-    document.head.appendChild(styleSheet);
-
-    if ((window as any).math) {
-      setMathLoaded(true);
-    } else {
-      const script = document.createElement('script');
-      script.src = 'https://cdnjs.cloudflare.com/ajax/libs/mathjs/12.4.0/math.js';
-      script.async = true;
-      script.onload = () => {
-        setMathLoaded(true);
-      };
-      script.onerror = () => {
-        setErrorMessage("Critical Error: Failed to load TI-84 Math Kernel. Please check internet connection.");
-      };
-      document.head.appendChild(script);
-    }
-
-    return () => {
-      styleSheet.remove();
-    };
-  }, []);
-
-  const formatImpliedMultiplication = (expr: string) => {
-    return expr
-      .replace(/(\d+)([a-zA-Zπθn])/g, '$1 * $2')
-      .replace(/([a-zA-Zπθn])(\d+)/g, '$1 * $2')
-      .replace(/\)([\w(π])/g, ') * $1')
-      .replace(/([a-zA-Zπθn])\(/g, '$1 * (');
-  };
-
-  const sanitizeExpressionForMathJS = (expr: string) => {
-    let sanitized = formatImpliedMultiplication(expr);
-    sanitized = sanitized
-      .replace(/π/g, 'pi')
-      .replace(/e\^/g, 'exp')
-      .replace(/√\(/g, 'sqrt(')
-      .replace(/²/g, '^2')
-      .replace(/–/g, '-')
-      .replace(/¯/g, '-')
-      .replace(/×/g, '*')
-      .replace(/÷/g, '/')
-      .replace(/ln\(/g, 'log(')
-      .replace(/log\(/g, 'log10(')
-      .replace(/x/g, 'x')
-      .replace(/X/g, 'x');
-
-    if (angleMode === 'DEGREE') {
-      sanitized = sanitized
-        .replace(/sin\(([^)]+)\)/g, 'sin(($1) * deg)')
-        .replace(/cos\(([^)]+)\)/g, 'cos(($1) * deg)')
-        .replace(/tan\(([^)]+)\)/g, 'tan(($1) * deg)')
-        .replace(/asin\(([^)]+)\)/g, 'asin($1) / deg')
-        .replace(/acos\(([^)]+)\)/g, 'acos($1) / deg')
-        .replace(/atan\(([^)]+)\)/g, 'atan($1) / deg');
-    }
-    return sanitized;
-  };
-
-  const executeCalculation = () => {
-    const math = (window as any).math;
-    if (!math || !inputVal.trim()) return;
-
-    try {
-      const mathFormatted = sanitizeExpressionForMathJS(inputVal);
-      const scope = { x: 0, deg: math.unit('deg'), Ans: Number(lastAnswer) || 0 };
-      let result = math.evaluate(mathFormatted, scope);
-
-      if (typeof result === 'object' && result.entries) {
-        result = result.entries[0];
-      }
-
-      let formattedResult = '';
-      if (typeof result === 'number') {
-        if (decimalPlaces !== 'FLOAT') {
-          formattedResult = result.toFixed(parseInt(decimalPlaces));
-        } else {
-          formattedResult = math.format(result, { precision: 10 });
-        }
-      } else {
-        formattedResult = result.toString();
-      }
-
-      setHistory([...history, { input: inputVal, output: formattedResult }]);
-      setLastAnswer(formattedResult);
-      setInputVal('');
-      setCursorIndex(0);
-      logSportsActivity('TI-84 Calc', `Evaluated: ${inputVal} = ${formattedResult}`);
-    } catch (err) {
-      setErrorMessage(`ERR:SYNTAX \n\nCheck mathematical operators or parenthesis alignment.`);
-    }
-  };
-
-  const insertToken = (token: string) => {
-    if (currentScreen === 'HOME') {
-      setInputVal(prev => prev.slice(0, cursorIndex) + token + prev.slice(cursorIndex));
-      setCursorIndex(prev => prev + token.length);
-    } else if (currentScreen === 'Y_EDIT') {
-      setEquations(prev => ({
-        ...prev,
-        [activeEqIndex]: prev[activeEqIndex] + token
-      }));
-    } else if (currentScreen === 'WINDOW') {
-      const currentVal = windowSettings[activeWindowIndex]?.toString() || '';
-      const newVal = parseFloat(currentVal + token) || parseFloat(token) || 0;
-      setWindowSettings(prev => ({ ...prev, [activeWindowIndex]: newVal }));
-    } else if (currentScreen === 'TBLSET') {
-      const currentVal = tblSettings[activeTblIndex]?.toString() || '';
-      const newVal = parseFloat(currentVal + token) || parseFloat(token) || 0;
-      setTblSettings(prev => ({ ...prev, [activeTblIndex]: newVal }));
-    }
-  };
-
-  const handleDirectionalArrow = (direction: 'UP' | 'DOWN' | 'LEFT' | 'RIGHT') => {
-    if (currentScreen === 'HOME') {
-      if (direction === 'LEFT') setCursorIndex(Math.max(0, cursorIndex - 1));
-      if (direction === 'RIGHT') setCursorIndex(Math.min(inputVal.length, cursorIndex + 1));
-      if (direction === 'UP' && history.length > 0) {
-        setInputVal(history[history.length - 1].input);
-        setCursorIndex(history[history.length - 1].input.length);
-      }
-    } else if (currentScreen === 'Y_EDIT') {
-      const list = ['Y1', 'Y2', 'Y3', 'Y4'];
-      let curr = list.indexOf(activeEqIndex);
-      if (direction === 'UP') setActiveEqIndex(list[(curr - 1 + 4) % 4]);
-      if (direction === 'DOWN') setActiveEqIndex(list[(curr + 1) % 4]);
-    } else if (currentScreen === 'WINDOW') {
-      const list = ['Xmin', 'Xmax', 'Xscl', 'Ymin', 'Ymax', 'Yscl'];
-      let curr = list.indexOf(activeWindowIndex);
-      if (direction === 'UP') setActiveWindowIndex(list[(curr - 1 + 6) % 6]);
-      if (direction === 'DOWN') setActiveWindowIndex(list[(curr + 1) % 6]);
-    } else if (currentScreen === 'TBLSET') {
-      setActiveTblIndex(activeTblIndex === 'TblStart' ? 'dTbl' : 'TblStart');
-    } else if (currentScreen === 'GRAPH') {
-      if (!isTracing) {
-        setIsTracing(true);
-        setTraceX((windowSettings.Xmax + windowSettings.Xmin) / 2);
-      } else {
-        const step = (windowSettings.Xmax - windowSettings.Xmin) / 40;
-        if (direction === 'LEFT') setTraceX(prev => Math.max(windowSettings.Xmin, prev - step));
-        if (direction === 'RIGHT') setTraceX(prev => Math.min(windowSettings.Xmax, prev + step));
-        if (direction === 'UP') {
-          const list = ['Y1', 'Y2', 'Y3', 'Y4'];
-          let curr = list.indexOf(traceEquationIndex);
-          setTraceEquationIndex(list[(curr - 1 + 4) % 4]);
-        }
-        if (direction === 'DOWN') {
-          const list = ['Y1', 'Y2', 'Y3', 'Y4'];
-          let curr = list.indexOf(traceEquationIndex);
-          setTraceEquationIndex(list[(curr + 1) % 4]);
-        }
-      }
-    } else if (currentScreen === 'TABLE') {
-      if (direction === 'UP') setTableOffset(prev => prev - 1);
-      if (direction === 'DOWN') setTableOffset(prev => prev + 1);
-    } else if (currentScreen === 'PROGRAM_MENU') {
-      if (direction === 'UP') setActiveProgIndex(prev => (prev - 1 + programList.length) % programList.length);
-      if (direction === 'DOWN') setActiveProgIndex(prev => (prev + 1) % programList.length);
-    } else if (currentScreen === 'S_GAME') {
-      if (direction === 'UP' && snakeDir.y === 0) setSnakeDir({ x: 0, y: -1 });
-      if (direction === 'DOWN' && snakeDir.y === 0) setSnakeDir({ x: 0, y: 1 });
-      if (direction === 'LEFT' && snakeDir.x === 0) setSnakeDir({ x: -1, y: 0 });
-      if (direction === 'RIGHT' && snakeDir.x === 0) setSnakeDir({ x: 1, y: 0 });
-    } else if (currentScreen === 'TETRIS_GAME') {
-      if (direction === 'LEFT') moveTetrisPiece(-1, 0);
-      if (direction === 'RIGHT') moveTetrisPiece(1, 0);
-      if (direction === 'DOWN') moveTetrisPiece(0, 1);
-      if (direction === 'UP') rotateTetrisPiece();
-    }
-  };
-
-  const handleButtonPress = (keyName: string, label2nd: string | null = null, labelAlpha: string | null = null) => {
-    let action = keyName;
-    if (is2nd && label2nd) {
-      action = label2nd;
-      setIs2nd(false);
-    } else if (isAlpha && labelAlpha) {
-      action = labelAlpha;
-      setIsAlpha(false);
-    }
-
-    switch (action) {
-      case '2ND':
-        setIs2nd(!is2nd);
-        setIsAlpha(false);
-        break;
-      case 'ALPHA':
-        setIsAlpha(!isAlpha);
-        setIs2nd(false);
-        break;
-      case 'CLEAR':
-        if (currentScreen === 'HOME') {
-          if (inputVal === '') setHistory([]);
-          setInputVal('');
-          setCursorIndex(0);
-        } else if (currentScreen === 'Y_EDIT') {
-          setEquations({ ...equations, [activeEqIndex]: '' });
-        } else if (currentScreen === 'WINDOW') {
-          setWindowSettings({ ...windowSettings, [activeWindowIndex]: 0 });
-        }
-        break;
-      case 'DEL':
-        if (currentScreen === 'HOME') {
-          if (cursorIndex > 0) {
-            setInputVal(prev => prev.slice(0, cursorIndex - 1) + prev.slice(cursorIndex));
-            setCursorIndex(prev => prev - 1);
-          }
-        } else if (currentScreen === 'Y_EDIT') {
-          const currentEq = equations[activeEqIndex] || '';
-          setEquations({ ...equations, [activeEqIndex]: currentEq.slice(0, -1) });
-        }
-        break;
-      case 'ENTER':
-        if (currentScreen === 'HOME') {
-          executeCalculation();
-        } else if (currentScreen === 'Y_EDIT') {
-          const list = ['Y1', 'Y2', 'Y3', 'Y4'];
-          const nextIdx = (list.indexOf(activeEqIndex) + 1) % list.length;
-          setActiveEqIndex(list[nextIdx]);
-        } else if (currentScreen === 'WINDOW') {
-          const list = ['Xmin', 'Xmax', 'Xscl', 'Ymin', 'Ymax', 'Yscl'];
-          const nextIdx = (list.indexOf(activeWindowIndex) + 1) % list.length;
-          setActiveWindowIndex(list[nextIdx]);
-        } else if (currentScreen === 'TBLSET') {
-          setActiveTblIndex(activeTblIndex === 'TblStart' ? 'dTbl' : 'TblStart');
-        } else if (currentScreen === 'PROGRAM_MENU') {
-          const selectedProg = programList[activeProgIndex];
-          if (selectedProg === 'SNAKE') {
-            initSnakeGame();
-            setCurrentScreen('S_GAME');
-            logSportsActivity('TI-84 Game', 'Started Snake ROM game emulator.');
-          } else if (selectedProg === 'TETRIS') {
-            initTetrisGame();
-            setCurrentScreen('TETRIS_GAME');
-            logSportsActivity('TI-84 Game', 'Started Tetris ROM game emulator.');
-          }
-        } else if (currentScreen === 'CATALOG') {
-          insertToken('sin(');
-          setCurrentScreen('HOME');
-        }
-        break;
-
-      case 'UP':
-        handleDirectionalArrow('UP');
-        break;
-      case 'DOWN':
-        handleDirectionalArrow('DOWN');
-        break;
-      case 'LEFT':
-        handleDirectionalArrow('LEFT');
-        break;
-      case 'RIGHT':
-        handleDirectionalArrow('RIGHT');
-        break;
-
-      case 'Y=':
-        setCurrentScreen('Y_EDIT');
-        break;
-      case 'WINDOW':
-        setCurrentScreen('WINDOW');
-        break;
-      case 'GRAPH':
-        setCurrentScreen('GRAPH');
-        setIsTracing(false);
-        break;
-      case 'TABLE':
-        setCurrentScreen('TABLE');
-        break;
-      case 'TBLSET':
-        setCurrentScreen('TBLSET');
-        break;
-      case 'MODE':
-        setCurrentScreen('MODE_MENU');
-        break;
-      case 'MATH':
-        setCurrentScreen('MATH_MENU');
-        break;
-      case 'PRGM':
-        setCurrentScreen('PROGRAM_MENU');
-        break;
-      case 'CATALOG':
-        setCurrentScreen('CATALOG');
-        break;
-      case 'QUIT':
-        setCurrentScreen('HOME');
-        break;
-
-      case 'x':
-      case 'X':
-        insertToken('x');
-        break;
-      case 'sin(':
-      case 'cos(':
-      case 'tan(':
-      case 'ln(':
-      case 'log(':
-        insertToken(action);
-        break;
-      case 'asin(':
-        insertToken('asin(');
-        break;
-      case 'acos(':
-        insertToken('acos(');
-        break;
-      case 'atan(':
-        insertToken('atan(');
-        break;
-      case 'π':
-        insertToken('π');
-        break;
-      case '√(':
-        insertToken('√(');
-        break;
-      case '²':
-        insertToken('²');
-        break;
-      case '^':
-        insertToken('^');
-        break;
-      case '10^':
-        insertToken('10^(');
-        break;
-      case 'e^':
-        insertToken('e^(');
-        break;
-      case 'Ans':
-        insertToken('Ans');
-        break;
-      case '(-)':
-        insertToken('–');
-        break;
-
-      default:
-        if (action && action.length <= 5) {
-          insertToken(action);
-        }
-        break;
-    }
-  };
-
-  // --- Cartesian Canvas Drawing Hook ---
-  useEffect(() => {
-    const math = (window as any).math;
-    if (!math || currentScreen !== 'GRAPH' || !canvasRef.current) return;
-
-    const canvas = canvasRef.current;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-    const width = canvas.width;
-    const height = canvas.height;
-
-    ctx.fillStyle = '#1e1e1e';
-    ctx.fillRect(0, 0, width, height);
-
-    const { Xmin, Xmax, Xscl, Ymin, Ymax, Yscl } = windowSettings;
-
-    const toScreenX = (x: number) => ((x - Xmin) / (Xmax - Xmin)) * width;
-    const toScreenY = (y: number) => height - ((y - Ymin) / (Ymax - Ymin)) * height;
-
-    ctx.strokeStyle = '#2d2d2d';
-    ctx.lineWidth = 1;
-
-    for (let x = Math.ceil(Xmin / Xscl) * Xscl; x <= Xmax; x += Xscl) {
-      const sx = toScreenX(x);
-      ctx.beginPath();
-      ctx.moveTo(sx, 0);
-      ctx.lineTo(sx, height);
-      ctx.stroke();
-    }
-    for (let y = Math.ceil(Ymin / Yscl) * Yscl; y <= Ymax; y += Yscl) {
-      const sy = toScreenY(y);
-      ctx.beginPath();
-      ctx.moveTo(0, sy);
-      ctx.lineTo(width, sy);
-      ctx.stroke();
-    }
-
-    ctx.strokeStyle = '#64748b';
-    ctx.lineWidth = 2;
-    const zeroX = toScreenX(0);
-    const zeroY = toScreenY(0);
-
-    ctx.beginPath();
-    ctx.moveTo(zeroX, 0);
-    ctx.lineTo(zeroX, height);
-    ctx.moveTo(0, zeroY);
-    ctx.lineTo(width, zeroY);
-    ctx.stroke();
-
-    const colors = ['#f43f5e', '#3b82f6', '#10b981', '#eab308'];
-    Object.keys(equations).forEach((eqKey, index) => {
-      const equationStr = equations[eqKey];
-      if (!equationStr || !equationStr.trim()) return;
-
-      ctx.strokeStyle = colors[index % colors.length];
-      ctx.lineWidth = 2.5;
-      ctx.beginPath();
-
-      let parsedEq: any;
-      try {
-        const mathFormatted = sanitizeExpressionForMathJS(equationStr);
-        parsedEq = math.compile(mathFormatted);
-      } catch (err) {
-        return;
-      }
-
-      let first = true;
-      const step = (Xmax - Xmin) / 150;
-      for (let x = Xmin; x <= Xmax; x += step) {
-        try {
-          const scope = { x, deg: math.unit('deg'), Ans: Number(lastAnswer) || 0 };
-          const y = parsedEq.evaluate(scope);
-
-          if (typeof y === 'number' && !isNaN(y) && isFinite(y)) {
-            const sx = toScreenX(x);
-            const sy = toScreenY(y);
-
-            if (first) {
-              ctx.moveTo(sx, sy);
-              first = false;
-            } else {
-              ctx.lineTo(sx, sy);
-            }
-          } else {
-            first = true;
-          }
-        } catch (err) {
-          first = true;
-        }
-      }
-      ctx.stroke();
-    });
-
-    if (isTracing) {
-      const eqStr = equations[traceEquationIndex];
-      if (eqStr && eqStr.trim()) {
-        try {
-          const mathFormatted = sanitizeExpressionForMathJS(eqStr);
-          const yVal = math.evaluate(mathFormatted, { x: traceX, deg: math.unit('deg'), Ans: Number(lastAnswer) || 0 });
-
-          if (typeof yVal === 'number' && !isNaN(yVal)) {
-            const sx = toScreenX(traceX);
-            const sy = toScreenY(yVal);
-
-            ctx.strokeStyle = '#ffffff';
-            ctx.fillStyle = '#ef4444';
-            ctx.lineWidth = 2;
-            ctx.beginPath();
-            ctx.arc(sx, sy, 6, 0, 2 * Math.PI);
-            ctx.fill();
-            ctx.stroke();
-          }
-        } catch (err) {}
-      }
-    }
-  }, [currentScreen, equations, windowSettings, isTracing, traceX, traceEquationIndex, mathLoaded, lastAnswer]);
-
-  // --- Embedded ROM Games Logic ---
-  const initSnakeGame = () => {
-    setSnake([
-      { x: 5, y: 5 },
-      { x: 4, y: 5 },
-      { x: 3, y: 5 }
-    ]);
-    setSnakeDir({ x: 1, y: 0 });
-    setSnakeFood({ x: 10, y: 8 });
-    setSnakeScore(0);
-    setSnakeOver(false);
-  };
-
-  useEffect(() => {
-    if (currentScreen !== 'S_GAME' || snakeOver) return;
-
-    const gameTick = setInterval(() => {
-      setSnake(prev => {
-        if (prev.length === 0) return prev;
-        const head = prev[0];
-        const newHead = { x: head.x + snakeDir.x, y: head.y + snakeDir.y };
-
-        if (newHead.x < 0 || newHead.x >= 20 || newHead.y < 0 || newHead.y >= 12) {
-          setSnakeOver(true);
-          return prev;
-        }
-
-        for (let segment of prev) {
-          if (segment.x === newHead.x && segment.y === newHead.y) {
-            setSnakeOver(true);
-            return prev;
-          }
-        }
-
-        const newSnake = [newHead, ...prev];
-
-        if (newHead.x === snakeFood.x && newHead.y === snakeFood.y) {
-          setSnakeScore(s => {
-            const next = s + 10;
-            if (next > snakeHighScore) setSnakeHighScore(next);
-            return next;
-          });
-          setSnakeFood({
-            x: Math.floor(Math.random() * 20),
-            y: Math.floor(Math.random() * 12)
-          });
-        } else {
-          newSnake.pop();
-        }
-        return newSnake;
-      });
-    }, 180);
-
-    return () => clearInterval(gameTick);
-  }, [currentScreen, snakeDir, snakeFood, snakeOver, snakeHighScore]);
-
-  const initTetrisGame = () => {
-    const emptyBoard = Array(15).fill(null).map(() => Array(10).fill(0));
-    setTetrisBoard(emptyBoard);
-    setTetrisScore(0);
-    setTetrisOver(false);
-    spawnTetrisPiece(emptyBoard);
-  };
-
-  const SHAPES = [
-    [[1, 1, 1, 1]],
-    [[1, 1, 1], [0, 1, 0]],
-    [[1, 1], [1, 1]],
-    [[1, 1, 0], [0, 1, 1]],
-    [[0, 1, 1], [1, 1, 0]]
-  ];
-
-  const spawnTetrisPiece = (board: number[][]) => {
-    const shape = SHAPES[Math.floor(Math.random() * SHAPES.length)];
-    const newPiece = {
-      shape,
-      color: '#ef4444'
-    };
-    setTetrisPiece(newPiece);
-    setTetrisPos({ x: 3, y: 0 });
-
-    if (checkCollision(shape, { x: 3, y: 0 }, board)) {
-      setTetrisOver(true);
-    }
-  };
-
-  const checkCollision = (shape: number[][], pos: {x: number, y: number}, board: number[][]) => {
-    for (let r = 0; r < shape.length; r++) {
-      for (let c = 0; c < shape[r].length; c++) {
-        if (shape[r][c]) {
-          const nextX = pos.x + c;
-          const nextY = pos.y + r;
-          if (nextX < 0 || nextX >= 10 || nextY >= 15) return true;
-          if (nextY >= 0 && board[nextY] && board[nextY][nextX]) return true;
-        }
-      }
-    }
-    return false;
-  };
-
-  const moveTetrisPiece = (dx: number, dy: number) => {
-    if (tetrisOver || !tetrisPiece) return;
-    const nextPos = { x: tetrisPos.x + dx, y: tetrisPos.y + dy };
-    if (!checkCollision(tetrisPiece.shape, nextPos, tetrisBoard)) {
-      setTetrisPos(nextPos);
-    } else if (dy > 0) {
-      lockTetrisPiece();
-    }
-  };
-
-  const rotateTetrisPiece = () => {
-    if (tetrisOver || !tetrisPiece) return;
-    const shape = tetrisPiece.shape;
-    const rotated = shape[0].map((_, colIndex) => shape.map(row => row[colIndex]).reverse());
-    if (!checkCollision(rotated, tetrisPos, tetrisBoard)) {
-      setTetrisPiece({ ...tetrisPiece, shape: rotated });
-    }
-  };
-
-  const lockTetrisPiece = () => {
-    const newBoard = tetrisBoard.map(row => [...row]);
-    const shape = tetrisPiece.shape;
-    for (let r = 0; r < shape.length; r++) {
-      for (let c = 0; c < shape[r].length; c++) {
-        if (shape[r][c]) {
-          const boardY = tetrisPos.y + r;
-          const boardX = tetrisPos.x + c;
-          if (boardY >= 0 && boardY < 15) {
-            newBoard[boardY][boardX] = 1;
-          }
-        }
-      }
-    }
-
-    let linesCleared = 0;
-    const filteredBoard = newBoard.filter(row => {
-      const isFull = row.every(cell => cell === 1);
-      if (isFull) linesCleared++;
-      return !isFull;
-    });
-
-    while (filteredBoard.length < 15) {
-      filteredBoard.unshift(Array(10).fill(0));
-    }
-
-    setTetrisBoard(filteredBoard);
-    setTetrisScore(prev => prev + linesCleared * 100);
-    spawnTetrisPiece(filteredBoard);
-  };
-
-  useEffect(() => {
-    if (currentScreen !== 'TETRIS_GAME' || tetrisOver) return;
-    const gameTick = setInterval(() => {
-      moveTetrisPiece(0, 1);
-    }, 700);
-    return () => clearInterval(gameTick);
-  }, [currentScreen, tetrisPos, tetrisPiece, tetrisBoard, tetrisOver]);
-
-  const renderTableRows = () => {
-    const math = (window as any).math;
-    if (!math) return [];
-
-    const rows = [];
-    const start = tblSettings.TblStart + tableOffset * tblSettings.dTbl;
-
-    const compiled: Record<string, any> = {};
-    Object.keys(equations).forEach(k => {
-      try {
-        const eqStr = equations[k];
-        if (eqStr && eqStr.trim()) {
-          compiled[k] = math.compile(sanitizeExpressionForMathJS(eqStr));
-        }
-      } catch (e) {}
-    });
-
-    for (let i = 0; i < 7; i++) {
-      const x = start + i * tblSettings.dTbl;
-      const rowVals: Record<string, string> = { X: x.toFixed(2), Y1: '---', Y2: '---' };
-
-      Object.keys(compiled).forEach(k => {
-        try {
-          const val = compiled[k].evaluate({ x, deg: math.unit('deg'), Ans: Number(lastAnswer) || 0 });
-          rowVals[k] = typeof val === 'number' && !isNaN(val) ? val.toFixed(4) : 'ERR';
-        } catch (e) {
-          rowVals[k] = 'ERR';
-        }
-      });
-
-      rows.push(rowVals);
-    }
-    return rows;
-  };
 
   // Home Page Customization States
   const [showCustomizeModal, setShowCustomizeModal] = useState(false);
@@ -1223,16 +245,11 @@ export default function App() {
 
   const handleEndTurn = () => {
     const nextIndex = (activeCombatantIndex + 1) % combatants.length;
-    const nextCombatant = combatants[nextIndex];
     if (nextIndex === 0) {
       setCombatRound(prev => prev + 1);
     }
     setActiveCombatantIndex(nextIndex);
     haptic(15);
-    
-    if (nextCombatant) {
-      sendNotification("🛡️ Next Combat Turn", `It is now ${nextCombatant.name}'s turn!`);
-    }
   };
 
   // Dashboard Habit Streak States & Helpers
@@ -1245,12 +262,8 @@ export default function App() {
     };
     updateStreak();
     (window as any).updateHabitDisplays = updateStreak;
-    (window as any).sendNotification = sendNotification;
-    (window as any).requestNotificationPermission = requestNotificationPermission;
     return () => {
       delete (window as any).updateHabitDisplays;
-      delete (window as any).sendNotification;
-      delete (window as any).requestNotificationPermission;
     };
   }, []);
 
@@ -1276,19 +289,10 @@ export default function App() {
       if (cameraStream) {
         cameraStream.getTracks().forEach(track => track.stop());
       }
-      let stream;
-      try {
-        stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: 'environment' },
-          audio: false
-        });
-      } catch (e) {
-        console.warn('Environment camera not found, falling back to default camera:', e);
-        stream = await navigator.mediaDevices.getUserMedia({
-          video: true,
-          audio: false
-        });
-      }
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'environment' },
+        audio: false
+      });
       setCameraStream(stream);
       if (riftVideoRef.current) {
         riftVideoRef.current.srcObject = stream;
@@ -1382,51 +386,26 @@ export default function App() {
   const scanImageWithGemini = async (base64Image: string, mode: string, questionText?: string) => {
     setRiftVisionScanning(true);
     setRiftVisionResult(null);
-    let rawText = '';
     try {
-      try {
-        const response = await fetch('/api/scan', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            image: base64Image,
-            type: mode,
-            question: questionText,
-          }),
-        });
+      const response = await fetch('/api/scan', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          image: base64Image,
+          type: mode,
+          question: questionText,
+        }),
+      });
 
-        if (response.ok) {
-          const data = await response.json();
-          rawText = data.text || '';
-        } else {
-          throw new Error('API offline');
-        }
-      } catch (e) {
-        console.warn("Using client-side free local scanner simulation.");
-        await new Promise(r => setTimeout(r, 1200));
-
-        if (mode === 'notes') {
-          rawText = `📝 **Scanned Traveler Notes**\n\n*   **Rift Chamber Location:** Vault 4, Sector 7-G\n*   **Guard Patrol Route:** Every 15 minutes\n*   **Vault Code:** \`73-88-21\`\n*   **Alert Signal Status:** Authorized and monitoring`;
-        } else if (mode === 'betslip') {
-          rawText = `[{"teamName": "Lakers", "opponentName": "Celtics", "league": "nba"}]`;
-        } else if (mode === 'character') {
-          rawText = `{"name": "Valerius", "classAndLevel": "Wizard 5", "ac": 13, "hp": 28, "maxHp": 28, "abilityScores": {"STR": 8, "DEX": 14, "CON": 12, "INT": 18, "WIS": 13, "CHA": 10}, "equipment": ["Spellbook", "Wand of Magic Missile"], "notes": "Familiar is a black cat named Shadow."}`;
-        } else if (mode === 'dice') {
-          rawText = `{"rolls": [20, 5], "total": 25, "summary": "Detected a d20 showing 20 and a d6 showing 5. Natural 20!"}`;
-        } else if (mode === 'calendar') {
-          rawText = `{"title": "Epic Campaign Session", "date": "2026-07-08", "time": "6:00 PM", "location": "The Prancing Pony", "description": "Weekly DnD campaign meetup."}`;
-        } else if (mode === 'ask') {
-          const q = (questionText || '').toLowerCase();
-          if (q.includes('what') || q.includes('salary') || q.includes('employee') || q.includes('table')) {
-            rawText = `📊 **Rift Vision Scan Result (Employee Salary Data)**\n\nThe scanner processed the table image and extracted the database query rows:\n\n*   **John Grant**: Salary 2,500\n*   **Mary Whalen**: Salary 2,800\n*   **Alan Parker**: Salary 3,200\n*   **Sara Archer**: Salary 2,900\n*   **Tom Brown**: Salary 4,000\n\nIt also detected a listing of Regions/Countries (including Switzerland, Zimbabwe, and Australia).`;
-          } else {
-            rawText = `🔮 **Rift Vision Scan Result**\n\nQuestion: "${questionText || 'what is this'}"\n\nAnswer: The Rift Vision Scanner successfully parsed the base64 visual upload. It represents a database table layout of team members and region associations.`;
-          }
-        }
+      if (!response.ok) {
+        const errData = await response.json();
+        throw new Error(errData.error || 'The scan sequence failed.');
       }
 
+      const data = await response.json();
+      const rawText = data.text || '';
       setRiftVisionResult(rawText);
 
       // Programmatically handle different scan modes to update the app state and storage!
@@ -1800,365 +779,31 @@ export default function App() {
       minute: '2-digit',
     });
   }
-  function generateMockSportsGames(league: SportsLeague): any[] {
-    const today = new Date();
-    const formattedToday = today.toISOString();
 
-    const leagueTeams: Record<SportsLeague, Array<{ abbr: string; name: string; record: string; logo: string }>> = {
-      mlb: [
-        { abbr: 'NYY', name: 'Yankees', record: '54-32', logo: 'https://a.espncdn.com/i/teamlogos/mlb/500/nyy.png' },
-        { abbr: 'BOS', name: 'Red Sox', record: '46-40', logo: 'https://a.espncdn.com/i/teamlogos/mlb/500/bos.png' },
-        { abbr: 'LAD', name: 'Dodgers', record: '56-33', logo: 'https://a.espncdn.com/i/teamlogos/mlb/500/lad.png' },
-        { abbr: 'SF', name: 'Giants', record: '42-45', logo: 'https://a.espncdn.com/i/teamlogos/mlb/500/sf.png' },
-        { abbr: 'CHC', name: 'Cubs', record: '41-46', logo: 'https://a.espncdn.com/i/teamlogos/mlb/500/chc.png' },
-        { abbr: 'STL', name: 'Cardinals', record: '44-42', logo: 'https://a.espncdn.com/i/teamlogos/mlb/500/stl.png' },
-      ],
-      atptennis: [
-        { abbr: 'DJOK', name: 'N. Djokovic', record: '45-12', logo: 'https://a.espncdn.com/i/teamlogos/default-team-logo-500.png' },
-        { abbr: 'ALCA', name: 'C. Alcaraz', record: '48-10', logo: 'https://a.espncdn.com/i/teamlogos/default-team-logo-500.png' },
-        { abbr: 'SINN', name: 'J. Sinner', record: '50-8', logo: 'https://a.espncdn.com/i/teamlogos/default-team-logo-500.png' },
-        { abbr: 'MEDV', name: 'D. Medvedev', record: '42-15', logo: 'https://a.espncdn.com/i/teamlogos/default-team-logo-500.png' },
-        { abbr: 'ZVER', name: 'A. Zverev', record: '38-18', logo: 'https://a.espncdn.com/i/teamlogos/default-team-logo-500.png' },
-        { abbr: 'RUUD', name: 'C. Ruud', record: '35-16', logo: 'https://a.espncdn.com/i/teamlogos/default-team-logo-500.png' },
-      ],
-      wtatennis: [
-        { abbr: 'SWIA', name: 'I. Swiatek', record: '52-7', logo: 'https://a.espncdn.com/i/teamlogos/default-team-logo-500.png' },
-        { abbr: 'SABA', name: 'A. Sabalenka', record: '46-9', logo: 'https://a.espncdn.com/i/teamlogos/default-team-logo-500.png' },
-        { abbr: 'GAUF', name: 'C. Gauff', record: '44-11', logo: 'https://a.espncdn.com/i/teamlogos/default-team-logo-500.png' },
-        { abbr: 'RYBA', name: 'E. Rybakina', record: '40-12', logo: 'https://a.espncdn.com/i/teamlogos/default-team-logo-500.png' },
-        { abbr: 'PEGU', name: 'J. Pegula', record: '38-14', logo: 'https://a.espncdn.com/i/teamlogos/default-team-logo-500.png' },
-        { abbr: 'SAKK', name: 'M. Sakkari', record: '32-16', logo: 'https://a.espncdn.com/i/teamlogos/default-team-logo-500.png' },
-      ],
-      golf: [
-        { abbr: 'SCHE', name: 'S. Scheffler', record: '-12', logo: 'https://a.espncdn.com/i/teamlogos/default-team-logo-500.png' },
-        { abbr: 'MCIL', name: 'R. McIlroy', record: '-10', logo: 'https://a.espncdn.com/i/teamlogos/default-team-logo-500.png' },
-        { abbr: 'RAHM', name: 'J. Rahm', record: '-9', logo: 'https://a.espncdn.com/i/teamlogos/default-team-logo-500.png' },
-        { abbr: 'HOVL', name: 'V. Hovland', record: '-8', logo: 'https://a.espncdn.com/i/teamlogos/default-team-logo-500.png' },
-        { abbr: 'SCHA', name: 'X. Schauffele', record: '-7', logo: 'https://a.espncdn.com/i/teamlogos/default-team-logo-500.png' },
-        { abbr: 'CLAR', name: 'W. Clark', record: '-5', logo: 'https://a.espncdn.com/i/teamlogos/default-team-logo-500.png' },
-      ],
-      wnba: [
-        { abbr: 'LVA', name: 'Las Vegas Aces', record: '28-6', logo: 'https://a.espncdn.com/i/teamlogos/default-team-logo-500.png' },
-        { abbr: 'NYL', name: 'New York Liberty', record: '27-7', logo: 'https://a.espncdn.com/i/teamlogos/default-team-logo-500.png' },
-        { abbr: 'CON', name: 'Connecticut Sun', record: '24-10', logo: 'https://a.espncdn.com/i/teamlogos/default-team-logo-500.png' },
-        { abbr: 'SEA', name: 'Seattle Storm', record: '11-23', logo: 'https://a.espncdn.com/i/teamlogos/default-team-logo-500.png' },
-        { abbr: 'IND', name: 'Indiana Fever', record: '12-22', logo: 'https://a.espncdn.com/i/teamlogos/default-team-logo-500.png' },
-        { abbr: 'CHI', name: 'Chicago Sky', record: '15-19', logo: 'https://a.espncdn.com/i/teamlogos/default-team-logo-500.png' },
-      ],
-      nwsl: [
-        { abbr: 'POR', name: 'Portland Thorns', record: '10-5-7', logo: 'https://a.espncdn.com/i/teamlogos/default-team-logo-500.png' },
-        { abbr: 'SD', name: 'San Diego Wave', record: '11-7-4', logo: 'https://a.espncdn.com/i/teamlogos/default-team-logo-500.png' },
-        { abbr: 'NJY', name: 'Gotham FC', record: '8-7-7', logo: 'https://a.espncdn.com/i/teamlogos/default-team-logo-500.png' },
-        { abbr: 'RGN', name: 'OL Reign', record: '9-8-5', logo: 'https://a.espncdn.com/i/teamlogos/default-team-logo-500.png' },
-        { abbr: 'LA', name: 'Angel City FC', record: '8-7-7', logo: 'https://a.espncdn.com/i/teamlogos/default-team-logo-500.png' },
-        { abbr: 'WAS', name: 'Washington Spirit', record: '7-9-6', logo: 'https://a.espncdn.com/i/teamlogos/default-team-logo-500.png' },
-      ],
-      worldcup: [
-        { abbr: 'ARG', name: 'Argentina', record: '6-0-1', logo: 'https://a.espncdn.com/i/teamlogos/soccer/500/203.png' },
-        { abbr: 'FRA', name: 'France', record: '5-1-1', logo: 'https://a.espncdn.com/i/teamlogos/soccer/500/164.png' },
-        { abbr: 'BRA', name: 'Brazil', record: '4-1-1', logo: 'https://a.espncdn.com/i/teamlogos/soccer/500/205.png' },
-        { abbr: 'ENG', name: 'England', record: '3-1-1', logo: 'https://a.espncdn.com/i/teamlogos/soccer/500/364.png' },
-        { abbr: 'ESP', name: 'Spain', record: '4-0-2', logo: 'https://a.espncdn.com/i/teamlogos/soccer/500/166.png' },
-        { abbr: 'GER', name: 'Germany', record: '2-1-1', logo: 'https://a.espncdn.com/i/teamlogos/soccer/500/165.png' },
-      ],
-      eng1: [
-        { abbr: 'MUN', name: 'Man United', record: '18-6-14', logo: 'https://a.espncdn.com/i/teamlogos/soccer/500/360.png' },
-        { abbr: 'LIV', name: 'Liverpool', record: '24-10-4', logo: 'https://a.espncdn.com/i/teamlogos/soccer/500/364.png' },
-        { abbr: 'ARS', name: 'Arsenal', record: '28-5-5', logo: 'https://a.espncdn.com/i/teamlogos/soccer/500/359.png' },
-        { abbr: 'CHE', name: 'Chelsea', record: '18-9-11', logo: 'https://a.espncdn.com/i/teamlogos/soccer/500/363.png' },
-        { abbr: 'MCI', name: 'Man City', record: '28-7-3', logo: 'https://a.espncdn.com/i/teamlogos/soccer/500/382.png' },
-        { abbr: 'TOT', name: 'Tottenham', record: '20-6-12', logo: 'https://a.espncdn.com/i/teamlogos/soccer/500/367.png' },
-      ],
-      nba: [
-        { abbr: 'LAL', name: 'Lakers', record: '44-38', logo: 'https://a.espncdn.com/i/teamlogos/nba/500/lal.png' },
-        { abbr: 'BOS', name: 'Celtics', record: '57-25', logo: 'https://a.espncdn.com/i/teamlogos/nba/500/bos.png' },
-        { abbr: 'GSW', name: 'Warriors', record: '44-38', logo: 'https://a.espncdn.com/i/teamlogos/nba/500/gsw.png' },
-        { abbr: 'PHX', name: 'Suns', record: '45-37', logo: 'https://a.espncdn.com/i/teamlogos/nba/500/phx.png' },
-        { abbr: 'MIL', name: 'Bucks', record: '58-24', logo: 'https://a.espncdn.com/i/teamlogos/nba/500/mil.png' },
-        { abbr: 'MIA', name: 'Heat', record: '44-38', logo: 'https://a.espncdn.com/i/teamlogos/nba/500/mia.png' },
-      ],
-      nfl: [
-        { abbr: 'KC', name: 'Chiefs', record: '12-3', logo: 'https://a.espncdn.com/i/teamlogos/nfl/500/kc.png' },
-        { abbr: 'LV', name: 'Raiders', record: '6-9', logo: 'https://a.espncdn.com/i/teamlogos/nfl/500/lv.png' },
-        { abbr: 'DAL', name: 'Cowboys', record: '10-5', logo: 'https://a.espncdn.com/i/teamlogos/nfl/500/dal.png' },
-        { abbr: 'PHI', name: 'Eagles', record: '11-4', logo: 'https://a.espncdn.com/i/teamlogos/nfl/500/phi.png' },
-        { abbr: 'SF', name: '49ers', record: '12-3', logo: 'https://a.espncdn.com/i/teamlogos/nfl/500/sf.png' },
-        { abbr: 'SEA', name: 'Seahawks', record: '8-7', logo: 'https://a.espncdn.com/i/teamlogos/nfl/500/sea.png' },
-      ]
-    };
+  const loadSportsScores = useCallback(async (league: SportsLeague = activeSportsLeague) => {
+    const config = SPORTS_LEAGUES[league];
+    setSportsStatus(`Fetching ${config.label} live streams...`);
 
-    const teams = leagueTeams[league] || leagueTeams['nfl'];
+    try {
+      const res = await fetch(config.url, { cache: 'no-store' });
+      if (!res.ok) throw new Error('Scoreboard payload unavailable');
 
-    let liveDetail = '3rd Quarter';
-    let liveAwayScore = '84';
-    let liveHomeScore = '91';
-
-    let postDetail = 'Final';
-    let postAwayScore = '108';
-    let postHomeScore = '97';
-    let postAwayWinner = true;
-    let postHomeWinner = false;
-
-    let preDetail = 'MON 8:30 PM';
-
-    if (league === 'eng1' || league === 'nwsl' || league === 'worldcup') {
-      liveDetail = "72'";
-      liveAwayScore = '1';
-      liveHomeScore = '2';
-      postDetail = 'FT';
-      postAwayScore = '3';
-      postHomeScore = '1';
-      postAwayWinner = true;
-      postHomeWinner = false;
-      preDetail = 'SUN 11:30 AM';
-    } else if (league === 'mlb') {
-      liveDetail = 'Top 7th';
-      liveAwayScore = '2';
-      liveHomeScore = '4';
-      postDetail = 'Final';
-      postAwayScore = '6';
-      postHomeScore = '3';
-      postAwayWinner = true;
-      postHomeWinner = false;
-      preDetail = 'MON 7:05 PM';
-    } else if (league === 'atptennis' || league === 'wtatennis') {
-      liveDetail = 'Set 3, 40-30';
-      liveAwayScore = '1 (6, 4, 3)';
-      liveHomeScore = '1 (3, 6, 2)';
-      postDetail = 'FT';
-      postAwayScore = '2 (6, 7)';
-      postHomeScore = '0 (4, 5)';
-      postAwayWinner = true;
-      postHomeWinner = false;
-      preDetail = 'SUN 2:00 PM';
-    } else if (league === 'golf') {
-      liveDetail = 'R4 - Hole 18';
-      liveAwayScore = '-12';
-      liveHomeScore = '-10';
-      postDetail = 'Final';
-      postAwayScore = '-15';
-      postHomeScore = '-12';
-      postAwayWinner = true;
-      postHomeWinner = false;
-      preDetail = 'THU 8:00 AM';
-    } else if (league === 'nfl') {
-      liveDetail = '3rd Quarter';
-      liveAwayScore = '17';
-      liveHomeScore = '20';
-      postDetail = 'Final';
-      postAwayScore = '28';
-      postHomeScore = '24';
-      postAwayWinner = true;
-      postHomeWinner = false;
-      preDetail = 'SUN 8:20 PM';
-    } else if (league === 'wnba') {
-      liveDetail = '3rd Quarter';
-      liveAwayScore = '72';
-      liveHomeScore = '76';
-      postDetail = 'Final';
-      postAwayScore = '88';
-      postHomeScore = '82';
-      postAwayWinner = true;
-      postHomeWinner = false;
-      preDetail = 'TUE 7:00 PM';
+      const data = await res.json();
+      setSportsGames(Array.isArray(data?.events) ? data.events : []);
+      setSportsStatus('Free Live Network Feed Connected');
+      setSportsUpdated(
+        new Date().toLocaleTimeString(undefined, {
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit',
+        })
+      );
+    } catch {
+      setSportsGames([]);
+      setSportsUpdated('');
+      setSportsStatus('Failed to load public data networks');
     }
-
-    return [
-      {
-        id: `mock-${league}-1`,
-        date: formattedToday,
-        competitions: [
-          {
-            id: `comp-${league}-1`,
-            date: formattedToday,
-            status: {
-              type: {
-                state: 'in',
-                detail: liveDetail
-              }
-            },
-            competitors: [
-              {
-                id: `team-${league}-1`,
-                homeAway: 'away',
-                team: {
-                  id: `team-${league}-1`,
-                  abbreviation: teams[0].abbr,
-                  shortDisplayName: teams[0].name,
-                  displayName: `${teams[0].abbr} ${teams[0].name}`,
-                  logo: teams[0].logo
-                },
-                score: liveAwayScore,
-                winner: false,
-                records: [{ type: 'total', summary: teams[0].record }]
-              },
-              {
-                id: `team-${league}-2`,
-                homeAway: 'home',
-                team: {
-                  id: `team-${league}-2`,
-                  abbreviation: teams[1].abbr,
-                  shortDisplayName: teams[1].name,
-                  displayName: `${teams[1].abbr} ${teams[1].name}`,
-                  logo: teams[1].logo
-                },
-                score: liveHomeScore,
-                winner: false,
-                records: [{ type: 'total', summary: teams[1].record }]
-              }
-            ]
-          }
-        ]
-      },
-      {
-        id: `mock-${league}-2`,
-        date: formattedToday,
-        competitions: [
-          {
-            id: `comp-${league}-2`,
-            date: formattedToday,
-            status: {
-              type: {
-                state: 'post',
-                detail: postDetail
-              }
-            },
-            competitors: [
-              {
-                id: `team-${league}-3`,
-                homeAway: 'away',
-                team: {
-                  id: `team-${league}-3`,
-                  abbreviation: teams[2].abbr,
-                  shortDisplayName: teams[2].name,
-                  displayName: `${teams[2].abbr} ${teams[2].name}`,
-                  logo: teams[2].logo
-                },
-                score: postAwayScore,
-                winner: postAwayWinner,
-                records: [{ type: 'total', summary: teams[2].record }]
-              },
-              {
-                id: `team-${league}-4`,
-                homeAway: 'home',
-                team: {
-                  id: `team-${league}-4`,
-                  abbreviation: teams[3].abbr,
-                  shortDisplayName: teams[3].name,
-                  displayName: `${teams[3].abbr} ${teams[3].name}`,
-                  logo: teams[3].logo
-                },
-                score: postHomeScore,
-                winner: postHomeWinner,
-                records: [{ type: 'total', summary: teams[3].record }]
-              }
-            ]
-          }
-        ]
-      },
-      {
-        id: `mock-${league}-3`,
-        date: formattedToday,
-        competitions: [
-          {
-            id: `comp-${league}-3`,
-            date: formattedToday,
-            status: {
-              type: {
-                state: 'pre',
-                detail: preDetail
-              }
-            },
-            competitors: [
-              {
-                id: `team-${league}-5`,
-                homeAway: 'away',
-                team: {
-                  id: `team-${league}-5`,
-                  abbreviation: teams[4].abbr,
-                  shortDisplayName: teams[4].name,
-                  displayName: `${teams[4].abbr} ${teams[4].name}`,
-                  logo: teams[4].logo
-                },
-                score: '0',
-                winner: false,
-                records: [{ type: 'total', summary: teams[4].record }]
-              },
-              {
-                id: `team-${league}-6`,
-                homeAway: 'home',
-                team: {
-                  id: `team-${league}-6`,
-                  abbreviation: teams[5].abbr,
-                  shortDisplayName: teams[5].name,
-                  displayName: `${teams[5].abbr} ${teams[5].name}`,
-                  logo: teams[5].logo
-                },
-                score: '0',
-                winner: false,
-                records: [{ type: 'total', summary: teams[5].record }]
-              }
-            ]
-          }
-        ]
-      }
-    ];
-  }
-
-  const loadSportsScores = useCallback(async (dateOffset: number = sportsDateOffset) => {
-    setSportsStatus("Syncing all league schedule networks...");
-
-    let dateParam = "";
-    if (dateOffset > 0) {
-      const targetDate = new Date();
-      targetDate.setDate(targetDate.getDate() + dateOffset);
-      const yyyy = targetDate.getFullYear();
-      const mm = String(targetDate.getMonth() + 1).padStart(2, '0');
-      const dd = String(targetDate.getDate()).padStart(2, '0');
-      dateParam = `?dates=${yyyy}${mm}${dd}`;
-    }
-
-    const leagues = Object.keys(SPORTS_LEAGUES) as SportsLeague[];
-    let anySuccess = false;
-
-    const fetchedResults = await Promise.all(
-      leagues.map(async (league) => {
-        const config = SPORTS_LEAGUES[league];
-        const fetchUrl = `${config.url}${dateParam}`;
-        try {
-          const res = await fetch(fetchUrl, { cache: 'no-store' });
-          if (!res.ok) throw new Error('Offline');
-          const data = await res.json();
-          let events = Array.isArray(data?.events) ? data.events : [];
-          if (events.length === 0) {
-            events = generateMockSportsGames(league);
-          } else {
-            anySuccess = true;
-          }
-          return { league, events };
-        } catch {
-          return { league, events: generateMockSportsGames(league) };
-        }
-      })
-    );
-
-    setSportsGamesMap(prev => {
-      const next = { ...prev };
-      fetchedResults.forEach(res => {
-        next[res.league as SportsLeague] = res.events;
-      });
-      return next;
-    });
-
-    setSportsStatus(anySuccess ? 'Free Live Network Feed Connected' : 'Free Live Network (Simulated Offline Mode)');
-    setSportsUpdated(
-      new Date().toLocaleTimeString(undefined, {
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit',
-      })
-    );
-  }, [sportsDateOffset]);
+  }, [activeSportsLeague]);
 
   function addSportsFavorite() {
     const value = sportsFavoriteInput.trim();
@@ -2182,8 +827,8 @@ export default function App() {
   }
 
   useEffect(() => {
-    loadSportsScores(sportsDateOffset);
-  }, [activeSportsLeague, sportsDateOffset, loadSportsScores]);
+    loadSportsScores(activeSportsLeague);
+  }, [activeSportsLeague, loadSportsScores]);
 
   const handleLoginSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -3269,11 +1914,6 @@ export default function App() {
         activeTurnIndex = nextIndex;
         updateTurnTrackerVisuals();
         haptic(15);
-
-        const nextRow = rows[nextIndex];
-        const nextNameEl = nextRow ? nextRow.querySelector('.comb-name') : null;
-        const nextName = nextNameEl ? nextNameEl.textContent : 'Unknown';
-        sendNotification("🛡️ Next Combat Turn", `It is now ${nextName}'s turn!`);
       });
     }
 
@@ -3901,7 +2541,6 @@ export default function App() {
       pomoStartBtn.addEventListener('click', () => {
         if (pomoRunning) return;
         haptic(10);
-        requestNotifyPermission();
         pomoRunning = true;
         pomoInterval = setInterval(() => {
           if (pomoTimeLeft > 0) {
@@ -3918,12 +2557,10 @@ export default function App() {
               pomoState = 'break';
               pomoTimeLeft = 5 * 60; // 5-minute break
               toast('Focus session ended! Time for a cozy tea break. ☕', 'success');
-              notify('🍅 Focus Session Ended', 'Time for a cozy tea break. ☕');
             } else {
               pomoState = 'focus';
               pomoTimeLeft = 25 * 60;
               toast('Break complete! Ready to start focus sprint? ✨', 'success');
-              notify('🍅 Break Complete', 'Ready to start your next focus sprint? ✨');
             }
             updatePomoDisplay();
             
@@ -4017,17 +2654,13 @@ export default function App() {
     }
 
     function requestNotifyPermission() {
-      if (typeof (window as any).requestNotificationPermission === 'function') {
-        (window as any).requestNotificationPermission();
-      } else if ('Notification' in window && Notification.permission === 'default') {
+      if ('Notification' in window && Notification.permission === 'default') {
         Notification.requestPermission();
       }
     }
 
     function notify(title: string, body: string) {
-      if (typeof (window as any).sendNotification === 'function') {
-        (window as any).sendNotification(title, body);
-      } else if ('Notification' in window && Notification.permission === 'granted') {
+      if ('Notification' in window && Notification.permission === 'granted') {
         try {
           new Notification(title, { body });
         } catch (e) {
@@ -7201,13 +5834,6 @@ Since I run entirely on-device, I cannot fetch live websites or use external ser
       saveCompanionMessages();
       renderCompanionMessages();
       haptic(12);
-      
-      if (document.visibilityState === 'hidden') {
-        const cleanText = replyText.replace(/[\*\#\`\_]/g, '').slice(0, 100) + (replyText.length > 100 ? '...' : '');
-        if (typeof (window as any).sendNotification === 'function') {
-          (window as any).sendNotification("🔮 Companion Channel Update", cleanText);
-        }
-      }
     }
 
     function submitCompanionMessage() {
@@ -7634,9 +6260,9 @@ Since I run entirely on-device, I cannot fetch live websites or use external ser
             </div>
           </div>
 
-          {/* Vibrant Purple Gear Settings button */}
+          {/* Golden Gear Settings button */}
           <button 
-            className="flex items-center justify-center w-8 h-8 rounded-full border-2 border-[#cf4fe6] bg-[#cf4fe6]/20 hover:bg-[#cf4fe6]/45 text-[#cf4fe6] hover:text-white transition-all duration-300 shadow-[0_0_15px_rgba(207,79,230,0.65)] cursor-pointer focus:outline-none" 
+            className="flex items-center justify-center w-8 h-8 rounded-full border border-[#ffe9b8]/20 bg-[#ffe9b8]/5 hover:bg-[#ffe9b8]/15 text-[#ffe9b8] hover:text-white transition-all duration-300 shadow-[0_0_10px_rgba(255,233,184,0.1)] cursor-pointer focus:outline-none" 
             title="Settings"
             onClick={() => { if ((window as any).switchToPanel) (window as any).switchToPanel('settings'); }}
           >
@@ -8871,9 +7497,6 @@ Since I run entirely on-device, I cannot fetch live websites or use external ser
               <div className="calc-tab active" data-calc="basic">
                 Calculator
               </div>
-              <div className="calc-tab" data-calc="ti84">
-                TI-84 Graphing
-              </div>
               <div className="calc-tab" data-calc="tip">
                 Tip / Split
               </div>
@@ -8901,730 +7524,6 @@ Since I run entirely on-device, I cannot fetch live websites or use external ser
                     {k}
                   </button>
                 ))}
-              </div>
-            </div>
-
-            <div className="calc-sub" id="calc-ti84">
-              <div className="w-full flex flex-col items-center justify-center p-2 bg-[#0d091e]/40 rounded-2xl border border-[#3fd9c7]/15">
-                {/* TI-84 Shell Container */}
-                <div className="w-full max-w-[430px] bg-[#1a1438]/90 rounded-[35px] p-4 pt-6 pb-6 shadow-2xl border-2 border-[#cf4fe6]/20 flex flex-col relative">
-                  
-                  {/* Texas Instruments Top Branding Banner */}
-                  <div className="flex justify-between items-center px-3 mb-2">
-                    <span className="text-[9px] uppercase tracking-widest text-[#b4aae2]/70 font-bold">Texas Instruments</span>
-                    <span className="text-xs font-black text-white tracking-tight">TI-84 Plus CE</span>
-                  </div>
-
-                  {/* Calculator Glossy Glass LCD Bezel Screen Block */}
-                  <div className="bg-[#0b071a] p-2 rounded-xl border border-[#cf4fe6]/25 mb-4 shadow-inner relative">
-                    
-                    {/* Status Bar Header */}
-                    <div className="flex justify-between items-center text-[9px] font-mono font-bold text-[#3fd9c7] border-b border-[#cf4fe6]/10 pb-1 mb-1.5">
-                      <div className="flex items-center space-x-1">
-                        <span className="bg-[#1a0f30] px-1 rounded text-[#b4aae2] text-[8px] uppercase">{angleMode}</span>
-                        <span className="text-[#3fd9c7]/80">FUNC</span>
-                      </div>
-                      <div className="flex items-center space-x-1.5">
-                        {is2nd && <span className="bg-amber-500 text-slate-950 px-1 rounded text-[8px] font-extrabold animate-pulse">2nd</span>}
-                        {isAlpha && <span className="bg-emerald-500 text-slate-950 px-1 rounded text-[8px] font-extrabold animate-pulse">A</span>}
-                        <span className="text-[#b4aae2]/50">3:28 PM</span>
-                        {/* Battery Icon */}
-                        <div className="w-4 h-2 border border-[#3fd9c7]/80 rounded-sm p-[1px] flex items-center">
-                          <div className="h-full bg-[#3fd9c7] w-4/5 rounded-2xs"></div>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Main Interactive LCD Screen Space */}
-                    <div ref={lcdScreenRef} className="h-44 bg-[#a3b899] text-slate-950 p-2 font-mono text-xs overflow-y-auto rounded-md lcd-glow flex flex-col relative select-none">
-                      
-                      {/* Dynamic OS Bootloader fallback to guard MathJS installation */}
-                      {!mathLoaded ? (
-                        <div className="flex-1 flex flex-col items-center justify-center text-slate-900 font-mono p-2">
-                          <div className="text-center space-y-2">
-                            <div className="text-[9px] font-bold tracking-widest animate-pulse text-slate-800">TEXAS INSTRUMENTS</div>
-                            <div className="text-sm font-black tracking-tight">TI-84 Plus CE</div>
-                            <div className="text-[8px] mt-1 font-bold opacity-80">BOOTING OS v5.6.1...</div>
-                            <div className="w-24 h-2.5 border border-slate-900 rounded-sm p-[1px] mt-2 mx-auto bg-transparent">
-                              <div className="h-full bg-slate-900 animate-loading-bar rounded-[1px]" style={{ width: '60%' }}></div>
-                            </div>
-                            <div className="text-[8px] mt-2 opacity-75 font-semibold">RAM CLEARED • STACK INIT</div>
-                          </div>
-                        </div>
-                      ) : (
-                        <>
-                          {/* Error Popup Handler Window */}
-                          {errorMessage && (
-                            <div className="absolute inset-0 bg-stone-100/95 z-50 p-3 flex flex-col justify-between rounded-md shadow-lg text-slate-950 border border-red-500">
-                              <div>
-                                <h4 className="font-bold text-red-600 tracking-wide border-b border-slate-300 pb-0.5 mb-1.5 text-[11px]">SYSTEM ERROR</h4>
-                                <p className="text-[10px] font-semibold leading-relaxed whitespace-pre-line">{errorMessage}</p>
-                              </div>
-                              <button 
-                                onClick={() => setErrorMessage(null)} 
-                                className="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold text-[10px] py-1 rounded transition-colors"
-                              >
-                                1: QUIT
-                              </button>
-                            </div>
-                          )}
-
-                          {/* SCREEN SWITCHING RENDERING SCHEME */}
-                          {currentScreen === 'HOME' && (
-                            <div className="flex-1 flex flex-col justify-end">
-                              {/* Previous calculation logs */}
-                              <div className="overflow-y-auto space-y-1 max-h-28 flex-1">
-                                {history.map((h, i) => (
-                                  <div key={i} className="text-[10px]">
-                                    <div className="text-left text-slate-800">{h.input}</div>
-                                    <div className="text-right font-bold text-slate-950">{h.output}</div>
-                                  </div>
-                                ))}
-                              </div>
-
-                              {/* Active calculation input line with blinking TI block cursor */}
-                              <div className="border-t border-slate-800/10 pt-0.5 mt-0.5 flex items-center">
-                                <span className="text-slate-700 mr-0.5">&gt;</span>
-                                <span className="relative inline-block break-all max-w-full font-bold">
-                                  {inputVal.slice(0, cursorIndex)}
-                                  <span className="bg-slate-900 text-[#a3b899] cursor-blink inline-block w-1.5 h-3 text-center">
-                                    {inputVal[cursorIndex] || ' '}
-                                  </span>
-                                  {inputVal.slice(cursorIndex + 1)}
-                                </span>
-                              </div>
-                            </div>
-                          )}
-
-                          {/* Y= Equation Plot list editor screen */}
-                          {currentScreen === 'Y_EDIT' && (
-                            <div className="flex-1 flex flex-col">
-                              <div className="border-b border-slate-900/25 pb-0.5 mb-1 flex justify-between font-bold text-[10px]">
-                                <span>Y= EDITOR</span>
-                                <span className="text-blue-800">PLOT 1 2 3</span>
-                              </div>
-                              <div className="space-y-1.5 flex-1">
-                                {['Y1', 'Y2', 'Y3', 'Y4'].map((eqKey) => (
-                                  <div 
-                                    key={eqKey} 
-                                    onClick={() => setActiveEqIndex(eqKey)}
-                                    className={`p-1 rounded cursor-pointer transition-colors flex items-center justify-between ${activeEqIndex === eqKey ? 'bg-slate-900/10 border-l-2 border-blue-700' : ''}`}
-                                  >
-                                    <span className="font-bold text-[10px] text-slate-800">{`\\${eqKey} =`}</span>
-                                    <span className="flex-1 ml-1.5 font-bold font-mono text-slate-950 truncate max-w-[150px]">
-                                      {equations[eqKey] || <span className="text-slate-600/30 italic">empty</span>}
-                                    </span>
-                                    {activeEqIndex === eqKey && <span className="w-1.5 h-1.5 bg-blue-700 rounded-full animate-pulse"></span>}
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-
-                          {/* WINDOW View Settings Editor */}
-                          {currentScreen === 'WINDOW' && (
-                            <div className="flex-1 flex flex-col">
-                              <div className="border-b border-slate-900/25 pb-0.5 mb-1 font-bold text-[10px]">WINDOW SETTINGS</div>
-                              <div className="grid grid-cols-2 gap-1.5 flex-1 overflow-y-auto pt-0.5">
-                                {Object.keys(windowSettings).map((settingKey) => (
-                                  <div 
-                                    key={settingKey} 
-                                    onClick={() => setActiveWindowIndex(settingKey)}
-                                    className={`p-1 rounded cursor-pointer ${activeWindowIndex === settingKey ? 'bg-slate-900/10 border-b border-slate-900' : ''}`}
-                                  >
-                                    <div className="text-[9px] font-bold text-slate-800">{settingKey}</div>
-                                    <input 
-                                      type="number" 
-                                      value={windowSettings[settingKey]} 
-                                      onChange={(e) => setWindowSettings({ ...windowSettings, [settingKey]: parseFloat(e.target.value) || 0 })}
-                                      className="w-full bg-transparent font-bold font-mono text-slate-950 border-none outline-none focus:ring-0 p-0 text-[11px]"
-                                    />
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-
-                          {/* TBLSET View Settings Editor */}
-                          {currentScreen === 'TBLSET' && (
-                            <div className="flex-1 flex flex-col justify-between">
-                              <div>
-                                <div className="border-b border-slate-900/25 pb-0.5 mb-1 font-bold text-[10px]">TABLE SETUP</div>
-                                <div className="space-y-1.5">
-                                  <div 
-                                    onClick={() => setActiveTblIndex('TblStart')}
-                                    className={`p-1 rounded cursor-pointer ${activeTblIndex === 'TblStart' ? 'bg-slate-900/10 border-l-2 border-amber-600' : ''}`}
-                                  >
-                                    <span className="font-bold text-[10px] text-slate-800">TblStart = </span>
-                                    <span className="font-bold font-mono text-slate-950">{tblSettings.TblStart}</span>
-                                  </div>
-                                  <div 
-                                    onClick={() => setActiveTblIndex('dTbl')}
-                                    className={`p-1 rounded cursor-pointer ${activeTblIndex === 'dTbl' ? 'bg-slate-900/10 border-l-2 border-amber-600' : ''}`}
-                                  >
-                                    <span className="font-bold text-[10px] text-slate-800">ΔTbl = </span>
-                                    <span className="font-bold font-mono text-slate-950">{tblSettings.dTbl}</span>
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-                          )}
-
-                          {/* Dynamic Cartesian Canvas Plotter Screen */}
-                          {currentScreen === 'GRAPH' && (
-                            <div className="flex-1 flex flex-col relative rounded overflow-hidden">
-                              <canvas 
-                                ref={canvasRef} 
-                                width={380} 
-                                height={210} 
-                                className="w-full h-full flex-1 bg-stone-900 cursor-crosshair"
-                              />
-                              {/* Tracing coordinates read-out overlay */}
-                              {isTracing && (
-                                <div className="absolute bottom-0 inset-x-0 bg-slate-950/80 text-white text-[8px] font-mono p-0.5 px-1.5 flex justify-between">
-                                  <span className="font-bold text-rose-400">{traceEquationIndex}</span>
-                                  <span>X={traceX.toFixed(2)}</span>
-                                  <span>Y={(() => {
-                                    try {
-                                      const eq = equations[traceEquationIndex];
-                                      if (!eq) return '0.00';
-                                      const math = (window as any).math;
-                                      const y = math ? math.evaluate(sanitizeExpressionForMathJS(eq), { x: traceX, deg: math.unit('deg'), Ans: Number(lastAnswer) || 0 }) : 0;
-                                      return typeof y === 'number' && !isNaN(y) ? y.toFixed(2) : 'ERR';
-                                    } catch(e) { return 'ERR'; }
-                                  })()}</span>
-                                </div>
-                              )}
-                            </div>
-                          )}
-
-                          {/* dynamic coordinate table spreadsheet screen */}
-                          {currentScreen === 'TABLE' && (
-                            <div className="flex-1 flex flex-col">
-                              <div className="grid grid-cols-3 font-bold text-[10px] border-b border-slate-900 pb-0.5 mb-0.5 text-center">
-                                <span className="text-slate-800">X</span>
-                                <span className="text-rose-800">Y1</span>
-                                <span className="text-blue-800">Y2</span>
-                              </div>
-                              <div className="flex-1 overflow-y-hidden divide-y divide-slate-900/10 text-center">
-                                {renderTableRows().map((row, i) => (
-                                  <div key={i} className="grid grid-cols-3 text-[10px] py-0.5 font-mono font-bold">
-                                    <span className="text-slate-900 bg-slate-950/5">{row.X}</span>
-                                    <span className="text-slate-800">{row.Y1}</span>
-                                    <span className="text-slate-800">{row.Y2}</span>
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-
-                          {/* Mode Adjuster Screen */}
-                          {currentScreen === 'MODE_MENU' && (
-                            <div className="flex-1 flex flex-col text-[10px] space-y-1 overflow-y-auto">
-                              <div className="font-bold border-b border-slate-900/25 pb-0.5 mb-1 text-[11px]">MODE SETTINGS</div>
-                              
-                              <div className="flex justify-between items-center py-0.5">
-                                <span className="font-bold text-slate-800">ANGLE:</span>
-                                <div className="flex space-x-1">
-                                  {['RADIAN', 'DEGREE'].map(opt => (
-                                    <button 
-                                      key={opt}
-                                      onClick={() => setAngleMode(opt)}
-                                      className={`px-1 py-0.5 rounded text-[8px] font-bold font-mono ${angleMode === opt ? 'bg-slate-900 text-white' : 'bg-slate-950/10 text-slate-700'}`}
-                                    >
-                                      {opt}
-                                    </button>
-                                  ))}
-                                </div>
-                              </div>
-
-                              <div className="flex justify-between items-center py-0.5">
-                                <span className="font-bold text-slate-800">DECIMALS:</span>
-                                <select 
-                                  value={decimalPlaces} 
-                                  onChange={(e) => setDecimalPlaces(e.target.value)}
-                                  className="bg-slate-900 text-white font-bold font-mono text-[8px] rounded p-0.5 border-none outline-none"
-                                >
-                                  <option value="FLOAT">FLOAT</option>
-                                  {[0, 1, 2, 3, 4, 5, 6].map(v => <option key={v} value={v.toString()}>{v}</option>)}
-                                </select>
-                              </div>
-
-                              <div className="flex justify-between items-center py-0.5">
-                                <span className="font-bold text-slate-800">NOTATION:</span>
-                                <div className="flex space-x-1">
-                                  {['NORMAL', 'SCI'].map(opt => (
-                                    <button 
-                                      key={opt}
-                                      onClick={() => setNumberFormat(opt)}
-                                      className={`px-1 py-0.5 rounded text-[8px] font-bold font-mono ${numberFormat === opt ? 'bg-slate-900 text-white' : 'bg-slate-950/10 text-slate-700'}`}
-                                    >
-                                      {opt}
-                                    </button>
-                                  ))}
-                                </div>
-                              </div>
-                            </div>
-                          )}
-
-                          {/* MATH Menu screen helper */}
-                          {currentScreen === 'MATH_MENU' && (
-                            <div className="flex-1 flex flex-col">
-                              <div className="border-b border-slate-900/25 pb-0.5 mb-1 font-bold text-[10px]">MATH TEMPLATES</div>
-                              <div className="space-y-1 pt-0.5">
-                                {[
-                                  { l: '1: ▶Frac', d: 'Convert to fraction', t: 'toFraction(' },
-                                  { l: '2: ▶Dec', d: 'Convert to decimal', t: 'string(' },
-                                  { l: '3: abs(', d: 'Absolute value operator', t: 'abs(' },
-                                  { l: '4: gcd(', d: 'Greatest common divisor', t: 'gcd(' },
-                                  { l: '5: lcm(', d: 'Least common multiple', t: 'lcm(' }
-                                ].map((item, i) => (
-                                  <div 
-                                    key={i} 
-                                    onClick={() => {
-                                      insertToken(item.t);
-                                      setCurrentScreen('HOME');
-                                    }}
-                                    className="p-0.5 hover:bg-slate-900/10 rounded cursor-pointer border-b border-slate-955/5"
-                                  >
-                                    <div className="font-bold text-[10px] text-slate-900">{item.l}</div>
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-
-                          {/* PROGRAM ROM list screen selector */}
-                          {currentScreen === 'PROGRAM_MENU' && (
-                            <div className="flex-1 flex flex-col">
-                              <div className="border-b border-slate-900/25 pb-0.5 mb-1 font-bold text-[10px]">ROM PRGMS EXEC</div>
-                              <div className="space-y-1 flex-1">
-                                {programList.map((prog, i) => (
-                                  <div 
-                                    key={prog} 
-                                    onClick={() => setActiveProgIndex(i)}
-                                    className={`p-1 rounded cursor-pointer flex justify-between items-center ${activeProgIndex === i ? 'bg-slate-900/10 border-l-2 border-purple-700' : ''}`}
-                                  >
-                                    <span className="font-bold text-[10px] text-slate-800">{`${i+1}: ${prog}`}</span>
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-
-                          {/* CATALOG Catalog screen list */}
-                          {currentScreen === 'CATALOG' && (
-                            <div className="flex-1 flex flex-col">
-                              <div className="border-b border-slate-900/25 pb-0.5 mb-1 font-bold text-[10px]">CATALOG HELP</div>
-                              <div className="space-y-1.5 flex-1 overflow-y-auto">
-                                {[
-                                  { n: 'abs(', t: 'abs(' },
-                                  { n: 'acos(', t: 'acos(' },
-                                  { n: 'asin(', t: 'asin(' },
-                                  { n: 'atan(', t: 'atan(' },
-                                  { n: 'cos(', t: 'cos(' },
-                                  { n: 'sin(', t: 'sin(' },
-                                  { n: 'tan(', t: 'tan(' },
-                                  { n: 'log(', t: 'log(' }
-                                ].map((item) => (
-                                  <div 
-                                    key={item.n} 
-                                    onClick={() => {
-                                      insertToken(item.t);
-                                      setCurrentScreen('HOME');
-                                    }}
-                                    className="p-1 hover:bg-slate-900/10 rounded cursor-pointer border-b border-slate-950/5 text-[10px] font-bold text-slate-800"
-                                  >
-                                    {item.n}
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-
-                          {/* Snake Game Screen layout */}
-                          {currentScreen === 'S_GAME' && (
-                            <div className="flex-1 flex flex-col justify-between">
-                              <div className="flex justify-between items-center text-[8px] font-bold text-slate-800 border-b border-slate-900/15 pb-0.5 mb-1">
-                                <span>SCORE: {snakeScore}</span>
-                                <span className="text-purple-800">HI: {snakeHighScore}</span>
-                              </div>
-                              {snakeOver ? (
-                                <div className="flex-1 flex flex-col items-center justify-center text-center">
-                                  <div className="text-[11px] font-black text-rose-800">GAME OVER</div>
-                                  <button 
-                                    onClick={initSnakeGame} 
-                                    className="mt-1 px-2 py-0.5 bg-slate-900 text-white rounded text-[8px] font-bold"
-                                  >
-                                    RETRY (ENTER)
-                                  </button>
-                                </div>
-                              ) : (
-                                <div className="flex-grow grid grid-cols-20 grid-rows-12 gap-px bg-slate-950/20 p-0.5 border border-slate-900/20 rounded">
-                                  {Array.from({ length: 12 }).map((_, r) => (
-                                    Array.from({ length: 20 }).map((_, c) => {
-                                      const isSnake = snake.some(s => s.x === c && s.y === r);
-                                      const isFood = snakeFood.x === c && snakeFood.y === r;
-                                      return (
-                                        <div 
-                                          key={`${r}-${c}`}
-                                          className={`w-full h-full rounded-[1px] ${isSnake ? 'bg-slate-900' : isFood ? 'bg-red-600 animate-pulse' : 'bg-transparent'}`}
-                                          style={{ aspectRatio: '1/1' }}
-                                        />
-                                      );
-                                    })
-                                  ))}
-                                </div>
-                              )}
-                            </div>
-                          )}
-
-                          {/* Tetris Game Screen layout */}
-                          {currentScreen === 'TETRIS_GAME' && (
-                            <div className="flex-1 flex flex-col justify-between">
-                              <div className="flex justify-between items-center text-[8px] font-bold text-slate-800 border-b border-slate-900/15 pb-0.5 mb-1">
-                                <span>TETRIS</span>
-                                <span>SCORE: {tetrisScore}</span>
-                              </div>
-                              {tetrisOver ? (
-                                <div className="flex-1 flex flex-col items-center justify-center text-center">
-                                  <div className="text-[11px] font-black text-rose-800">GAME OVER</div>
-                                  <button 
-                                    onClick={initTetrisGame} 
-                                    className="mt-1 px-2 py-0.5 bg-slate-900 text-white rounded text-[8px] font-bold"
-                                  >
-                                    RETRY (ENTER)
-                                  </button>
-                                </div>
-                              ) : (
-                                <div className="flex-grow grid grid-cols-10 grid-rows-15 gap-px bg-slate-950/20 p-0.5 border border-slate-900/20 rounded max-h-[120px] overflow-hidden">
-                                  {Array.from({ length: 15 }).map((_, r) => (
-                                    Array.from({ length: 10 }).map((_, c) => {
-                                      let hasBlock = tetrisBoard[r]?.[c] === 1;
-                                      if (tetrisPiece) {
-                                        const shape = tetrisPiece.shape;
-                                        const shapeR = r - tetrisPos.y;
-                                        const shapeC = c - tetrisPos.x;
-                                        if (shapeR >= 0 && shapeR < shape.length && shapeC >= 0 && shapeC < shape[shapeR].length) {
-                                          if (shape[shapeR][shapeC]) hasBlock = true;
-                                        }
-                                      }
-                                      return (
-                                        <div 
-                                          key={`${r}-${c}`}
-                                          className={`w-full h-full rounded-[1px] ${hasBlock ? 'bg-slate-900' : 'bg-transparent'}`}
-                                          style={{ aspectRatio: '1/1' }}
-                                        />
-                                      );
-                                    })
-                                  ))}
-                                </div>
-                              )}
-                            </div>
-                          )}
-                        </>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Calculator Pad Keys Layout */}
-                  <div className="grid grid-cols-5 gap-1.5 select-none mt-2">
-                    
-                    {/* ROW 1: Blue Functional Keys */}
-                    {/* Y= */}
-                    <div className="flex flex-col items-center">
-                      <span className="text-[7px] text-[#ffb703] font-bold">STAT PLOT</span>
-                      <span className="text-[7px] text-[#2ec4b6] font-bold">FRAC</span>
-                      <button onClick={() => { haptic(10); handleButtonPress('Y='); }} className="w-full py-1.5 bg-[#2b3a67] hover:bg-[#3b4c80] text-white rounded text-[10px] font-bold cursor-pointer">Y=</button>
-                    </div>
-                    
-                    {/* GRAPH */}
-                    <div className="flex flex-col items-center">
-                      <span className="text-[7px] text-[#ffb703] font-bold">WINDOW</span>
-                      <span className="text-[7px] text-[#2ec4b6] font-bold">FUNC</span>
-                      <button onClick={() => { haptic(10); handleButtonPress('GRAPH'); }} className="w-full py-1.5 bg-[#2b3a67] hover:bg-[#3b4c80] text-white rounded text-[10px] font-bold cursor-pointer">GRAPH</button>
-                    </div>
-
-                    {/* Home */}
-                    <div className="flex flex-col items-center">
-                      <span className="text-[7px] text-[#ffb703] font-bold">FORMAT</span>
-                      <span className="text-[7px] text-[#2ec4b6] font-bold">MTRX</span>
-                      <button onClick={() => { haptic(10); handleButtonPress('QUIT'); }} className="w-full py-1.5 bg-[#2b3a67] hover:bg-[#3b4c80] text-white rounded text-[10px] font-bold cursor-pointer">Home</button>
-                    </div>
-
-                    {/* TABLE */}
-                    <div className="flex flex-col items-center">
-                      <span className="text-[7px] text-[#ffb703] font-bold">TBLSET</span>
-                      <span className="text-[7px] text-[#2ec4b6] font-bold">YVAR</span>
-                      <button onClick={() => { haptic(10); handleButtonPress('TABLE'); }} className="w-full py-1.5 bg-[#2b3a67] hover:bg-[#3b4c80] text-white rounded text-[10px] font-bold cursor-pointer">TABLE</button>
-                    </div>
-
-                    {/* Undo */}
-                    <div className="flex flex-col items-center">
-                      <span className="text-[7px] text-[#ffb703] font-bold">Redo</span>
-                      <span className="text-[7px] text-[#2ec4b6] font-bold">CONV</span>
-                      <button onClick={() => { haptic(10); setInputVal(''); setCursorIndex(0); }} className="w-full py-1.5 bg-[#2b3a67] hover:bg-[#3b4c80] text-white rounded text-[10px] font-bold cursor-pointer">Undo</button>
-                    </div>
-
-                    {/* ROW 2 & 3: With D-Pad on the right */}
-                    {/* 2nd */}
-                    <div className="flex flex-col items-center col-span-1">
-                      <span className="text-[7px] font-bold opacity-0">.</span>
-                      <span className="text-[7px] font-bold opacity-0">.</span>
-                      <button onClick={() => { haptic(10); handleButtonPress('2ND'); }} className="w-full py-1.5 bg-[#f39c12] hover:bg-[#e67e22] text-white rounded text-[10px] font-bold uppercase cursor-pointer">2nd</button>
-                    </div>
-
-                    {/* MODE */}
-                    <div className="flex flex-col items-center">
-                      <span className="text-[7px] text-[#ffb703] font-bold">QUIT</span>
-                      <span className="text-[7px] text-[#2ec4b6] font-bold">User</span>
-                      <button onClick={() => { haptic(10); handleButtonPress('MODE'); }} className="w-full py-1.5 bg-[#e2e8f0] hover:bg-slate-300 text-slate-850 rounded text-[10px] font-bold cursor-pointer">MODE</button>
-                    </div>
-
-                    {/* DEL */}
-                    <div className="flex flex-col items-center">
-                      <span className="text-[7px] text-[#ffb703] font-bold">INS</span>
-                      <span className="text-[7px] text-[#2ec4b6] font-bold">uKeys</span>
-                      <button onClick={() => { haptic(10); handleButtonPress('DEL'); }} className="w-full py-1.5 bg-[#e2e8f0] hover:bg-slate-300 text-slate-850 rounded text-[10px] font-bold cursor-pointer">DEL</button>
-                    </div>
-
-                    {/* D-PAD Container (Occupies columns 4 and 5, rows 2 and 3) */}
-                    <div className="col-span-2 row-span-2 flex items-center justify-center bg-[#15102a] border border-[#cf4fe6]/15 rounded-xl p-1.5">
-                      <div className="grid grid-cols-3 grid-rows-3 gap-0.5 w-full h-full max-w-[120px] max-h-[80px]">
-                        <div />
-                        <button onClick={() => { haptic(10); handleButtonPress('UP'); }} className="bg-[#2b3a67] hover:bg-[#3b4c80] text-white rounded flex flex-col items-center justify-center p-0.5 cursor-pointer">
-                          <span className="text-[6px] text-[#2ec4b6] font-bold leading-none">A+</span>
-                          <span className="text-[9px] leading-none">▲</span>
-                        </button>
-                        <div />
-                        <button onClick={() => { haptic(10); handleButtonPress('LEFT'); }} className="bg-[#2b3a67] hover:bg-[#3b4c80] text-white rounded flex items-center justify-center text-[9px] cursor-pointer">◀</button>
-                        <div className="bg-[#0b071a] rounded-full w-2 h-2 m-auto" />
-                        <button onClick={() => { haptic(10); handleButtonPress('RIGHT'); }} className="bg-[#2b3a67] hover:bg-[#3b4c80] text-white rounded flex items-center justify-center text-[9px] cursor-pointer">▶</button>
-                        <div />
-                        <button onClick={() => { haptic(10); handleButtonPress('DOWN'); }} className="bg-[#2b3a67] hover:bg-[#3b4c80] text-white rounded flex flex-col items-center justify-center p-0.5 cursor-pointer">
-                          <span className="text-[9px] leading-none">▼</span>
-                          <span className="text-[6px] text-[#2ec4b6] font-bold leading-none">A-</span>
-                        </button>
-                        <div />
-                      </div>
-                    </div>
-
-                    {/* ROW 3: Column 1-3 */}
-                    {/* ALPHA */}
-                    <div className="flex flex-col items-center col-span-1">
-                      <span className="text-[7px] text-[#2ec4b6] font-bold">A-LOCK</span>
-                      <span className="text-[7px] font-bold opacity-0">.</span>
-                      <button onClick={() => { haptic(10); handleButtonPress('ALPHA'); }} className="w-full py-1.5 bg-[#2ec4b6] hover:bg-[#20a498] text-white rounded text-[10px] font-bold cursor-pointer">ALPHA</button>
-                    </div>
-
-                    {/* X */}
-                    <div className="flex flex-col items-center">
-                      <span className="text-[7px] text-[#ffb703] font-bold">SHARE</span>
-                      <span className="text-[7px] text-[#2ec4b6] font-bold">n/d</span>
-                      <button onClick={() => { haptic(10); handleButtonPress('x'); }} className="w-full py-1.5 bg-[#e2e8f0] hover:bg-slate-300 text-slate-850 rounded text-[10px] font-bold cursor-pointer">X</button>
-                    </div>
-
-                    {/* STAT */}
-                    <div className="flex flex-col items-center">
-                      <span className="text-[7px] text-[#ffb703] font-bold">LIST</span>
-                      <span className="text-[7px] text-[#2ec4b6] font-bold">0h</span>
-                      <button onClick={() => { haptic(10); handleButtonPress('PRGM'); }} className="w-full py-1.5 bg-[#e2e8f0] hover:bg-slate-300 text-slate-850 rounded text-[10px] font-bold cursor-pointer">STAT</button>
-                    </div>
-
-                    {/* ROW 4: 5 buttons */}
-                    {/* MATH */}
-                    <div className="flex flex-col items-center">
-                      <span className="text-[7px] text-[#ffb703] font-bold">TEST</span>
-                      <button onClick={() => { haptic(10); handleButtonPress('MATH'); }} className="w-full py-1.5 bg-[#e2e8f0] hover:bg-slate-300 text-slate-850 rounded text-[10px] font-bold cursor-pointer">MATH</button>
-                    </div>
-                    {/* APPS */}
-                    <div className="flex flex-col items-center">
-                      <span className="text-[7px] text-[#ffb703] font-bold">ANGLE</span>
-                      <button onClick={() => { haptic(10); handleButtonPress('MODE'); }} className="w-full py-1.5 bg-[#2b3a67] hover:bg-[#3b4c80] text-white rounded text-[10px] font-bold cursor-pointer">APPS</button>
-                    </div>
-                    {/* PRGM */}
-                    <div className="flex flex-col items-center">
-                      <span className="text-[7px] text-[#ffb703] font-bold">DRAW</span>
-                      <button onClick={() => { haptic(10); handleButtonPress('PRGM'); }} className="w-full py-1.5 bg-[#e2e8f0] hover:bg-slate-300 text-slate-850 rounded text-[10px] font-bold cursor-pointer">PRGM</button>
-                    </div>
-                    {/* VARS */}
-                    <div className="flex flex-col items-center">
-                      <span className="text-[7px] text-[#ffb703] font-bold">DISTR</span>
-                      <button onClick={() => { haptic(10); handleButtonPress('MATH'); }} className="w-full py-1.5 bg-[#e2e8f0] hover:bg-slate-300 text-slate-850 rounded text-[10px] font-bold cursor-pointer">VARS</button>
-                    </div>
-                    {/* CLEAR */}
-                    <div className="flex flex-col items-center">
-                      <span className="text-[7px] text-[#ffb703] font-bold">ClrDraw</span>
-                      <button onClick={() => { haptic(10); handleButtonPress('CLEAR'); }} className="w-full py-1.5 bg-[#e2e8f0] hover:bg-slate-300 text-slate-850 rounded text-[10px] font-bold cursor-pointer">CLEAR</button>
-                    </div>
-
-                    {/* ROW 5: 5 buttons */}
-                    {/* x^-1 */}
-                    <div className="flex flex-col items-center">
-                      <span className="text-[7px] text-[#ffb703] font-bold">MATRIX</span>
-                      <button onClick={() => { haptic(10); insertToken('^-1'); }} className="w-full py-1.5 bg-[#1a1438] hover:bg-[#2d244c] border border-slate-700/30 text-white rounded text-[10px] font-mono cursor-pointer">x⁻¹</button>
-                    </div>
-                    {/* SIN */}
-                    <div className="flex flex-col items-center">
-                      <span className="text-[7px] text-[#ffb703] font-bold">SIN⁻¹</span>
-                      <button onClick={() => { haptic(10); handleButtonPress('sin(', 'asin('); }} className="w-full py-1.5 bg-[#1a1438] hover:bg-[#2d244c] border border-slate-700/30 text-white rounded text-[10px] font-mono cursor-pointer">SIN</button>
-                    </div>
-                    {/* COS */}
-                    <div className="flex flex-col items-center">
-                      <span className="text-[7px] text-[#ffb703] font-bold">COS⁻¹</span>
-                      <button onClick={() => { haptic(10); handleButtonPress('cos(', 'acos('); }} className="w-full py-1.5 bg-[#1a1438] hover:bg-[#2d244c] border border-slate-700/30 text-white rounded text-[10px] font-mono cursor-pointer">COS</button>
-                    </div>
-                    {/* TAN */}
-                    <div className="flex flex-col items-center">
-                      <span className="text-[7px] text-[#ffb703] font-bold">TAN⁻¹</span>
-                      <button onClick={() => { haptic(10); handleButtonPress('tan(', 'atan('); }} className="w-full py-1.5 bg-[#1a1438] hover:bg-[#2d244c] border border-slate-700/30 text-white rounded text-[10px] font-mono cursor-pointer">TAN</button>
-                    </div>
-                    {/* ^ */}
-                    <div className="flex flex-col items-center">
-                      <span className="text-[7px] text-[#ffb703] font-bold">π</span>
-                      <button onClick={() => { haptic(10); handleButtonPress('^', 'π'); }} className="w-full py-1.5 bg-[#1a1438] hover:bg-[#2d244c] border border-slate-700/30 text-white rounded text-[10px] font-mono cursor-pointer">^</button>
-                    </div>
-
-                    {/* ROW 6: 5 buttons */}
-                    {/* x^2 */}
-                    <div className="flex flex-col items-center">
-                      <span className="text-[7px] text-[#ffb703] font-bold">√</span>
-                      <button onClick={() => { haptic(10); handleButtonPress('²', '√('); }} className="w-full py-1.5 bg-[#1a1438] hover:bg-[#2d244c] border border-slate-700/30 text-white rounded text-[10px] font-mono cursor-pointer">x²</button>
-                    </div>
-                    {/* , */}
-                    <div className="flex flex-col items-center">
-                      <span className="text-[7px] text-[#ffb703] font-bold">EE</span>
-                      <button onClick={() => { haptic(10); insertToken(','); }} className="w-full py-1.5 bg-[#1a1438] hover:bg-[#2d244c] border border-slate-700/30 text-white rounded text-[10px] font-mono cursor-pointer">,</button>
-                    </div>
-                    {/* ( */}
-                    <div className="flex flex-col items-center">
-                      <span className="text-[7px] text-[#ffb703] font-bold">{"{"}</span>
-                      <button onClick={() => { haptic(10); insertToken('('); }} className="w-full py-1.5 bg-[#1a1438] hover:bg-[#2d244c] border border-slate-700/30 text-white rounded text-[10px] font-mono cursor-pointer">(</button>
-                    </div>
-                    {/* ) */}
-                    <div className="flex flex-col items-center">
-                      <span className="text-[7px] text-[#ffb703] font-bold">{"}"}</span>
-                      <button onClick={() => { haptic(10); insertToken(')'); }} className="w-full py-1.5 bg-[#1a1438] hover:bg-[#2d244c] border border-slate-700/30 text-white rounded text-[10px] font-mono cursor-pointer">)</button>
-                    </div>
-                    {/* ÷ */}
-                    <div className="flex flex-col items-center">
-                      <span className="text-[7px] font-bold opacity-0">.</span>
-                      <button onClick={() => { haptic(10); handleButtonPress('÷'); }} className="w-full py-1.5 bg-[#2d3a6c] hover:bg-[#3d4c80] text-white rounded text-[10px] font-bold cursor-pointer">÷</button>
-                    </div>
-
-                    {/* ROW 7: 5 buttons */}
-                    {/* LOG */}
-                    <div className="flex flex-col items-center">
-                      <span className="text-[7px] text-[#ffb703] font-bold">10^x</span>
-                      <button onClick={() => { haptic(10); handleButtonPress('log(', '10^'); }} className="w-full py-1.5 bg-[#1a1438] hover:bg-[#2d244c] border border-slate-700/30 text-white rounded text-[10px] font-mono cursor-pointer">LOG</button>
-                    </div>
-                    {/* 7 */}
-                    <div className="flex flex-col items-center">
-                      <span className="text-[7px] text-[#2ec4b6] font-bold">u</span>
-                      <button onClick={() => { haptic(10); insertToken('7'); }} className="w-full py-1.5 bg-slate-200 hover:bg-slate-305 text-slate-900 rounded text-[10px] font-bold cursor-pointer">7</button>
-                    </div>
-                    {/* 8 */}
-                    <div className="flex flex-col items-center">
-                      <span className="text-[7px] text-[#2ec4b6] font-bold">v</span>
-                      <button onClick={() => { haptic(10); insertToken('8'); }} className="w-full py-1.5 bg-slate-200 hover:bg-slate-305 text-slate-900 rounded text-[10px] font-bold cursor-pointer">8</button>
-                    </div>
-                    {/* 9 */}
-                    <div className="flex flex-col items-center">
-                      <span className="text-[7px] text-[#2ec4b6] font-bold">w</span>
-                      <button onClick={() => { haptic(10); insertToken('9'); }} className="w-full py-1.5 bg-slate-200 hover:bg-slate-305 text-slate-900 rounded text-[10px] font-bold cursor-pointer">9</button>
-                    </div>
-                    {/* × */}
-                    <div className="flex flex-col items-center">
-                      <span className="text-[7px] text-[#ffb703] font-bold">[</span>
-                      <button onClick={() => { haptic(10); handleButtonPress('×'); }} className="w-full py-1.5 bg-[#2d3a6c] hover:bg-[#3d4c80] text-white rounded text-[10px] font-bold cursor-pointer">×</button>
-                    </div>
-
-                    {/* ROW 8: 5 buttons */}
-                    {/* LN */}
-                    <div className="flex flex-col items-center">
-                      <span className="text-[7px] text-[#ffb703] font-bold">e^x</span>
-                      <button onClick={() => { haptic(10); handleButtonPress('ln(', 'e^'); }} className="w-full py-1.5 bg-[#1a1438] hover:bg-[#2d244c] border border-slate-700/30 text-white rounded text-[10px] font-mono cursor-pointer">LN</button>
-                    </div>
-                    {/* 4 */}
-                    <div className="flex flex-col items-center">
-                      <span className="text-[7px] text-[#2ec4b6] font-bold">L4</span>
-                      <button onClick={() => { haptic(10); insertToken('4'); }} className="w-full py-1.5 bg-slate-200 hover:bg-slate-305 text-slate-900 rounded text-[10px] font-bold cursor-pointer">4</button>
-                    </div>
-                    {/* 5 */}
-                    <div className="flex flex-col items-center">
-                      <span className="text-[7px] text-[#2ec4b6] font-bold">L5</span>
-                      <button onClick={() => { haptic(10); insertToken('5'); }} className="w-full py-1.5 bg-slate-200 hover:bg-slate-305 text-slate-900 rounded text-[10px] font-bold cursor-pointer">5</button>
-                    </div>
-                    {/* 6 */}
-                    <div className="flex flex-col items-center">
-                      <span className="text-[7px] text-[#2ec4b6] font-bold">L6</span>
-                      <button onClick={() => { haptic(10); insertToken('6'); }} className="w-full py-1.5 bg-slate-200 hover:bg-slate-305 text-slate-900 rounded text-[10px] font-bold cursor-pointer">6</button>
-                    </div>
-                    {/* - */}
-                    <div className="flex flex-col items-center">
-                      <span className="text-[7px] text-[#ffb703] font-bold">]</span>
-                      <button onClick={() => { haptic(10); handleButtonPress('-'); }} className="w-full py-1.5 bg-[#2d3a6c] hover:bg-[#3d4c80] text-white rounded text-[10px] font-bold cursor-pointer">-</button>
-                    </div>
-
-                    {/* ROW 9: 5 buttons */}
-                    {/* STO➔ */}
-                    <div className="flex flex-col items-center">
-                      <span className="text-[7px] text-[#ffb703] font-bold">RCL</span>
-                      <button onClick={() => { haptic(10); insertToken('➔'); }} className="w-full py-1.5 bg-[#1a1438] hover:bg-[#2d244c] border border-slate-700/30 text-white rounded text-[10px] font-mono cursor-pointer">STO➔</button>
-                    </div>
-                    {/* 1 */}
-                    <div className="flex flex-col items-center">
-                      <span className="text-[7px] text-[#2ec4b6] font-bold">L1</span>
-                      <button onClick={() => { haptic(10); insertToken('1'); }} className="w-full py-1.5 bg-slate-200 hover:bg-slate-305 text-slate-900 rounded text-[10px] font-bold cursor-pointer">1</button>
-                    </div>
-                    {/* 2 */}
-                    <div className="flex flex-col items-center">
-                      <span className="text-[7px] text-[#2ec4b6] font-bold">L2</span>
-                      <button onClick={() => { haptic(10); insertToken('2'); }} className="w-full py-1.5 bg-slate-200 hover:bg-slate-305 text-slate-900 rounded text-[10px] font-bold cursor-pointer">2</button>
-                    </div>
-                    {/* 3 */}
-                    <div className="flex flex-col items-center">
-                      <span className="text-[7px] text-[#2ec4b6] font-bold">L3</span>
-                      <button onClick={() => { haptic(10); insertToken('3'); }} className="w-full py-1.5 bg-slate-200 hover:bg-slate-305 text-slate-900 rounded text-[10px] font-bold cursor-pointer">3</button>
-                    </div>
-                    {/* + */}
-                    <div className="flex flex-col items-center">
-                      <span className="text-[7px] text-[#ffb703] font-bold">MEM</span>
-                      <button onClick={() => { haptic(10); handleButtonPress('+'); }} className="w-full py-1.5 bg-[#2d3a6c] hover:bg-[#3d4c80] text-white rounded text-[10px] font-bold cursor-pointer">+</button>
-                    </div>
-
-                    {/* ROW 10: 5 buttons */}
-                    {/* ? (info) */}
-                    <div className="flex flex-col items-center">
-                      <span className="text-[7px] text-[#ffb703] font-bold">ⓘ</span>
-                      <button onClick={() => { haptic(10); setCurrentScreen('CATALOG'); }} className="w-full py-1.5 bg-[#1a1438] hover:bg-[#2d244c] border border-slate-700/30 text-white rounded text-[10px] flex items-center justify-center cursor-pointer">
-                        <span className="bg-[#ffb703] text-[#1a1438] text-[8px] font-bold rounded-full w-3.5 h-3.5 flex items-center justify-center">?</span>
-                      </button>
-                    </div>
-                    {/* 0 */}
-                    <div className="flex flex-col items-center">
-                      <span className="text-[7px] text-[#ffb703] font-bold">CATALOG</span>
-                      <button onClick={() => { haptic(10); insertToken('0'); }} className="w-full py-1.5 bg-slate-200 hover:bg-slate-305 text-slate-900 rounded text-[10px] font-bold cursor-pointer">0</button>
-                    </div>
-                    {/* . */}
-                    <div className="flex flex-col items-center">
-                      <span className="text-[7px] text-[#2ec4b6] font-bold">i</span>
-                      <button onClick={() => { haptic(10); insertToken('.'); }} className="w-full py-1.5 bg-slate-200 hover:bg-slate-305 text-slate-900 rounded text-[10px] font-bold cursor-pointer">.</button>
-                    </div>
-                    {/* (-) */}
-                    <div className="flex flex-col items-center">
-                      <span className="text-[7px] text-[#ffb703] font-bold">ANS</span>
-                      <button onClick={() => { haptic(10); handleButtonPress('(-)', 'Ans'); }} className="w-full py-1.5 bg-slate-200 hover:bg-slate-305 text-slate-900 rounded text-[10px] font-bold cursor-pointer">(-)</button>
-                    </div>
-                    {/* ENTER */}
-                    <div className="flex flex-col items-center">
-                      <span className="text-[7px] text-[#ffb703] font-bold">ENTRY</span>
-                      <button onClick={() => { haptic(10); handleButtonPress('ENTER'); }} className="w-full py-1.5 bg-[#2b3a67] hover:bg-[#3b4c80] text-white rounded text-[10px] font-bold uppercase cursor-pointer">ENTER</button>
-                    </div>
-
-                  </div>
-
-                </div>
               </div>
             </div>
 
@@ -9878,7 +7777,7 @@ Since I run entirely on-device, I cannot fetch live websites or use external ser
         </div>
 
         {/* SPORTS PANEL */}
-        <div className="panel animate-fade-in" id="panel-sports">
+        <div className="panel" id="panel-sports">
           <div className="sub-navigation flex flex-col md:flex-row gap-2.5 items-stretch md:items-center justify-between border-b border-[#2e2454]/45 pb-3 mb-4 select-none">
             {/* ORGANIZER GROUP */}
             <div className="flex items-center bg-[#150f2e]/60 rounded-xl border border-[#44387a]/45 p-0.5 w-full md:w-auto">
@@ -9901,20 +7800,15 @@ Since I run entirely on-device, I cannot fetch live websites or use external ser
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 w-full">
-            {/* LEFT COLUMN & MIDDLE: SCORES SHEETS */}
+            {/* Real-time scores sheet */}
             <div className="col-span-12 lg:col-span-8 flex flex-col gap-4">
               <section className="card p-5 rounded-2xl border border-[#44387a]/60 bg-gradient-to-b from-[#160f2e] to-[#080214] shadow-[0_10px_35px_rgba(0,0,0,0.5)]">
-                {/* Header Title */}
                 <div className="flex justify-between items-center pb-2.5 border-b border-[#2e2454]/60 mb-4 select-none">
-                  <div className="flex items-center gap-2">
-                    <div className="p-1.5 bg-teal-500/10 rounded-lg border border-teal-500/30">
-                      <span className="text-teal-400">🏆</span>
-                    </div>
-                    <span className="text-[12px] font-bold text-[#faebd7] uppercase tracking-[0.15em]" style={{ fontFamily: "'Cormorant', serif" }}>
-                      SportCast <span className="text-teal-400">FreeGate</span> Scoreboard
-                    </span>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[#3fd9c7]">🏆</span>
+                    <span className="text-[12px] font-bold text-[#faebd7] uppercase tracking-[0.15em]" style={{ fontFamily: "'Cormorant', serif" }}>SportCast FreeGate scoreboard</span>
                   </div>
-                  <span className="text-[8px] font-mono px-1.5 py-0.5 rounded bg-teal-500/10 text-teal-400 border border-teal-500/20 uppercase tracking-widest font-black">Free Feed</span>
+                  <span className="text-[8px] font-mono px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 uppercase tracking-widest font-black">Free live feeds</span>
                 </div>
 
                 {/* ONLINE REQUIREMENT WARNING */}
@@ -9928,207 +7822,91 @@ Since I run entirely on-device, I cannot fetch live websites or use external ser
                   </div>
                 </div>
 
-                {/* Categories Tab Bar */}
-                <div className="flex items-center gap-1.5 overflow-x-auto pb-2 mb-4 -mx-5 px-5 sm:mx-0 sm:px-0">
-                  {Object.entries(SPORTS_LEAGUES).map(([key, league]) => (
-                    <button
-                      key={key}
-                      className={`px-3 py-1.5 rounded-lg text-[10px] font-bold tracking-wider uppercase transition-all duration-150 cursor-pointer border shrink-0 whitespace-nowrap ${
-                        activeSportsLeague === key 
-                          ? 'bg-gradient-to-r from-teal-500 to-cyan-500 text-white border-transparent shadow-[0_0_10px_rgba(20,184,166,0.3)]' 
-                          : 'bg-[#1a1138]/60 text-[#b4aae2] border-[#44387a]/45 hover:text-white hover:border-teal-400/50'
-                      }`}
-                      onClick={() => {
-                        haptic(5);
-                        setActiveSportsLeague(key as SportsLeague);
-                        logSportsActivity('Category', `Switched sport to ${league.label}`);
-                      }}
+                {/* Categories and actions */}
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4">
+                  <div className="flex flex-wrap gap-1.5">
+                    {Object.entries(SPORTS_LEAGUES).map(([key, league]) => (
+                      <button
+                        key={key}
+                        className={`px-3 py-1.5 rounded-lg text-[10px] font-bold tracking-wider uppercase transition-all duration-150 cursor-pointer border ${
+                          activeSportsLeague === key 
+                            ? 'bg-gradient-to-r from-[#cf4fe6] to-[#ff7597] text-white border-transparent shadow-[0_0_10px_rgba(207,79,230,0.3)]' 
+                            : 'bg-[#1a1138]/60 text-[#b4aae2] border-[#44387a]/45 hover:text-white hover:border-[#cf4fe6]/50'
+                        }`}
+                        onClick={() => setActiveSportsLeague(key as SportsLeague)}
+                      >
+                        {league.label.split(' ')[0]}
+                      </button>
+                    ))}
+                  </div>
+
+                  <div className="flex gap-2">
+                    <button 
+                      className="flex items-center gap-1 px-3 py-1.5 bg-[#cf4fe6]/10 hover:bg-[#cf4fe6]/20 border border-[#cf4fe6]/40 hover:border-[#cf4fe6] rounded-lg text-[10px] font-extrabold uppercase tracking-wider text-[#cf4fe6] hover:text-white transition cursor-pointer"
+                      onClick={() => { haptic(10); if ((window as any).openRiftVision) (window as any).openRiftVision('betslip'); }}
                     >
-                      {league.label}
+                      📷 Scan Slip
                     </button>
-                  ))}
+                    <button 
+                      className="flex items-center gap-1 px-3 py-1.5 bg-[#1a1138] hover:bg-[#251950] border border-[#cf4fe6]/40 hover:border-[#cf4fe6] rounded-lg text-[10px] font-extrabold uppercase tracking-wider text-white transition cursor-pointer" 
+                      onClick={() => loadSportsScores()}
+                    >
+                      🔄 Fetch Live
+                    </button>
+                  </div>
                 </div>
 
-                {/* DATE SELECTOR & FILTER HEADER */}
-                <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between bg-[#150f2e]/45 p-4 rounded-xl border border-[#44387a]/25 mb-4">
-                  <div className="flex flex-wrap items-center justify-between gap-4 w-full md:w-auto">
-                    <div>
-                      <h3 className="text-xs font-bold text-white uppercase tracking-wider">
-                        {SPORTS_LEAGUES[activeSportsLeague]?.label} Results
-                      </h3>
-                      <span className="text-[9px] text-[#b4aae2]/60 font-mono">Telemetry Active</span>
-                    </div>
-
-                    {/* Date Quick Pickers */}
-                    <div className="flex items-center bg-[#0c0720]/60 p-0.5 rounded-lg border border-[#44387a]/35">
-                      <button
-                        onClick={() => {
-                          haptic(5);
-                          setSportsDateOffset(0);
-                          logSportsActivity('Filter', 'Selected schedules for Today.');
-                        }}
-                        className={`px-2 py-0.5 rounded text-[9.5px] font-bold transition-all ${
-                          sportsDateOffset === 0 
-                            ? 'bg-teal-500 text-white' 
-                            : 'text-[#b4aae2]/70 hover:text-white'
-                        }`}
-                      >
-                        Today
-                      </button>
-                      <button
-                        onClick={() => {
-                          haptic(5);
-                          setSportsDateOffset(1);
-                          logSportsActivity('Filter', 'Selected schedules for Tomorrow.');
-                        }}
-                        className={`px-2 py-0.5 rounded text-[9.5px] font-bold transition-all ${
-                          sportsDateOffset === 1 
-                            ? 'bg-teal-500 text-white' 
-                            : 'text-[#b4aae2]/70 hover:text-white'
-                        }`}
-                      >
-                        Tomorrow
-                      </button>
-                      <button
-                        onClick={() => {
-                          haptic(5);
-                          setSportsDateOffset(2);
-                          logSportsActivity('Filter', 'Selected future schedules.');
-                        }}
-                        className={`px-2 py-0.5 rounded text-[9.5px] font-bold transition-all ${
-                          sportsDateOffset === 2 
-                            ? 'bg-teal-500 text-white' 
-                            : 'text-[#b4aae2]/70 hover:text-white'
-                        }`}
-                      >
-                        Future
-                      </button>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-2 w-full md:w-auto justify-between md:justify-end">
-                    {/* View mode toggle */}
-                    <div className="flex bg-[#0c0720]/60 p-0.5 rounded-lg border border-[#44387a]/35 text-[9.5px] font-bold">
-                      <button
-                        onClick={() => setSportsViewFilter('all')}
-                        className={`px-2 py-0.5 rounded transition-all ${
-                          sportsViewFilter === 'all' 
-                            ? 'bg-teal-500 text-white' 
-                            : 'text-[#b4aae2]/70 hover:text-white'
-                        }`}
-                      >
-                        All
-                      </button>
-                      <button
-                        onClick={() => setSportsViewFilter('scores')}
-                        className={`px-2 py-0.5 rounded transition-all ${
-                          sportsViewFilter === 'scores' 
-                            ? 'bg-teal-500 text-white' 
-                            : 'text-[#b4aae2]/70 hover:text-white'
-                        }`}
-                      >
-                        Live/Final
-                      </button>
-                      <button
-                        onClick={() => setSportsViewFilter('schedule')}
-                        className={`px-2 py-0.5 rounded transition-all ${
-                          sportsViewFilter === 'schedule' 
-                            ? 'bg-teal-500 text-white' 
-                            : 'text-[#b4aae2]/70 hover:text-white'
-                        }`}
-                      >
-                        Schedules
-                      </button>
-                    </div>
-
-                    {/* Search Field */}
-                    <div className="relative">
-                      <input
-                        type="text"
-                        placeholder="Search..."
-                        value={sportsSearchQuery}
-                        onChange={(e) => setSportsSearchQuery(e.target.value)}
-                        className="bg-[#0c0720]/50 border border-[#44387a]/35 rounded-lg px-2.5 py-1 text-[10px] text-white placeholder-slate-500 focus:outline-none focus:border-teal-400 w-28"
-                      />
-                    </div>
-                  </div>
+                {/* Status/last refreshed */}
+                <div className="flex items-center justify-between text-[9px] text-[#b4aae2]/60 bg-[#150f2e]/40 px-3 py-2 rounded-lg border border-[#44387a]/20 mb-4 select-none">
+                  <span>{sportsStatus}</span>
+                  <span className="font-mono text-[#faebd7]">Updated: {sportsUpdated}</span>
                 </div>
 
                 {/* Score vs Schedule Sub Tabs */}
-                <div className="flex items-center justify-between text-[9px] text-[#b4aae2]/60 bg-[#150f2e]/45 px-3 py-2.5 rounded-lg border border-[#44387a]/20 mb-4 select-none">
-                  <span className="flex items-center gap-1">
-                    <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-ping"></span>
-                    {sportsStatus}
-                  </span>
-                  <div className="flex items-center gap-3">
-                    <span className="font-mono text-[#faebd7]">Refreshed: {sportsUpdated}</span>
-                    <button 
-                      className="text-teal-400 hover:text-teal-300 font-bold border border-teal-500/25 px-2 py-0.5 rounded bg-teal-500/5 transition cursor-pointer"
-                      onClick={() => {
-                        haptic(15);
-                        loadSportsScores(sportsDateOffset);
-                        logSportsActivity('Refresh', 'Manual score synchronization triggered.');
-                      }}
-                    >
-                      Fetch Live
-                    </button>
-                  </div>
+                <div className="flex border-b border-[#2e2454]/40 mb-4 select-none">
+                  <button 
+                    className={`flex-1 py-2 text-center text-[10px] font-bold uppercase tracking-wider transition-all duration-200 cursor-pointer border-b-2 ${
+                      sportsSubTab === 'scores' 
+                        ? 'text-[#3fd9c7] border-[#3fd9c7] bg-[#3fd9c7]/5' 
+                        : 'text-[#b4aae2] border-transparent hover:text-white'
+                    }`}
+                    onClick={() => { haptic(5); setSportsSubTab('scores'); }}
+                  >
+                    🔴 Live & Results
+                  </button>
+                  <button 
+                    className={`flex-1 py-2 text-center text-[10px] font-bold uppercase tracking-wider transition-all duration-200 cursor-pointer border-b-2 ${
+                      sportsSubTab === 'schedule' 
+                        ? 'text-[#cf4fe6] border-[#cf4fe6] bg-[#cf4fe6]/5' 
+                        : 'text-[#b4aae2] border-transparent hover:text-white'
+                    }`}
+                    onClick={() => { haptic(5); setSportsSubTab('schedule'); }}
+                  >
+                    📅 Upcoming Schedule
+                  </button>
                 </div>
 
                 {/* Score grid */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
                   {(() => {
-                    let filteredGames = sportsGames.filter((event) => {
+                    const filteredGames = sportsGames.filter((event) => {
                       const competition = event.competitions?.[0];
-                      const competitors = competition?.competitors || [];
                       const state = competition?.status?.type?.state || event.status?.type?.state || '';
-
-                      // Search keyword filter
-                      const q = sportsSearchQuery.toLowerCase().trim();
-                      if (q) {
-                        const matchesName = competitors.some((c: any) => 
-                          (c.team?.displayName || '').toLowerCase().includes(q) ||
-                          (c.team?.shortDisplayName || '').toLowerCase().includes(q) ||
-                          (c.athlete?.displayName || '').toLowerCase().includes(q)
-                        );
-                        if (!matchesName) return false;
-                      }
-
-                      // View Mode Filter
-                      if (sportsViewFilter === 'scores') {
-                        return state === 'in' || state === 'post';
-                      } else if (sportsViewFilter === 'schedule') {
+                      if (sportsSubTab === 'schedule') {
                         return state === 'pre';
+                      } else {
+                        return state !== 'pre';
                       }
-                      return true;
                     });
 
                     if (filteredGames.length === 0) {
-                      const mockFeed = generateMockSportsGames(activeSportsLeague);
-                      filteredGames = mockFeed.filter((event) => {
-                        const competition = event.competitions?.[0];
-                        const competitors = competition?.competitors || [];
-                        const state = competition?.status?.type?.state || event.status?.type?.state || '';
-
-                        // Search keyword filter
-                        const q = sportsSearchQuery.toLowerCase().trim();
-                        if (q) {
-                          const matchesName = competitors.some((c: any) => 
-                            (c.team?.displayName || '').toLowerCase().includes(q) ||
-                            (c.team?.shortDisplayName || '').toLowerCase().includes(q) ||
-                            (c.athlete?.displayName || '').toLowerCase().includes(q)
-                          );
-                          if (!matchesName) return false;
-                        }
-
-                        // View Mode Filter
-                        if (sportsViewFilter === 'scores') {
-                          return state === 'in' || state === 'post';
-                        } else if (sportsViewFilter === 'schedule') {
-                          return state === 'pre';
-                        }
-                        return true;
-                      });
+                      return (
+                        <div className="col-span-full py-12 text-center text-[#b4aae2]/50 text-[11px] italic border border-dashed border-[#44387a]/35 rounded-xl">
+                          {sportsSubTab === 'schedule' 
+                            ? 'No upcoming games scheduled on this league feed.' 
+                            : 'No live or recently completed games on this league feed.'}
+                        </div>
+                      );
                     }
 
                     return filteredGames.map((event) => {
@@ -10142,47 +7920,21 @@ Since I run entirely on-device, I cannot fetch live websites or use external ser
                       const detail = statusType.detail || formatSportsDate(event.date);
 
                       const isFavorite = competitors.some(teamMatchesFavorite);
-                      const isPinned = sportsPinnedGames.includes(event.id);
-
-                      const toggleGamePin = (e: React.MouseEvent, gId: string) => {
-                        e.stopPropagation();
-                        haptic(10);
-                        setSportsPinnedGames(prev => {
-                          const next = prev.includes(gId) ? prev.filter(id => id !== gId) : [...prev, gId];
-                          localStorage.setItem('sportcast_pinned', JSON.stringify(next));
-                          logSportsActivity('Star Pin', `${prev.includes(gId) ? 'Unpinned' : 'Pinned'} match ${gId}.`);
-                          return next;
-                        });
-                      };
 
                       return (
                         <article
                           key={event.id}
-                          className={`p-3.5 border rounded-xl flex flex-col justify-between gap-3 transition-all duration-200 bg-[#0c0720]/45 cursor-pointer ${
+                          className={`p-3.5 border rounded-xl flex flex-col justify-between gap-3 transition-all duration-200 bg-[#0c0720]/45 ${
                             isFavorite 
                               ? 'border-teal-500/60 bg-teal-500/5 shadow-[0_0_12px_rgba(20,184,166,0.1)]' 
-                              : isPinned 
-                                ? 'border-amber-500/60 bg-amber-500/5' 
-                                : 'border-[#44387a]/40 hover:border-[#cf4fe6]/50'
+                              : 'border-[#44387a]/40 hover:border-[#cf4fe6]/50'
                           }`}
-                          onClick={() => {
-                            haptic(5);
-                            setSelectedGameId(event.id);
-                          }}
                         >
                           <div className="flex justify-between items-center text-[9px] text-[#b4aae2]/60 font-mono uppercase tracking-wider">
-                            <span className="font-bold text-[#b4aae2]">{SPORTS_LEAGUES[activeSportsLeague]?.label}</span>
-                            <div className="flex items-center gap-1.5">
-                              <button
-                                onClick={(e) => toggleGamePin(e, event.id)}
-                                className="text-[#b4aae2]/40 hover:text-yellow-400 p-0.5"
-                              >
-                                {isPinned ? '★' : '☆'}
-                              </button>
-                              <span className={state === 'in' ? 'text-red-400 animate-pulse font-black' : state === 'post' ? 'text-gray-400' : 'text-[#3fd9c7]'}>
-                                {detail || 'Scheduled'}
-                              </span>
-                            </div>
+                            <span className="font-bold text-[#b4aae2]">{SPORTS_LEAGUES[activeSportsLeague].label}</span>
+                            <span className={state === 'in' ? 'text-red-400 animate-pulse font-black' : state === 'post' ? 'text-gray-400' : 'text-[#3fd9c7]'}>
+                              {detail || 'Scheduled'}
+                            </span>
                           </div>
 
                           <div className="flex flex-col gap-2">
@@ -10215,7 +7967,7 @@ Since I run entirely on-device, I cannot fetch live websites or use external ser
                                       </div>
                                     )}
                                     <span className={`text-[11px] font-semibold truncate ${competitor.winner ? 'text-teal-400 font-bold' : 'text-[#faebd7]'}`}>
-                                      {competitor.team?.shortDisplayName || competitor.team?.displayName || competitor.athlete?.displayName || 'Competitor'}
+                                      {competitor.team?.shortDisplayName || competitor.team?.displayName || 'Team'}
                                     </span>
                                     <span className="text-[8.5px] text-[#b4aae2]/40 font-normal shrink-0">{getRecord(competitor)}</span>
                                   </div>
@@ -10231,178 +7983,70 @@ Since I run entirely on-device, I cannot fetch live websites or use external ser
                     });
                   })()}
                 </div>
-
-                {/* SELECTED GAME DETAILED VIEW PANEL */}
-                <div className="mt-4 bg-[#0a061c]/60 border border-[#44387a]/40 rounded-2xl p-5 shadow-lg flex flex-col gap-4 select-none">
-                  {(() => {
-                    const activeGame = sportsGames.find((g) => g.id === selectedGameId) || 
-                                       generateMockSportsGames(activeSportsLeague).find((g) => g.id === selectedGameId) ||
-                                       sportsGames[0] || 
-                                       generateMockSportsGames(activeSportsLeague)[0];
-
-                    if (!activeGame) {
-                      return <p className="text-xs text-[#b4aae2]/50 italic text-center py-6">Select a match above to stream detailed telemetry.</p>;
-                    }
-
-                    const competition = activeGame.competitions?.[0];
-                    const competitors = competition?.competitors || [];
-                    const statusType = competition?.status?.type || activeGame.status?.type || {};
-                    const venue = competition?.venue?.fullName || 'TBD Arena';
-                    const odds = competition?.odds?.[0]?.details || 'Even / Matchplay';
-                    const broadcasters = competition?.broadcasts?.[0]?.names || [];
-                    const tvChannel = broadcasters.length > 0 ? broadcasters.join(' / ') : 'TV: Local Streams Only';
-                    const headlines = competition?.headlines?.[0]?.description || 'No urgent highlights posted for this fixture.';
-
-                    return (
-                      <>
-                        <div className="flex justify-between items-center border-b border-[#2e2454]/40 pb-3">
-                          <span className="text-xs font-extrabold uppercase tracking-widest text-teal-400 flex items-center gap-1.5">
-                            🎮 Match Center Telemetry
-                          </span>
-                          <span className="text-[10px] text-[#b4aae2]/60 truncate max-w-[50%]">{venue}</span>
-                        </div>
-
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
-                          {/* Situation status list */}
-                          <div className="bg-[#120a2c]/65 p-4 rounded-xl border border-[#44387a]/35 flex flex-col gap-2.5">
-                            <h4 className="text-[9.5px] font-black text-teal-400 uppercase tracking-wide">Detailed Situation</h4>
-                            <div className="flex justify-between py-1 border-b border-[#2e2454]/20">
-                              <span className="text-[#b4aae2]/60">Status Detail</span>
-                              <span className="text-white font-bold">{statusType.detail || 'Scheduled'}</span>
-                            </div>
-                            <div className="flex justify-between py-1 border-b border-[#2e2454]/20">
-                              <span className="text-[#b4aae2]/60">Odds Details</span>
-                              <span className="text-[#3fd9c7] font-bold">{odds}</span>
-                            </div>
-                            <div className="flex justify-between py-1 border-b border-[#2e2454]/20">
-                              <span className="text-[#b4aae2]/60">Broadcast Network</span>
-                              <span className="text-white font-bold">{tvChannel}</span>
-                            </div>
-                          </div>
-
-                          {/* Highlights headlines */}
-                          <div className="bg-[#120a2c]/65 p-4 rounded-xl border border-[#44387a]/35 flex flex-col gap-2.5">
-                            <h4 className="text-[9.5px] font-black text-[#cf4fe6] uppercase tracking-wide">Press Headlines</h4>
-                            <p className="text-[10.5px] text-[#b4aae2]/90 leading-relaxed italic">
-                              "{headlines}"
-                            </p>
-                          </div>
-                        </div>
-                      </>
-                    );
-                  })()}
-                </div>
               </section>
             </div>
 
-            {/* RIGHT COLUMN: PINNED TRACKER & PARLAY TRACKER */}
+            {/* Pinned tracker sidebar */}
             <div className="col-span-12 lg:col-span-4 flex flex-col gap-4">
-              {/* PRIVATE PIN TRAY */}
-              <section className="card p-5 rounded-2xl border border-teal-500/30 bg-teal-500/5 shadow-[0_0_20px_rgba(20,184,166,0.08)] select-none">
-                <div className="flex justify-between items-center pb-2.5 border-b border-teal-500/20 mb-3">
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-teal-400">★</span>
-                    <span className="text-[12px] font-bold text-white uppercase tracking-[0.15em]" style={{ fontFamily: "'Cormorant', serif" }}>
-                      My Pinned Tracker
-                    </span>
-                  </div>
-                  <span className="text-[8px] font-mono px-1.5 py-0.5 rounded bg-teal-500/10 text-teal-400 border border-teal-500/20 uppercase font-black">Private</span>
-                </div>
-
-                <div className="space-y-2 max-h-[220px] overflow-y-auto pr-1">
-                  {(() => {
-                    const allGames = [
-                      ...sportsGames, 
-                      ...generateMockSportsGames(activeSportsLeague)
-                    ];
-                    const pinnedList = allGames.filter((g) => sportsPinnedGames.includes(g.id));
-
-                    if (pinnedList.length === 0) {
-                      return (
-                        <div className="text-center py-4 text-[10px] text-[#b4aae2]/40 italic">
-                          Click star (★) on any score card above to pin and track live updates here in real-time.
-                        </div>
-                      );
-                    }
-
-                    return pinnedList.map((m) => {
-                      const competition = m.competitions?.[0];
-                      const competitors = competition?.competitors || [];
-                      const state = competition?.status?.type?.state || m.status?.type?.state || '';
-                      const detail = competition?.status?.type?.detail || m.status?.type?.detail || 'Scheduled';
-
-                      return (
-                        <div 
-                          key={m.id} 
-                          className="p-3 rounded-xl border border-teal-500/20 bg-teal-500/5 flex flex-col gap-1.5 hover:border-teal-400 cursor-pointer"
-                          onClick={() => setSelectedGameId(m.id)}
-                        >
-                          <div className="flex justify-between items-center text-[8.5px] text-teal-400/80 font-mono">
-                            <span>{m.league || 'Telemetry'}</span>
-                            <span>{detail}</span>
-                          </div>
-                          <div className="space-y-1 text-[10.5px]">
-                            {competitors.map((c: any) => (
-                              <div key={c.id} className="flex justify-between items-center">
-                                <span className="text-gray-200">{c.team?.shortDisplayName || c.team?.displayName || c.athlete?.displayName || 'Competitor'}</span>
-                                <span className="font-bold text-white">{c.score || (state === 'pre' ? '-' : '0')}</span>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      );
-                    });
-                  })()}
-                </div>
-              </section>
-
-              {/* LOCAL ACTIVITY LOG */}
               <section className="card p-5 rounded-2xl border border-[#44387a]/60 bg-gradient-to-b from-[#160f2e] to-[#080214] shadow-[0_10px_35px_rgba(0,0,0,0.5)]">
                 <div className="flex justify-between items-center pb-2.5 border-b border-[#2e2454]/60 mb-3 select-none">
                   <div className="flex items-center gap-1.5">
-                    <span className="text-teal-400">⚡</span>
-                    <span className="text-[12px] font-bold text-[#faebd7] uppercase tracking-[0.15em]" style={{ fontFamily: "'Cormorant', serif" }}>
-                      Local Activity Log
-                    </span>
+                    <span className="text-[#ff7597]">📌</span>
+                    <span className="text-[12px] font-bold text-[#faebd7] uppercase tracking-[0.15em]" style={{ fontFamily: "'Cormorant', serif" }}>Pinned Highlights</span>
                   </div>
-                  <button 
-                    onClick={() => {
-                      haptic(5);
-                      setSportsActivityLog([{ type: 'System', msg: 'Secure FreeGate initialized.', time: new Date().toLocaleTimeString() }]);
+                  <span className="text-[8px] font-mono px-1.5 py-0.5 rounded bg-pink-500/10 text-pink-400 border border-pink-500/10 uppercase">Tracker</span>
+                </div>
+
+                <p className="text-[10px] text-[#b4aae2]/75 mb-3 leading-snug">
+                  Add keywords for your favorite teams to pin and highlight their matches in teal instantly!
+                </p>
+
+                <div className="flex gap-2 mb-4">
+                  <input
+                    type="text"
+                    value={sportsFavoriteInput}
+                    placeholder="e.g. Yankees, Lakers, Arsenal"
+                    className="flex-grow bg-[#1a1138]/40 border border-[#3d2766]/50 rounded-lg px-2.5 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-purple-400 font-sans"
+                    onChange={(e) => setSportsFavoriteInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') addSportsFavorite();
                     }}
-                    className="text-[9px] text-[#b4aae2]/40 hover:text-white uppercase font-bold"
-                  >
-                    Clear
+                  />
+                  <button className="px-3 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:brightness-110 active:scale-[0.98] text-white font-bold text-[10px] uppercase tracking-wider rounded-lg transition-all duration-150 shrink-0 cursor-pointer" onClick={addSportsFavorite}>
+                    Pin
                   </button>
                 </div>
 
-                <div className="space-y-2 max-h-[160px] overflow-y-auto pr-1">
-                  {sportsActivityLog.map((log, index) => (
-                    <div key={index} className="bg-[#120a2c]/40 p-2.5 border border-[#44387a]/20 rounded-xl text-[10px] text-[#b4aae2]/80 flex gap-2">
-                      <span className="text-teal-400 font-bold shrink-0">{log.type}</span>
-                      <div className="flex flex-col text-left">
-                        <span className="leading-snug">{log.msg}</span>
-                        <span className="text-[8.5px] text-[#b4aae2]/40 font-mono mt-0.5">{log.time}</span>
-                      </div>
+                <div className="flex flex-wrap gap-1.5">
+                  {sportsFavorites.length === 0 ? (
+                    <div className="text-center py-4 text-[10px] text-[#b4aae2]/50 italic w-full">
+                      No pinned teams yet. Add some keywords above!
                     </div>
-                  ))}
+                  ) : (
+                    sportsFavorites.map((team, index) => (
+                      <span className="inline-flex items-center gap-1.5 border border-teal-500/30 bg-teal-500/5 text-white rounded-lg px-2 py-1 text-[10.5px] font-mono" key={team}>
+                        <span>{team}</span>
+                        <button className="text-red-400 hover:text-red-300 ml-1 font-bold cursor-pointer" onClick={() => removeSportsFavorite(index)}>×</button>
+                      </span>
+                    ))
+                  )}
                 </div>
               </section>
 
-              {/* PARLAY SLIP */}
+              {/* PARLAY TRACKER CARD */}
               <section className="card p-5 rounded-2xl border border-purple-500/30 bg-purple-950/5 backdrop-blur-md shadow-[0_0_30px_rgba(168,85,247,0.12)]">
                 <div className="flex justify-between items-center pb-2.5 border-b border-purple-500/20 mb-3 select-none">
                   <div className="flex items-center gap-1.5">
                     <span className="text-purple-400">🔮</span>
-                    <span className="text-[12px] font-bold text-purple-200 uppercase tracking-[0.15em]" style={{ fontFamily: "'Cormorant', serif" }}>Parlay Slip</span>
+                    <span className="text-[12px] font-bold text-purple-200 uppercase tracking-[0.15em]" style={{ fontFamily: "'Cormorant', serif" }}>Parlay Tracker</span>
                   </div>
                   <span className="text-[8px] font-mono px-1.5 py-0.5 rounded bg-purple-500/10 text-purple-300 border border-purple-500/20 uppercase font-bold">Free slip</span>
                 </div>
 
                 {/* CURRENT PARLAY SLIP */}
                 <div className="mb-4">
-                  <div className="flex justify-between items-center mb-2 select-none">
-                    <span className="text-[10px] font-bold text-purple-300 uppercase tracking-wider">Parlay Legs</span>
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="text-[10px] font-bold text-purple-300 uppercase tracking-wider">Parlay Slip</span>
                     {parlaySlip.length > 0 && (
                       <span className="text-[9px] font-mono bg-purple-500/10 text-purple-300 px-1.5 py-0.5 rounded border border-purple-500/20">
                         {parlaySlip.length} {parlaySlip.length === 1 ? 'Pick' : 'Picks'}
@@ -10415,32 +8059,30 @@ Since I run entirely on-device, I cannot fetch live websites or use external ser
                       No active picks on the slip. Click the "+" button next to any team on the scoreboard to build your parlay!
                     </div>
                   ) : (
-                    <div className="space-y-2">
-                      <div className="max-h-[160px] overflow-y-auto pr-1 space-y-2">
-                        {parlaySlip.map((leg) => (
-                          <div key={leg.id} className="flex items-center justify-between p-2.5 rounded-xl bg-purple-500/5 border border-purple-500/20 text-left">
-                            <div className="flex flex-col gap-0.5 max-w-[85%]">
-                              <span className="text-[11px] font-bold text-white flex items-center gap-1">
-                                <span className="text-[9px] font-mono text-purple-300 uppercase bg-purple-500/5 px-1 rounded border border-purple-500/10">Pick</span>
-                                {leg.teamName}
-                              </span>
-                              <span className="text-[9px] text-purple-300/60 truncate">
-                                vs {leg.opponentName} ({leg.league.toUpperCase()})
-                              </span>
-                            </div>
-                            <button 
-                              onClick={() => {
-                                haptic(10);
-                                setParlaySlip(prev => prev.filter(l => l.id !== leg.id));
-                              }}
-                              className="text-red-400 hover:text-red-300 font-bold text-xs p-1 cursor-pointer"
-                              title="Remove pick"
-                            >
-                              ×
-                            </button>
+                    <div className="space-y-2 max-h-[160px] overflow-y-auto pr-1">
+                      {parlaySlip.map((leg) => (
+                        <div key={leg.id} className="flex items-center justify-between p-2.5 rounded-xl bg-purple-500/5 border border-purple-500/20 text-left">
+                          <div className="flex flex-col gap-0.5 max-w-[85%]">
+                            <span className="text-[11px] font-bold text-white flex items-center gap-1">
+                              <span className="text-[9px] font-mono text-purple-300 uppercase bg-purple-500/5 px-1 rounded border border-purple-500/10">Pick</span>
+                              {leg.teamName}
+                            </span>
+                            <span className="text-[9px] text-purple-300/60 truncate">
+                              vs {leg.opponentName} ({leg.league.toUpperCase()})
+                            </span>
                           </div>
-                        ))}
-                      </div>
+                          <button 
+                            onClick={() => {
+                              haptic(10);
+                              setParlaySlip(prev => prev.filter(l => l.id !== leg.id));
+                            }}
+                            className="text-red-400 hover:text-red-300 font-bold text-xs p-1 cursor-pointer"
+                            title="Remove pick"
+                          >
+                            ×
+                          </button>
+                        </div>
+                      ))}
 
                       {/* Slip Action Buttons */}
                       <div className="flex gap-2 pt-2 select-none">
@@ -10448,7 +8090,6 @@ Since I run entirely on-device, I cannot fetch live websites or use external ser
                           onClick={() => {
                             haptic(15);
                             saveParlay();
-                            logSportsActivity('Parlay', `Saved a new ${parlaySlip.length}-leg parlay.`);
                           }}
                           className="flex-1 py-2 bg-purple-500/15 hover:bg-purple-500/30 border border-purple-500/40 hover:border-purple-300 text-purple-300 hover:text-white font-bold text-[10px] uppercase tracking-wider rounded-lg transition-all cursor-pointer hover:shadow-[0_0_15px_rgba(168,85,247,0.4)] focus:outline-none"
                         >
@@ -10477,7 +8118,6 @@ Since I run entirely on-device, I cannot fetch live websites or use external ser
                     onClick={() => {
                       haptic(15);
                       refreshParlays();
-                      logSportsActivity('Parlay', 'Refreshed active parlay legs.');
                     }}
                     className="text-[9px] text-purple-300 hover:text-white uppercase font-bold font-mono tracking-wider shrink-0 transition-all cursor-pointer whitespace-nowrap bg-purple-500/15 px-2 py-1 rounded-lg border border-purple-500/30 hover:border-purple-400"
                   >
@@ -10537,6 +8177,7 @@ Since I run entirely on-device, I cannot fetch live websites or use external ser
                           {/* Legs inside parlay collapse */}
                           <div className="space-y-1.5 pl-1.5 border-l border-[#cf4fe6]/20">
                             {parlay.legs.map((leg) => {
+                              // evaluate won, lost, live, pending per leg status
                               const legStatus = leg.status || 'pending';
                               return (
                                 <div key={leg.id} className="flex items-center justify-between text-[10px]">
@@ -11523,7 +9164,6 @@ Since I run entirely on-device, I cannot fetch live websites or use external ser
                       localStorage.setItem('global_feedback_ideas', JSON.stringify([]));
                       setFeedbackList([]);
                       toast("📬 Ideas archived successfully!", "success");
-                      fetch('/api/feedback/clear', { method: 'POST' }).catch(() => {});
                     }
                   }}
                   className="text-[9px] text-rose-400 hover:text-rose-300 font-semibold bg-rose-500/10 px-2.5 py-1 rounded-md border border-rose-500/20 cursor-pointer"
@@ -11588,42 +9228,8 @@ Since I run entirely on-device, I cannot fetch live websites or use external ser
                       curList.unshift(newFeedback); // Newest feedback on top
                       localStorage.setItem('global_feedback_ideas', JSON.stringify(curList));
                       setFeedbackList(curList); // Update state reactively
-
-                      // Also push to the custom database format key 'trxy6_secure_terminal_db'
-                      try {
-                        const dbv = localStorage.getItem('trxy6_secure_terminal_db');
-                        let db = dbv ? JSON.parse(dbv) : { users: {}, messages: [] };
-                        const msgObj = {
-                          id: newFeedback.id,
-                          sender: newFeedback.sender,
-                          text: newFeedback.text,
-                          timestamp: newFeedback.timestamp
-                        };
-                        if (Array.isArray(db)) {
-                          db.unshift(msgObj);
-                        } else {
-                          if (!db.messages) db.messages = [];
-                          db.messages.unshift(msgObj);
-                        }
-                        localStorage.setItem('trxy6_secure_terminal_db', JSON.stringify(db));
-                      } catch {}
-
-                      // Push to server
-                      fetch('/api/feedback', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(newFeedback)
-                      }).then(res => {
-                        if (res.ok) {
-                          toast("✨ Idea channeled directly to trxy6! Thank you!", "success");
-                        } else {
-                          toast("✨ Idea saved locally (offline mode).", "success");
-                        }
-                      }).catch(() => {
-                        toast("✨ Idea saved locally (offline mode).", "success");
-                      });
-
                       el.value = '';
+                      toast("✨ Idea channeled directly to trxy6! Thank you!", "success");
                     } catch (err) {
                       toast("⚠️ Rift signal disrupted. Try again.", "error");
                     }
@@ -11745,76 +9351,6 @@ Since I run entirely on-device, I cannot fetch live websites or use external ser
                     <input type="checkbox" id="soundToggle" />
                     <span className="switch-track"></span>
                   </label>
-                </div>
-              </section>
-
-              <section className="card border border-[#3fd9c7]/30 shadow-[0_0_15px_rgba(63,217,199,0.1)]">
-                <p className="section-label text-[#3fd9c7] flex items-center gap-2">🌌 Rift Alert Transceiver</p>
-                <p className="settings-note mb-4">
-                  Authorize the alert signal to receive real-time updates and notification beacons from the Portal, even when it runs in the background.
-                </p>
-
-                <div className="setting-row items-center justify-between gap-3 mb-4">
-                  <div className="setting-label">
-                    <span>Transceiver Status</span>
-                    <span className="setting-sub">Current signal permission state</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {notiPermission === 'granted' && (
-                      <span className="px-2.5 py-1 rounded-md text-[9px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 tracking-wider uppercase shadow-[0_0_8px_rgba(16,185,129,0.15)]">
-                        📡 Active Link
-                      </span>
-                    )}
-                    {notiPermission === 'denied' && (
-                      <span className="px-2.5 py-1 rounded-md text-[9px] font-bold bg-rose-500/10 text-rose-400 border border-rose-500/20 tracking-wider uppercase">
-                        ⚠️ Disrupted Signal
-                      </span>
-                    )}
-                    {notiPermission === 'default' && (
-                      <span className="px-2.5 py-1 rounded-md text-[9px] font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20 tracking-wider uppercase">
-                        💤 Idle Receiver
-                      </span>
-                    )}
-                    {notiPermission === 'unsupported' && (
-                      <span className="px-2.5 py-1 rounded-md text-[9px] font-bold bg-red-500/10 text-red-400 border border-red-500/20 tracking-wider uppercase">
-                        🚫 Unsupported
-                      </span>
-                    )}
-                  </div>
-                </div>
-
-                <div className="flex flex-col sm:flex-row gap-2.5">
-                  {notiPermission !== 'granted' && notiPermission !== 'unsupported' && (
-                    <button
-                      onClick={requestNotificationPermission}
-                      className="flex-1 py-2 bg-[#3fd9c7]/10 hover:bg-[#3fd9c7]/20 text-[#3fd9c7] border border-[#3fd9c7]/20 hover:border-[#3fd9c7]/40 rounded-xl text-[10px] font-bold tracking-widest uppercase transition-all duration-200 cursor-pointer"
-                    >
-                      📡 Authorize Signal Link
-                    </button>
-                  )}
-                  {notiPermission === 'granted' && (
-                    <button
-                      onClick={testNotification}
-                      className="flex-1 py-2 bg-gradient-to-r from-[#3fd9c7]/80 to-[#cf4fe6]/80 hover:brightness-110 active:scale-[0.98] text-white rounded-xl text-[10px] font-bold tracking-widest uppercase transition-all duration-200 cursor-pointer"
-                    >
-                      ⚡ Test Rift Beacon
-                    </button>
-                  )}
-                </div>
-
-                <div className="mt-4 pt-3.5 border-t border-[#3fd9c7]/10 space-y-2 text-[10px] text-[#b4aae2]/70 leading-relaxed">
-                  <div className="flex items-start gap-2">
-                    <span className="text-[#3fd9c7]">📱</span>
-                    <p>
-                      <strong>Android Companion:</strong> Standard browsers (Chrome, Firefox) support notification beams directly once authorized.
-                    </p>
-                  </div>
-                  <div className="flex items-start gap-2">
-                    <span className="text-[#cf4fe6]">🍎</span>
-                    <p>
-                      <strong>iOS / Apple Companion:</strong> Notifications require PWA installation. Tap the <strong>Share</strong> button and select <strong>Add to Home Screen</strong>, then launch Portal from your Home Screen.
-                    </p>
-                  </div>
                 </div>
               </section>
 
@@ -11983,14 +9519,12 @@ Since I run entirely on-device, I cannot fetch live websites or use external ser
           Companion
         </button>
         <button data-panel="settings">
-          <svg className="ic animate-fade-in" viewBox="0 0 22 22" style={{ filter: 'drop-shadow(0 0 5px rgba(207, 79, 230, 0.65))', width: '20px', height: '20px' }}>
-            <circle cx="11" cy="11" r="3" fill="#1e113a" stroke="#cf4fe6" strokeWidth="1.5" />
-            <path d="M11 2.5v2.2M11 17.3v2.2M19.5 11-2.2M4.7 11H2.5M17 5l-1.6 1.6M6.6 15.4 5 17M17 17l-1.6-1.6M6.6 6.6 5 5" fill="none" stroke="#cf4fe6" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+          <svg className="ic" viewBox="0 0 22 22">
+            <circle cx="11" cy="11" r="3" />
+            <path d="M11 2.5v2.2M11 17.3v2.2M19.5 11-2.2M4.7 11H2.5M17 5l-1.6 1.6M6.6 15.4 5 17M17 17l-1.6-1.6M6.6 6.6 5 5" />
           </svg>
           Settings
         </button>
-      </nav>
-
       {showRiftVision && (
         <div className="fixed inset-0 bg-[#070411]/95 backdrop-blur-lg z-[99999] flex items-center justify-center p-3 select-none overflow-y-auto">
           <div className="relative w-full max-w-2xl bg-[#140a24]/90 border-2 border-[#3fd9c7]/50 rounded-2xl p-5 shadow-[0_0_35px_rgba(63,217,199,0.3)] flex flex-col gap-4 animate-fade-in my-auto">
@@ -12043,24 +9577,20 @@ Since I run entirely on-device, I cannot fetch live websites or use external ser
                 ) : (
                   /* Camera Video Feed / File Drop Box */
                   <div className="absolute inset-0 flex flex-col items-center justify-center">
-                    {cameraStream && (
-                      <>
-                        <video 
-                          ref={riftVideoRef} 
-                          className="w-full h-full object-cover" 
-                          playsInline 
-                          muted 
-                        />
-                        {/* Floating Crosshair HUD */}
-                        <div className="absolute inset-10 border border-dashed border-[#3fd9c7]/30 pointer-events-none rounded-lg flex items-center justify-center">
-                          <div className="w-4 h-4 border-t-2 border-l-2 border-[#3fd9c7] absolute top-0 left-0" />
-                          <div className="w-4 h-4 border-t-2 border-r-2 border-[#3fd9c7] absolute top-0 right-0" />
-                          <div className="w-4 h-4 border-b-2 border-l-2 border-[#3fd9c7] absolute bottom-0 left-0" />
-                          <div className="w-4 h-4 border-b-2 border-r-2 border-[#3fd9c7] absolute bottom-0 right-0" />
-                          <div className="w-1.5 h-1.5 rounded-full bg-[#3fd9c7] opacity-60 animate-ping" />
-                        </div>
-                      </>
-                    )}
+                    <video 
+                      ref={riftVideoRef} 
+                      className="w-full h-full object-cover" 
+                      playsInline 
+                      muted 
+                    />
+                    {/* Floating Crosshair HUD */}
+                    <div className="absolute inset-10 border border-dashed border-[#3fd9c7]/30 pointer-events-none rounded-lg flex items-center justify-center">
+                      <div className="w-4 h-4 border-t-2 border-l-2 border-[#3fd9c7] absolute top-0 left-0" />
+                      <div className="w-4 h-4 border-t-2 border-r-2 border-[#3fd9c7] absolute top-0 right-0" />
+                      <div className="w-4 h-4 border-b-2 border-l-2 border-[#3fd9c7] absolute bottom-0 left-0" />
+                      <div className="w-4 h-4 border-b-2 border-r-2 border-[#3fd9c7] absolute bottom-0 right-0" />
+                      <div className="w-1.5 h-1.5 rounded-full bg-[#3fd9c7] opacity-60 animate-ping" />
+                    </div>
 
                     {/* Snapshot Button Overlay */}
                     {cameraStream && (
@@ -12191,6 +9721,8 @@ Since I run entirely on-device, I cannot fetch live websites or use external ser
           </div>
         </div>
       )}
+
+      </nav>
     </>
   );
 }

@@ -1,10 +1,5 @@
-import dotenv from 'dotenv';
-dotenv.config({ path: '.env.local' });
-dotenv.config();
-
 import express from 'express';
 import path from 'path';
-import fs from 'fs';
 import { createServer as createHttpServer } from 'http';
 import { WebSocketServer, WebSocket } from 'ws';
 import { createServer as createViteServer } from 'vite';
@@ -216,56 +211,6 @@ async function startServer() {
     res.json({ rooms: activeRooms });
   });
 
-  // Local storage for traveler feedback ideas
-  const FEEDBACK_FILE = path.join(process.cwd(), 'feedback.json');
-  let feedbackData: any[] = [];
-
-  try {
-    if (fs.existsSync(FEEDBACK_FILE)) {
-      feedbackData = JSON.parse(fs.readFileSync(FEEDBACK_FILE, 'utf-8'));
-    }
-  } catch (err) {
-    console.error('Failed to load feedback from feedback.json:', err);
-  }
-
-  function saveFeedback() {
-    try {
-      fs.writeFileSync(FEEDBACK_FILE, JSON.stringify(feedbackData, null, 2), 'utf-8');
-    } catch (err) {
-      console.error('Failed to write feedback to feedback.json:', err);
-    }
-  }
-
-  // API Submit traveler feedback
-  app.post('/api/feedback', (req, res) => {
-    try {
-      const item = req.body;
-      if (item && item.id) {
-        if (!feedbackData.some(f => f.id === item.id)) {
-          feedbackData.unshift(item); // Newest on top
-          saveFeedback();
-        }
-        res.json({ status: 'ok', count: feedbackData.length });
-      } else {
-        res.status(400).json({ error: 'Invalid feedback item structure' });
-      }
-    } catch (err: any) {
-      res.status(500).json({ error: err.message || 'Internal server error' });
-    }
-  });
-
-  // API Retrieve all traveler feedback (ordered newest first)
-  app.get('/api/feedback', (req, res) => {
-    res.json({ feedback: feedbackData });
-  });
-
-  // API Clear/Archive all feedback
-  app.post('/api/feedback/clear', (req, res) => {
-    feedbackData = [];
-    saveFeedback();
-    res.json({ status: 'ok' });
-  });
-
   // API Companion Bot Chat Handler (Gemini-powered)
   app.post('/api/companion', async (req, res) => {
     try {
@@ -343,30 +288,9 @@ Use beautiful Markdown formatting, bold headings, and bullet points to organize 
       
       const apiKey = process.env.GEMINI_API_KEY;
       if (!apiKey) {
-        console.warn("GEMINI_API_KEY not configured. Running free offline mock analyzer.");
-        
-        let text = '';
-        if (type === 'notes') {
-          text = `📝 **Scanned Traveler Notes**\n\n*   **Rift Chamber Location:** Vault 4, Sector 7-G\n*   **Guard Patrol Route:** Every 15 minutes\n*   **Vault Code:** \`73-88-21\`\n*   **Alert Signal Status:** Authorized and monitoring`;
-        } else if (type === 'betslip') {
-          text = `[{"teamName": "Lakers", "opponentName": "Celtics", "league": "nba"}]`;
-        } else if (type === 'character') {
-          text = `{"name": "Valerius", "classAndLevel": "Wizard 5", "ac": 13, "hp": 28, "maxHp": 28, "abilityScores": {"STR": 8, "DEX": 14, "CON": 12, "INT": 18, "WIS": 13, "CHA": 10}, "equipment": ["Spellbook", "Wand of Magic Missile"], "notes": "Familiar is a black cat named Shadow."}`;
-        } else if (type === 'dice') {
-          text = `{"rolls": [20, 5], "total": 25, "summary": "Detected a d20 showing 20 and a d6 showing 5. Natural 20!"}`;
-        } else if (type === 'calendar') {
-          text = `{"title": "Epic Campaign Session", "date": "2026-07-08", "time": "6:00 PM", "location": "The Prancing Pony", "description": "Weekly DnD campaign meetup."}`;
-        } else if (type === 'ask') {
-          const q = (question || '').toLowerCase();
-          if (q.includes('what') || q.includes('salary') || q.includes('employee') || q.includes('table')) {
-            text = `📊 **Rift Vision Scan Result (Employee Salary Data)**\n\nThe scanner processed the table image and extracted the database query rows:\n\n*   **John Grant**: Salary 2,500\n*   **Mary Whalen**: Salary 2,800\n*   **Alan Parker**: Salary 3,200\n*   **Sara Archer**: Salary 2,900\n*   **Tom Brown**: Salary 4,000\n\nIt also detected a listing of Regions/Countries (including Switzerland, Zimbabwe, and Australia).`;
-          } else {
-            text = `🔮 **Rift Vision Scan Result**\n\nQuestion: "${question || 'what is this'}"\n\nAnswer: The Rift Vision Scanner successfully parsed the base64 visual upload. It represents a database table layout of team members and region associations.`;
-          }
-        }
-        
-        await new Promise(r => setTimeout(r, 1200));
-        return res.json({ text });
+        return res.status(400).json({ 
+          error: 'Gemini API key is not configured in Settings > Secrets.' 
+        });
       }
 
       if (!image) {
