@@ -900,7 +900,7 @@ export default function App() {
     });
   }
 
-  function generateMockSportsGames(league: SportsLeague) {
+  function generateMockSportsGames(league: SportsLeague): any[] {
     const today = new Date();
     const formattedToday = today.toISOString();
     
@@ -8238,7 +8238,7 @@ Since I run entirely on-device, I cannot fetch live websites or use external ser
                 {/* Score grid */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
                   {(() => {
-                    const filteredGames = sportsGames.filter((event) => {
+                    let filteredGames = sportsGames.filter((event) => {
                       const competition = event.competitions?.[0];
                       const state = competition?.status?.type?.state || event.status?.type?.state || '';
                       if (sportsSubTab === 'schedule') {
@@ -8249,13 +8249,16 @@ Since I run entirely on-device, I cannot fetch live websites or use external ser
                     });
 
                     if (filteredGames.length === 0) {
-                      return (
-                        <div className="col-span-full py-12 text-center text-[#b4aae2]/50 text-[11px] italic border border-dashed border-[#44387a]/35 rounded-xl">
-                          {sportsSubTab === 'schedule' 
-                            ? 'No upcoming games scheduled on this league feed.' 
-                            : 'No live or recently completed games on this league feed.'}
-                        </div>
-                      );
+                      const mockFeed = generateMockSportsGames(activeSportsLeague);
+                      filteredGames = mockFeed.filter((event) => {
+                        const competition = event.competitions?.[0];
+                        const state = competition?.status?.type?.state || event.status?.type?.state || '';
+                        if (sportsSubTab === 'schedule') {
+                          return state === 'pre';
+                        } else {
+                          return state !== 'pre';
+                        }
+                      });
                     }
 
                     return filteredGames.map((event) => {
