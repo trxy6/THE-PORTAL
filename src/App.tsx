@@ -244,7 +244,14 @@ export default function App() {
   };
 
   const [activeSportsLeague, setActiveSportsLeague] = useState<SportsLeague>('mlb');
-  const [sportsGames, setSportsGames] = useState<any[]>([]);
+  const [sportsGamesMap, setSportsGamesMap] = useState<Record<SportsLeague, any[]>>({
+    mlb: [],
+    eng1: [],
+    nba: [],
+    nfl: [],
+    nhl: [],
+  });
+  const sportsGames = sportsGamesMap[activeSportsLeague] || [];
   const [sportsSubTab, setSportsSubTab] = useState<'scores' | 'schedule'>('scores');
   const [sportsStatus, setSportsStatus] = useState('Initiating zero-cost feed connection...');
   const [sportsUpdated, setSportsUpdated] = useState('Just Now');
@@ -1084,43 +1091,49 @@ export default function App() {
     ];
   }
 
-  const loadSportsScores = useCallback(async (league: SportsLeague = activeSportsLeague) => {
-    const config = SPORTS_LEAGUES[league];
-    setSportsStatus(`Fetching ${config.label} live streams...`);
+  const loadSportsScores = useCallback(async (targetLeague?: SportsLeague) => {
+    setSportsStatus("Syncing all league schedule networks...");
 
-    try {
-      const res = await fetch(config.url, { cache: 'no-store' });
-      if (!res.ok) throw new Error('Scoreboard payload unavailable');
+    const leagues = Object.keys(SPORTS_LEAGUES) as SportsLeague[];
+    let anySuccess = false;
 
-      const data = await res.json();
-      let events = Array.isArray(data?.events) ? data.events : [];
-      if (events.length === 0) {
-        events = generateMockSportsGames(league);
-        setSportsStatus('Free Live Network (Simulated Feed)');
-      } else {
-        setSportsStatus('Free Live Network Feed Connected');
-      }
-      setSportsGames(events);
-      setSportsUpdated(
-        new Date().toLocaleTimeString(undefined, {
-          hour: '2-digit',
-          minute: '2-digit',
-          second: '2-digit',
-        })
-      );
-    } catch {
-      const events = generateMockSportsGames(league);
-      setSportsGames(events);
-      setSportsStatus('Free Live Network (Simulated Offline Mode)');
-      setSportsUpdated(
-        new Date().toLocaleTimeString(undefined, {
-          hour: '2-digit',
-          minute: '2-digit',
-          second: '2-digit',
-        })
-      );
-    }
-  }, [activeSportsLeague]);
+    const fetchedResults = await Promise.all(
+      leagues.map(async (league) => {
+        const config = SPORTS_LEAGUES[league];
+        try {
+          const res = await fetch(config.url, { cache: 'no-store' });
+          if (!res.ok) throw new Error('Offline');
+          const data = await res.json();
+          let events = Array.isArray(data?.events) ? data.events : [];
+          if (events.length === 0) {
+            events = generateMockSportsGames(league);
+          } else {
+            anySuccess = true;
+          }
+          return { league, events };
+        } catch {
+          return { league, events: generateMockSportsGames(league) };
+        }
+      })
+    );
+
+    setSportsGamesMap(prev => {
+      const next = { ...prev };
+      fetchedResults.forEach(res => {
+        next[res.league as SportsLeague] = res.events;
+      });
+      return next;
+    });
+
+    setSportsStatus(anySuccess ? 'Free Live Network Feed Connected' : 'Free Live Network (Simulated Offline Mode)');
+    setSportsUpdated(
+      new Date().toLocaleTimeString(undefined, {
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+      })
+    );
+  }, []);
 
   function addSportsFavorite() {
     const value = sportsFavoriteInput.trim();
@@ -1144,7 +1157,7 @@ export default function App() {
   }
 
   useEffect(() => {
-    loadSportsScores(activeSportsLeague);
+    loadSportsScores();
   }, [activeSportsLeague, loadSportsScores]);
 
   const handleLoginSubmit = (e: React.FormEvent) => {
