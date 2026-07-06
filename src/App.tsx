@@ -324,9 +324,11 @@ export default function App() {
     updateStreak();
     (window as any).updateHabitDisplays = updateStreak;
     (window as any).sendNotification = sendNotification;
+    (window as any).requestNotificationPermission = requestNotificationPermission;
     return () => {
       delete (window as any).updateHabitDisplays;
       delete (window as any).sendNotification;
+      delete (window as any).requestNotificationPermission;
     };
   }, []);
 
@@ -2618,6 +2620,7 @@ export default function App() {
       pomoStartBtn.addEventListener('click', () => {
         if (pomoRunning) return;
         haptic(10);
+        requestNotifyPermission();
         pomoRunning = true;
         pomoInterval = setInterval(() => {
           if (pomoTimeLeft > 0) {
@@ -2634,10 +2637,12 @@ export default function App() {
               pomoState = 'break';
               pomoTimeLeft = 5 * 60; // 5-minute break
               toast('Focus session ended! Time for a cozy tea break. ☕', 'success');
+              notify('🍅 Focus Session Ended', 'Time for a cozy tea break. ☕');
             } else {
               pomoState = 'focus';
               pomoTimeLeft = 25 * 60;
               toast('Break complete! Ready to start focus sprint? ✨', 'success');
+              notify('🍅 Break Complete', 'Ready to start your next focus sprint? ✨');
             }
             updatePomoDisplay();
             
@@ -2731,13 +2736,17 @@ export default function App() {
     }
 
     function requestNotifyPermission() {
-      if ('Notification' in window && Notification.permission === 'default') {
+      if (typeof (window as any).requestNotificationPermission === 'function') {
+        (window as any).requestNotificationPermission();
+      } else if ('Notification' in window && Notification.permission === 'default') {
         Notification.requestPermission();
       }
     }
 
     function notify(title: string, body: string) {
-      if ('Notification' in window && Notification.permission === 'granted') {
+      if (typeof (window as any).sendNotification === 'function') {
+        (window as any).sendNotification(title, body);
+      } else if ('Notification' in window && Notification.permission === 'granted') {
         try {
           new Notification(title, { body });
         } catch (e) {
