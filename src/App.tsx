@@ -9688,6 +9688,8 @@ Since I run entirely on-device, I cannot fetch live websites or use external ser
           </svg>
           Settings
         </button>
+      </nav>
+
       {showRiftVision && (
         <div className="fixed inset-0 bg-[#070411]/95 backdrop-blur-lg z-[99999] flex items-center justify-center p-3 select-none overflow-y-auto">
           <div className="relative w-full max-w-2xl bg-[#140a24]/90 border-2 border-[#3fd9c7]/50 rounded-2xl p-5 shadow-[0_0_35px_rgba(63,217,199,0.3)] flex flex-col gap-4 animate-fade-in my-auto">
@@ -9888,8 +9890,6 @@ Since I run entirely on-device, I cannot fetch live websites or use external ser
           </div>
         </div>
       )}
-
-      </nav>
     </>
   );
 }
