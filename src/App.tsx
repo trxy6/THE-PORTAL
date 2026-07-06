@@ -6269,9 +6269,9 @@ Since I run entirely on-device, I cannot fetch live websites or use external ser
             </div>
           </div>
 
-          {/* Purple Gear Settings button */}
+          {/* Vibrant Purple Gear Settings button */}
           <button 
-            className="flex items-center justify-center w-8 h-8 rounded-full border border-[#cf4fe6]/30 bg-[#cf4fe6]/10 hover:bg-[#cf4fe6]/25 text-[#cf4fe6] hover:text-white transition-all duration-300 shadow-[0_0_10px_rgba(207,79,230,0.25)] cursor-pointer focus:outline-none" 
+            className="flex items-center justify-center w-8 h-8 rounded-full border-2 border-[#cf4fe6] bg-[#cf4fe6]/20 hover:bg-[#cf4fe6]/45 text-[#cf4fe6] hover:text-white transition-all duration-300 shadow-[0_0_15px_rgba(207,79,230,0.65)] cursor-pointer focus:outline-none" 
             title="Settings"
             onClick={() => { if ((window as any).switchToPanel) (window as any).switchToPanel('settings'); }}
           >
