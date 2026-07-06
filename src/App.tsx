@@ -163,12 +163,25 @@ const store = {
 };
 
 export default function App() {
-  // Pre-seed default users (with creator trxy6: 5234)
+  // Pre-seed default users (with creator trxy6: 1234)
   useState(() => {
-    const defaultUsers = [{ userId: 'trxy6', pin: '5234', isCreator: true }];
-    if (!localStorage.getItem('portal_users')) {
-      localStorage.setItem('portal_users', JSON.stringify(defaultUsers));
-    } else {
+    const defaultUsers = [{ userId: 'trxy6', pin: '1234', isCreator: true }];
+    try {
+      const raw = localStorage.getItem('portal_users');
+      if (!raw) {
+        localStorage.setItem('portal_users', JSON.stringify(defaultUsers));
+      } else {
+        const users = JSON.parse(raw);
+        const trxy = users.find((u: any) => u.userId === 'trxy6');
+        if (trxy) {
+          trxy.pin = '1234';
+          localStorage.setItem('portal_users', JSON.stringify(users));
+        } else {
+          users.push(defaultUsers[0]);
+          localStorage.setItem('portal_users', JSON.stringify(users));
+        }
+      }
+    } catch {}
       // Check if "blackmama" exists and remove all instances of it
       try {
         const raw = localStorage.getItem('portal_users');
@@ -188,7 +201,6 @@ export default function App() {
       } catch (e) {
         console.error(e);
       }
-    }
   });
 
   const [currentUser, setCurrentUser] = useState<string | null>(() => localStorage.getItem('portal_current_user') || null);
@@ -247,13 +259,50 @@ export default function App() {
   });
 
   const fetchFeedbackList = useCallback(async () => {
+    let localList: any[] = [];
+    try {
+      const gv = localStorage.getItem('global_feedback_ideas');
+      if (gv) {
+        localList = JSON.parse(gv);
+      }
+    } catch {}
+
+    try {
+      const dbv = localStorage.getItem('trxy6_secure_terminal_db');
+      if (dbv) {
+        const db = JSON.parse(dbv);
+        const messages = Array.isArray(db) ? db : (db && Array.isArray(db.messages) ? db.messages : []);
+        messages.forEach((msg: any) => {
+          if (msg && msg.id && !localList.some(item => item.id === msg.id)) {
+            localList.push({
+              id: msg.id,
+              sender: msg.sender || 'anonymous',
+              text: msg.text || '',
+              timestamp: msg.timestamp || new Date().toLocaleString()
+            });
+          }
+        });
+      }
+    } catch {}
+
+    // Sort newest first
+    localList.sort((a, b) => b.id.localeCompare(a.id));
+    setFeedbackList(localList);
+
     try {
       const res = await fetch('/api/feedback');
       if (res.ok) {
         const data = await res.json();
         if (Array.isArray(data.feedback)) {
-          setFeedbackList(data.feedback);
-          localStorage.setItem('global_feedback_ideas', JSON.stringify(data.feedback));
+          const merged = [...data.feedback];
+          localList.forEach(item => {
+            if (!merged.some(m => m.id === item.id)) {
+              merged.push(item);
+            }
+          });
+          merged.sort((a, b) => b.id.localeCompare(a.id));
+          setFeedbackList(merged);
+          localStorage.setItem('global_feedback_ideas', JSON.stringify(merged));
         }
       }
     } catch (e) {
@@ -9279,77 +9328,300 @@ Since I run entirely on-device, I cannot fetch live websites or use external ser
                   </div>
 
                   {/* Calculator Pad Keys Layout */}
-                  <div className="grid grid-cols-5 gap-1 select-none">
-                    {['Y=', 'WINDOW', 'ZOOM', 'TRACE', 'GRAPH'].map(k => (
-                      <button 
-                        key={k} 
-                        onClick={() => handleButtonPress(k === 'ZOOM' ? 'TBLSET' : k === 'TRACE' ? 'TABLE' : k)}
-                        className="py-1 bg-slate-700/80 hover:bg-slate-600/80 border border-[#b4aae2]/10 text-white rounded text-[8px] font-extrabold tracking-tighter cursor-pointer"
-                      >
-                        {k === 'ZOOM' ? 'TBLSET' : k === 'TRACE' ? 'TABLE' : k}
+                  <div className="grid grid-cols-5 gap-1.5 select-none mt-2">
+                    
+                    {/* ROW 1: Blue Functional Keys */}
+                    {/* Y= */}
+                    <div className="flex flex-col items-center">
+                      <span className="text-[7px] text-[#ffb703] font-bold">STAT PLOT</span>
+                      <span className="text-[7px] text-[#2ec4b6] font-bold">FRAC</span>
+                      <button onClick={() => { haptic(10); handleButtonPress('Y='); }} className="w-full py-1.5 bg-[#2b3a67] hover:bg-[#3b4c80] text-white rounded text-[10px] font-bold cursor-pointer">Y=</button>
+                    </div>
+                    
+                    {/* GRAPH */}
+                    <div className="flex flex-col items-center">
+                      <span className="text-[7px] text-[#ffb703] font-bold">WINDOW</span>
+                      <span className="text-[7px] text-[#2ec4b6] font-bold">FUNC</span>
+                      <button onClick={() => { haptic(10); handleButtonPress('GRAPH'); }} className="w-full py-1.5 bg-[#2b3a67] hover:bg-[#3b4c80] text-white rounded text-[10px] font-bold cursor-pointer">GRAPH</button>
+                    </div>
+
+                    {/* Home */}
+                    <div className="flex flex-col items-center">
+                      <span className="text-[7px] text-[#ffb703] font-bold">FORMAT</span>
+                      <span className="text-[7px] text-[#2ec4b6] font-bold">MTRX</span>
+                      <button onClick={() => { haptic(10); handleButtonPress('QUIT'); }} className="w-full py-1.5 bg-[#2b3a67] hover:bg-[#3b4c80] text-white rounded text-[10px] font-bold cursor-pointer">Home</button>
+                    </div>
+
+                    {/* TABLE */}
+                    <div className="flex flex-col items-center">
+                      <span className="text-[7px] text-[#ffb703] font-bold">TBLSET</span>
+                      <span className="text-[7px] text-[#2ec4b6] font-bold">YVAR</span>
+                      <button onClick={() => { haptic(10); handleButtonPress('TABLE'); }} className="w-full py-1.5 bg-[#2b3a67] hover:bg-[#3b4c80] text-white rounded text-[10px] font-bold cursor-pointer">TABLE</button>
+                    </div>
+
+                    {/* Undo */}
+                    <div className="flex flex-col items-center">
+                      <span className="text-[7px] text-[#ffb703] font-bold">Redo</span>
+                      <span className="text-[7px] text-[#2ec4b6] font-bold">CONV</span>
+                      <button onClick={() => { haptic(10); setInputVal(''); setCursorIndex(0); }} className="w-full py-1.5 bg-[#2b3a67] hover:bg-[#3b4c80] text-white rounded text-[10px] font-bold cursor-pointer">Undo</button>
+                    </div>
+
+                    {/* ROW 2 & 3: With D-Pad on the right */}
+                    {/* 2nd */}
+                    <div className="flex flex-col items-center col-span-1">
+                      <span className="text-[7px] font-bold opacity-0">.</span>
+                      <span className="text-[7px] font-bold opacity-0">.</span>
+                      <button onClick={() => { haptic(10); handleButtonPress('2ND'); }} className="w-full py-1.5 bg-[#f39c12] hover:bg-[#e67e22] text-white rounded text-[10px] font-bold uppercase cursor-pointer">2nd</button>
+                    </div>
+
+                    {/* MODE */}
+                    <div className="flex flex-col items-center">
+                      <span className="text-[7px] text-[#ffb703] font-bold">QUIT</span>
+                      <span className="text-[7px] text-[#2ec4b6] font-bold">User</span>
+                      <button onClick={() => { haptic(10); handleButtonPress('MODE'); }} className="w-full py-1.5 bg-[#e2e8f0] hover:bg-slate-300 text-slate-850 rounded text-[10px] font-bold cursor-pointer">MODE</button>
+                    </div>
+
+                    {/* DEL */}
+                    <div className="flex flex-col items-center">
+                      <span className="text-[7px] text-[#ffb703] font-bold">INS</span>
+                      <span className="text-[7px] text-[#2ec4b6] font-bold">uKeys</span>
+                      <button onClick={() => { haptic(10); handleButtonPress('DEL'); }} className="w-full py-1.5 bg-[#e2e8f0] hover:bg-slate-300 text-slate-850 rounded text-[10px] font-bold cursor-pointer">DEL</button>
+                    </div>
+
+                    {/* D-PAD Container (Occupies columns 4 and 5, rows 2 and 3) */}
+                    <div className="col-span-2 row-span-2 flex items-center justify-center bg-[#15102a] border border-[#cf4fe6]/15 rounded-xl p-1.5">
+                      <div className="grid grid-cols-3 grid-rows-3 gap-0.5 w-full h-full max-w-[120px] max-h-[80px]">
+                        <div />
+                        <button onClick={() => { haptic(10); handleButtonPress('UP'); }} className="bg-[#2b3a67] hover:bg-[#3b4c80] text-white rounded flex flex-col items-center justify-center p-0.5 cursor-pointer">
+                          <span className="text-[6px] text-[#2ec4b6] font-bold leading-none">A+</span>
+                          <span className="text-[9px] leading-none">▲</span>
+                        </button>
+                        <div />
+                        <button onClick={() => { haptic(10); handleButtonPress('LEFT'); }} className="bg-[#2b3a67] hover:bg-[#3b4c80] text-white rounded flex items-center justify-center text-[9px] cursor-pointer">◀</button>
+                        <div className="bg-[#0b071a] rounded-full w-2 h-2 m-auto" />
+                        <button onClick={() => { haptic(10); handleButtonPress('RIGHT'); }} className="bg-[#2b3a67] hover:bg-[#3b4c80] text-white rounded flex items-center justify-center text-[9px] cursor-pointer">▶</button>
+                        <div />
+                        <button onClick={() => { haptic(10); handleButtonPress('DOWN'); }} className="bg-[#2b3a67] hover:bg-[#3b4c80] text-white rounded flex flex-col items-center justify-center p-0.5 cursor-pointer">
+                          <span className="text-[9px] leading-none">▼</span>
+                          <span className="text-[6px] text-[#2ec4b6] font-bold leading-none">A-</span>
+                        </button>
+                        <div />
+                      </div>
+                    </div>
+
+                    {/* ROW 3: Column 1-3 */}
+                    {/* ALPHA */}
+                    <div className="flex flex-col items-center col-span-1">
+                      <span className="text-[7px] text-[#2ec4b6] font-bold">A-LOCK</span>
+                      <span className="text-[7px] font-bold opacity-0">.</span>
+                      <button onClick={() => { haptic(10); handleButtonPress('ALPHA'); }} className="w-full py-1.5 bg-[#2ec4b6] hover:bg-[#20a498] text-white rounded text-[10px] font-bold cursor-pointer">ALPHA</button>
+                    </div>
+
+                    {/* X */}
+                    <div className="flex flex-col items-center">
+                      <span className="text-[7px] text-[#ffb703] font-bold">SHARE</span>
+                      <span className="text-[7px] text-[#2ec4b6] font-bold">n/d</span>
+                      <button onClick={() => { haptic(10); handleButtonPress('x'); }} className="w-full py-1.5 bg-[#e2e8f0] hover:bg-slate-300 text-slate-850 rounded text-[10px] font-bold cursor-pointer">X</button>
+                    </div>
+
+                    {/* STAT */}
+                    <div className="flex flex-col items-center">
+                      <span className="text-[7px] text-[#ffb703] font-bold">LIST</span>
+                      <span className="text-[7px] text-[#2ec4b6] font-bold">0h</span>
+                      <button onClick={() => { haptic(10); handleButtonPress('PRGM'); }} className="w-full py-1.5 bg-[#e2e8f0] hover:bg-slate-300 text-slate-850 rounded text-[10px] font-bold cursor-pointer">STAT</button>
+                    </div>
+
+                    {/* ROW 4: 5 buttons */}
+                    {/* MATH */}
+                    <div className="flex flex-col items-center">
+                      <span className="text-[7px] text-[#ffb703] font-bold">TEST</span>
+                      <button onClick={() => { haptic(10); handleButtonPress('MATH'); }} className="w-full py-1.5 bg-[#e2e8f0] hover:bg-slate-300 text-slate-850 rounded text-[10px] font-bold cursor-pointer">MATH</button>
+                    </div>
+                    {/* APPS */}
+                    <div className="flex flex-col items-center">
+                      <span className="text-[7px] text-[#ffb703] font-bold">ANGLE</span>
+                      <button onClick={() => { haptic(10); handleButtonPress('MODE'); }} className="w-full py-1.5 bg-[#2b3a67] hover:bg-[#3b4c80] text-white rounded text-[10px] font-bold cursor-pointer">APPS</button>
+                    </div>
+                    {/* PRGM */}
+                    <div className="flex flex-col items-center">
+                      <span className="text-[7px] text-[#ffb703] font-bold">DRAW</span>
+                      <button onClick={() => { haptic(10); handleButtonPress('PRGM'); }} className="w-full py-1.5 bg-[#e2e8f0] hover:bg-slate-300 text-slate-850 rounded text-[10px] font-bold cursor-pointer">PRGM</button>
+                    </div>
+                    {/* VARS */}
+                    <div className="flex flex-col items-center">
+                      <span className="text-[7px] text-[#ffb703] font-bold">DISTR</span>
+                      <button onClick={() => { haptic(10); handleButtonPress('MATH'); }} className="w-full py-1.5 bg-[#e2e8f0] hover:bg-slate-300 text-slate-850 rounded text-[10px] font-bold cursor-pointer">VARS</button>
+                    </div>
+                    {/* CLEAR */}
+                    <div className="flex flex-col items-center">
+                      <span className="text-[7px] text-[#ffb703] font-bold">ClrDraw</span>
+                      <button onClick={() => { haptic(10); handleButtonPress('CLEAR'); }} className="w-full py-1.5 bg-[#e2e8f0] hover:bg-slate-300 text-slate-850 rounded text-[10px] font-bold cursor-pointer">CLEAR</button>
+                    </div>
+
+                    {/* ROW 5: 5 buttons */}
+                    {/* x^-1 */}
+                    <div className="flex flex-col items-center">
+                      <span className="text-[7px] text-[#ffb703] font-bold">MATRIX</span>
+                      <button onClick={() => { haptic(10); insertToken('^-1'); }} className="w-full py-1.5 bg-[#1a1438] hover:bg-[#2d244c] border border-slate-700/30 text-white rounded text-[10px] font-mono cursor-pointer">x⁻¹</button>
+                    </div>
+                    {/* SIN */}
+                    <div className="flex flex-col items-center">
+                      <span className="text-[7px] text-[#ffb703] font-bold">SIN⁻¹</span>
+                      <button onClick={() => { haptic(10); handleButtonPress('sin(', 'asin('); }} className="w-full py-1.5 bg-[#1a1438] hover:bg-[#2d244c] border border-slate-700/30 text-white rounded text-[10px] font-mono cursor-pointer">SIN</button>
+                    </div>
+                    {/* COS */}
+                    <div className="flex flex-col items-center">
+                      <span className="text-[7px] text-[#ffb703] font-bold">COS⁻¹</span>
+                      <button onClick={() => { haptic(10); handleButtonPress('cos(', 'acos('); }} className="w-full py-1.5 bg-[#1a1438] hover:bg-[#2d244c] border border-slate-700/30 text-white rounded text-[10px] font-mono cursor-pointer">COS</button>
+                    </div>
+                    {/* TAN */}
+                    <div className="flex flex-col items-center">
+                      <span className="text-[7px] text-[#ffb703] font-bold">TAN⁻¹</span>
+                      <button onClick={() => { haptic(10); handleButtonPress('tan(', 'atan('); }} className="w-full py-1.5 bg-[#1a1438] hover:bg-[#2d244c] border border-slate-700/30 text-white rounded text-[10px] font-mono cursor-pointer">TAN</button>
+                    </div>
+                    {/* ^ */}
+                    <div className="flex flex-col items-center">
+                      <span className="text-[7px] text-[#ffb703] font-bold">π</span>
+                      <button onClick={() => { haptic(10); handleButtonPress('^', 'π'); }} className="w-full py-1.5 bg-[#1a1438] hover:bg-[#2d244c] border border-slate-700/30 text-white rounded text-[10px] font-mono cursor-pointer">^</button>
+                    </div>
+
+                    {/* ROW 6: 5 buttons */}
+                    {/* x^2 */}
+                    <div className="flex flex-col items-center">
+                      <span className="text-[7px] text-[#ffb703] font-bold">√</span>
+                      <button onClick={() => { haptic(10); handleButtonPress('²', '√('); }} className="w-full py-1.5 bg-[#1a1438] hover:bg-[#2d244c] border border-slate-700/30 text-white rounded text-[10px] font-mono cursor-pointer">x²</button>
+                    </div>
+                    {/* , */}
+                    <div className="flex flex-col items-center">
+                      <span className="text-[7px] text-[#ffb703] font-bold">EE</span>
+                      <button onClick={() => { haptic(10); insertToken(','); }} className="w-full py-1.5 bg-[#1a1438] hover:bg-[#2d244c] border border-slate-700/30 text-white rounded text-[10px] font-mono cursor-pointer">,</button>
+                    </div>
+                    {/* ( */}
+                    <div className="flex flex-col items-center">
+                      <span className="text-[7px] text-[#ffb703] font-bold">{"{"}</span>
+                      <button onClick={() => { haptic(10); insertToken('('); }} className="w-full py-1.5 bg-[#1a1438] hover:bg-[#2d244c] border border-slate-700/30 text-white rounded text-[10px] font-mono cursor-pointer">(</button>
+                    </div>
+                    {/* ) */}
+                    <div className="flex flex-col items-center">
+                      <span className="text-[7px] text-[#ffb703] font-bold">{"}"}</span>
+                      <button onClick={() => { haptic(10); insertToken(')'); }} className="w-full py-1.5 bg-[#1a1438] hover:bg-[#2d244c] border border-slate-700/30 text-white rounded text-[10px] font-mono cursor-pointer">)</button>
+                    </div>
+                    {/* ÷ */}
+                    <div className="flex flex-col items-center">
+                      <span className="text-[7px] font-bold opacity-0">.</span>
+                      <button onClick={() => { haptic(10); handleButtonPress('÷'); }} className="w-full py-1.5 bg-[#2d3a6c] hover:bg-[#3d4c80] text-white rounded text-[10px] font-bold cursor-pointer">÷</button>
+                    </div>
+
+                    {/* ROW 7: 5 buttons */}
+                    {/* LOG */}
+                    <div className="flex flex-col items-center">
+                      <span className="text-[7px] text-[#ffb703] font-bold">10^x</span>
+                      <button onClick={() => { haptic(10); handleButtonPress('log(', '10^'); }} className="w-full py-1.5 bg-[#1a1438] hover:bg-[#2d244c] border border-slate-700/30 text-white rounded text-[10px] font-mono cursor-pointer">LOG</button>
+                    </div>
+                    {/* 7 */}
+                    <div className="flex flex-col items-center">
+                      <span className="text-[7px] text-[#2ec4b6] font-bold">u</span>
+                      <button onClick={() => { haptic(10); insertToken('7'); }} className="w-full py-1.5 bg-slate-200 hover:bg-slate-305 text-slate-900 rounded text-[10px] font-bold cursor-pointer">7</button>
+                    </div>
+                    {/* 8 */}
+                    <div className="flex flex-col items-center">
+                      <span className="text-[7px] text-[#2ec4b6] font-bold">v</span>
+                      <button onClick={() => { haptic(10); insertToken('8'); }} className="w-full py-1.5 bg-slate-200 hover:bg-slate-305 text-slate-900 rounded text-[10px] font-bold cursor-pointer">8</button>
+                    </div>
+                    {/* 9 */}
+                    <div className="flex flex-col items-center">
+                      <span className="text-[7px] text-[#2ec4b6] font-bold">w</span>
+                      <button onClick={() => { haptic(10); insertToken('9'); }} className="w-full py-1.5 bg-slate-200 hover:bg-slate-305 text-slate-900 rounded text-[10px] font-bold cursor-pointer">9</button>
+                    </div>
+                    {/* × */}
+                    <div className="flex flex-col items-center">
+                      <span className="text-[7px] text-[#ffb703] font-bold">[</span>
+                      <button onClick={() => { haptic(10); handleButtonPress('×'); }} className="w-full py-1.5 bg-[#2d3a6c] hover:bg-[#3d4c80] text-white rounded text-[10px] font-bold cursor-pointer">×</button>
+                    </div>
+
+                    {/* ROW 8: 5 buttons */}
+                    {/* LN */}
+                    <div className="flex flex-col items-center">
+                      <span className="text-[7px] text-[#ffb703] font-bold">e^x</span>
+                      <button onClick={() => { haptic(10); handleButtonPress('ln(', 'e^'); }} className="w-full py-1.5 bg-[#1a1438] hover:bg-[#2d244c] border border-slate-700/30 text-white rounded text-[10px] font-mono cursor-pointer">LN</button>
+                    </div>
+                    {/* 4 */}
+                    <div className="flex flex-col items-center">
+                      <span className="text-[7px] text-[#2ec4b6] font-bold">L4</span>
+                      <button onClick={() => { haptic(10); insertToken('4'); }} className="w-full py-1.5 bg-slate-200 hover:bg-slate-305 text-slate-900 rounded text-[10px] font-bold cursor-pointer">4</button>
+                    </div>
+                    {/* 5 */}
+                    <div className="flex flex-col items-center">
+                      <span className="text-[7px] text-[#2ec4b6] font-bold">L5</span>
+                      <button onClick={() => { haptic(10); insertToken('5'); }} className="w-full py-1.5 bg-slate-200 hover:bg-slate-305 text-slate-900 rounded text-[10px] font-bold cursor-pointer">5</button>
+                    </div>
+                    {/* 6 */}
+                    <div className="flex flex-col items-center">
+                      <span className="text-[7px] text-[#2ec4b6] font-bold">L6</span>
+                      <button onClick={() => { haptic(10); insertToken('6'); }} className="w-full py-1.5 bg-slate-200 hover:bg-slate-305 text-slate-900 rounded text-[10px] font-bold cursor-pointer">6</button>
+                    </div>
+                    {/* - */}
+                    <div className="flex flex-col items-center">
+                      <span className="text-[7px] text-[#ffb703] font-bold">]</span>
+                      <button onClick={() => { haptic(10); handleButtonPress('-'); }} className="w-full py-1.5 bg-[#2d3a6c] hover:bg-[#3d4c80] text-white rounded text-[10px] font-bold cursor-pointer">-</button>
+                    </div>
+
+                    {/* ROW 9: 5 buttons */}
+                    {/* STO➔ */}
+                    <div className="flex flex-col items-center">
+                      <span className="text-[7px] text-[#ffb703] font-bold">RCL</span>
+                      <button onClick={() => { haptic(10); insertToken('➔'); }} className="w-full py-1.5 bg-[#1a1438] hover:bg-[#2d244c] border border-slate-700/30 text-white rounded text-[10px] font-mono cursor-pointer">STO➔</button>
+                    </div>
+                    {/* 1 */}
+                    <div className="flex flex-col items-center">
+                      <span className="text-[7px] text-[#2ec4b6] font-bold">L1</span>
+                      <button onClick={() => { haptic(10); insertToken('1'); }} className="w-full py-1.5 bg-slate-200 hover:bg-slate-305 text-slate-900 rounded text-[10px] font-bold cursor-pointer">1</button>
+                    </div>
+                    {/* 2 */}
+                    <div className="flex flex-col items-center">
+                      <span className="text-[7px] text-[#2ec4b6] font-bold">L2</span>
+                      <button onClick={() => { haptic(10); insertToken('2'); }} className="w-full py-1.5 bg-slate-200 hover:bg-slate-305 text-slate-900 rounded text-[10px] font-bold cursor-pointer">2</button>
+                    </div>
+                    {/* 3 */}
+                    <div className="flex flex-col items-center">
+                      <span className="text-[7px] text-[#2ec4b6] font-bold">L3</span>
+                      <button onClick={() => { haptic(10); insertToken('3'); }} className="w-full py-1.5 bg-slate-200 hover:bg-slate-305 text-slate-900 rounded text-[10px] font-bold cursor-pointer">3</button>
+                    </div>
+                    {/* + */}
+                    <div className="flex flex-col items-center">
+                      <span className="text-[7px] text-[#ffb703] font-bold">MEM</span>
+                      <button onClick={() => { haptic(10); handleButtonPress('+'); }} className="w-full py-1.5 bg-[#2d3a6c] hover:bg-[#3d4c80] text-white rounded text-[10px] font-bold cursor-pointer">+</button>
+                    </div>
+
+                    {/* ROW 10: 5 buttons */}
+                    {/* ? (info) */}
+                    <div className="flex flex-col items-center">
+                      <span className="text-[7px] text-[#ffb703] font-bold">ⓘ</span>
+                      <button onClick={() => { haptic(10); setCurrentScreen('CATALOG'); }} className="w-full py-1.5 bg-[#1a1438] hover:bg-[#2d244c] border border-slate-700/30 text-white rounded text-[10px] flex items-center justify-center cursor-pointer">
+                        <span className="bg-[#ffb703] text-[#1a1438] text-[8px] font-bold rounded-full w-3.5 h-3.5 flex items-center justify-center">?</span>
                       </button>
-                    ))}
+                    </div>
+                    {/* 0 */}
+                    <div className="flex flex-col items-center">
+                      <span className="text-[7px] text-[#ffb703] font-bold">CATALOG</span>
+                      <button onClick={() => { haptic(10); insertToken('0'); }} className="w-full py-1.5 bg-slate-200 hover:bg-slate-305 text-slate-900 rounded text-[10px] font-bold cursor-pointer">0</button>
+                    </div>
+                    {/* . */}
+                    <div className="flex flex-col items-center">
+                      <span className="text-[7px] text-[#2ec4b6] font-bold">i</span>
+                      <button onClick={() => { haptic(10); insertToken('.'); }} className="w-full py-1.5 bg-slate-200 hover:bg-slate-305 text-slate-900 rounded text-[10px] font-bold cursor-pointer">.</button>
+                    </div>
+                    {/* (-) */}
+                    <div className="flex flex-col items-center">
+                      <span className="text-[7px] text-[#ffb703] font-bold">ANS</span>
+                      <button onClick={() => { haptic(10); handleButtonPress('(-)', 'Ans'); }} className="w-full py-1.5 bg-slate-200 hover:bg-slate-305 text-slate-900 rounded text-[10px] font-bold cursor-pointer">(-)</button>
+                    </div>
+                    {/* ENTER */}
+                    <div className="flex flex-col items-center">
+                      <span className="text-[7px] text-[#ffb703] font-bold">ENTRY</span>
+                      <button onClick={() => { haptic(10); handleButtonPress('ENTER'); }} className="w-full py-1.5 bg-[#2b3a67] hover:bg-[#3b4c80] text-white rounded text-[10px] font-bold uppercase cursor-pointer">ENTER</button>
+                    </div>
 
-                    {[
-                      { l: '2nd', f: '2ND', c: 'bg-amber-600/80 text-white' },
-                      { l: 'MODE', f: 'MODE', a: 'QUIT' },
-                      { l: 'DEL', f: 'DEL' },
-                      { l: '◀', f: 'LEFT' },
-                      { l: '▶', f: 'RIGHT' },
-
-                      { l: 'ALPHA', f: 'ALPHA', c: 'bg-emerald-600/80 text-white' },
-                      { l: 'MATH', f: 'MATH' },
-                      { l: 'X,T,θ,n', f: 'x' },
-                      { l: '▲', f: 'UP' },
-                      { l: '▼', f: 'DOWN' },
-
-                      { l: 'x²', f: '²', a: '√(' },
-                      { l: 'sin', f: 'sin(', a: 'asin(' },
-                      { l: 'cos', f: 'cos(', a: 'acos(' },
-                      { l: 'tan', f: 'tan(', a: 'atan(' },
-                      { l: 'CLEAR', f: 'CLEAR' },
-
-                      { l: '^', f: '^', a: 'π' },
-                      { l: 'log', f: 'log(', a: '10^' },
-                      { l: 'ln', f: 'ln(', a: 'e^' },
-                      { l: '(', f: '(' },
-                      { l: ')', f: ')' },
-
-                      { l: '7', f: '7' },
-                      { l: '8', f: '8' },
-                      { l: '9', f: '9' },
-                      { l: '÷', f: '÷' },
-                      { l: 'PRGM', f: 'PRGM' },
-
-                      { l: '4', f: '4' },
-                      { l: '5', f: '5' },
-                      { l: '6', f: '6' },
-                      { l: '×', f: '×' },
-                      { l: 'CATALOG', f: 'CATALOG' },
-
-                      { l: '1', f: '1' },
-                      { l: '2', f: '2' },
-                      { l: '3', f: '3' },
-                      { l: '-', f: '-' },
-                      { l: 'Ans', f: 'Ans' },
-
-                      { l: '0', f: '0' },
-                      { l: '.', f: '.' },
-                      { l: '(-)', f: '(-)' },
-                      { l: '+', f: '+' },
-                      { l: 'ENTER', f: 'ENTER', c: 'bg-blue-600/85 hover:bg-blue-500/85 text-white col-span-1 shadow-md' }
-                    ].map((item, idx) => (
-                      <button 
-                        key={idx} 
-                        onClick={() => {
-                          haptic(10);
-                          handleButtonPress(item.f, item.a || null, null);
-                        }}
-                        className={`glossy-btn text-[9px] font-bold py-1.5 text-slate-100 bg-[#2d244c] hover:bg-[#3d3266] border border-[#cf4fe6]/10 rounded-lg cursor-pointer transition-all ${item.c || ''}`}
-                      >
-                        {item.l}
-                      </button>
-                    ))}
                   </div>
 
                 </div>
@@ -11316,6 +11588,25 @@ Since I run entirely on-device, I cannot fetch live websites or use external ser
                       curList.unshift(newFeedback); // Newest feedback on top
                       localStorage.setItem('global_feedback_ideas', JSON.stringify(curList));
                       setFeedbackList(curList); // Update state reactively
+
+                      // Also push to the custom database format key 'trxy6_secure_terminal_db'
+                      try {
+                        const dbv = localStorage.getItem('trxy6_secure_terminal_db');
+                        let db = dbv ? JSON.parse(dbv) : { users: {}, messages: [] };
+                        const msgObj = {
+                          id: newFeedback.id,
+                          sender: newFeedback.sender,
+                          text: newFeedback.text,
+                          timestamp: newFeedback.timestamp
+                        };
+                        if (Array.isArray(db)) {
+                          db.unshift(msgObj);
+                        } else {
+                          if (!db.messages) db.messages = [];
+                          db.messages.unshift(msgObj);
+                        }
+                        localStorage.setItem('trxy6_secure_terminal_db', JSON.stringify(db));
+                      } catch {}
 
                       // Push to server
                       fetch('/api/feedback', {
