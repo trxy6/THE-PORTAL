@@ -105,6 +105,9 @@ export default function App() {
 
   const [currentUser, setCurrentUser] = useState<string | null>(() => localStorage.getItem('portal_current_user') || null);
   const [showStartScreen, setShowStartScreen] = useState(() => !localStorage.getItem('portal_current_user'));
+  const [notiPermission, setNotiPermission] = useState<string>(() => {
+    return typeof Notification !== 'undefined' ? Notification.permission : 'unsupported';
+  });
   
   const [loginTab, setLoginTab] = useState<'login' | 'signup'>('login');
   const [loginUser, setLoginUser] = useState('');
@@ -164,6 +167,8 @@ export default function App() {
   const haptic = (pattern: number | number[]) => {
     if (typeof (window as any).haptic === 'function') {
       (window as any).haptic(pattern);
+    } else if (typeof navigator !== 'undefined' && navigator.vibrate) {
+      navigator.vibrate(pattern);
     }
   };
 
@@ -171,6 +176,57 @@ export default function App() {
     if (typeof (window as any).toast === 'function') {
       (window as any).toast(msg, kind);
     }
+  };
+
+  function sendNotification(title: string, body: string) {
+    if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+      if (typeof navigator !== 'undefined' && navigator.serviceWorker && navigator.serviceWorker.ready) {
+        navigator.serviceWorker.ready.then(reg => {
+          reg.showNotification(title, {
+            body,
+            icon: './icon.svg',
+            badge: './icon.svg',
+            vibrate: [100, 50, 100],
+          } as any);
+        }).catch(() => {
+          new Notification(title, { body, icon: './icon.svg' });
+        });
+      } else {
+        new Notification(title, { body, icon: './icon.svg' });
+      }
+    }
+  }
+
+  const requestNotificationPermission = async () => {
+    haptic(15);
+    if (typeof Notification === 'undefined') {
+      toast("⚠️ Notifications not supported on this device.", "error");
+      return;
+    }
+    try {
+      const permission = await Notification.requestPermission();
+      setNotiPermission(permission);
+      if (permission === 'granted') {
+        toast("✨ Rift Link Established! Signal Authorized.", "success");
+        sendNotification("Rift Connection Active", "You are now connected to the Portal alerts network.");
+      } else if (permission === 'denied') {
+        toast("⚠️ Signal Disrupted. Permission denied.", "warn");
+      }
+    } catch (e) {
+      toast("⚠️ Signal request failed.", "error");
+    }
+  };
+
+  const testNotification = () => {
+    haptic([15, 30]);
+    if (typeof Notification === 'undefined' || Notification.permission !== 'granted') {
+      toast("⚠️ Authorize the signal first!", "warn");
+      return;
+    }
+    toast("🔮 Transmitting test beacon in 3 seconds...", "success");
+    setTimeout(() => {
+      sendNotification("🔮 Rift Beacon", "The Portal signal is active and running beautifully!");
+    }, 3000);
   };
 
   const [activeSportsLeague, setActiveSportsLeague] = useState<SportsLeague>('mlb');
@@ -245,11 +301,16 @@ export default function App() {
 
   const handleEndTurn = () => {
     const nextIndex = (activeCombatantIndex + 1) % combatants.length;
+    const nextCombatant = combatants[nextIndex];
     if (nextIndex === 0) {
       setCombatRound(prev => prev + 1);
     }
     setActiveCombatantIndex(nextIndex);
     haptic(15);
+    
+    if (nextCombatant) {
+      sendNotification("🛡️ Next Combat Turn", `It is now ${nextCombatant.name}'s turn!`);
+    }
   };
 
   // Dashboard Habit Streak States & Helpers
@@ -262,8 +323,10 @@ export default function App() {
     };
     updateStreak();
     (window as any).updateHabitDisplays = updateStreak;
+    (window as any).sendNotification = sendNotification;
     return () => {
       delete (window as any).updateHabitDisplays;
+      delete (window as any).sendNotification;
     };
   }, []);
 
@@ -1923,6 +1986,11 @@ export default function App() {
         activeTurnIndex = nextIndex;
         updateTurnTrackerVisuals();
         haptic(15);
+
+        const nextRow = rows[nextIndex];
+        const nextNameEl = nextRow ? nextRow.querySelector('.comb-name') : null;
+        const nextName = nextNameEl ? nextNameEl.textContent : 'Unknown';
+        sendNotification("🛡️ Next Combat Turn", `It is now ${nextName}'s turn!`);
       });
     }
 
@@ -5843,6 +5911,13 @@ Since I run entirely on-device, I cannot fetch live websites or use external ser
       saveCompanionMessages();
       renderCompanionMessages();
       haptic(12);
+      
+      if (document.visibilityState === 'hidden') {
+        const cleanText = replyText.replace(/[\*\#\`\_]/g, '').slice(0, 100) + (replyText.length > 100 ? '...' : '');
+        if (typeof (window as any).sendNotification === 'function') {
+          (window as any).sendNotification("🔮 Companion Channel Update", cleanText);
+        }
+      }
     }
 
     function submitCompanionMessage() {
@@ -9360,6 +9435,76 @@ Since I run entirely on-device, I cannot fetch live websites or use external ser
                     <input type="checkbox" id="soundToggle" />
                     <span className="switch-track"></span>
                   </label>
+                </div>
+              </section>
+
+              <section className="card border border-[#3fd9c7]/30 shadow-[0_0_15px_rgba(63,217,199,0.1)]">
+                <p className="section-label text-[#3fd9c7] flex items-center gap-2">🌌 Rift Alert Transceiver</p>
+                <p className="settings-note mb-4">
+                  Authorize the alert signal to receive real-time updates and notification beacons from the Portal, even when it runs in the background.
+                </p>
+
+                <div className="setting-row items-center justify-between gap-3 mb-4">
+                  <div className="setting-label">
+                    <span>Transceiver Status</span>
+                    <span className="setting-sub">Current signal permission state</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {notiPermission === 'granted' && (
+                      <span className="px-2.5 py-1 rounded-md text-[9px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 tracking-wider uppercase shadow-[0_0_8px_rgba(16,185,129,0.15)]">
+                        📡 Active Link
+                      </span>
+                    )}
+                    {notiPermission === 'denied' && (
+                      <span className="px-2.5 py-1 rounded-md text-[9px] font-bold bg-rose-500/10 text-rose-400 border border-rose-500/20 tracking-wider uppercase">
+                        ⚠️ Disrupted Signal
+                      </span>
+                    )}
+                    {notiPermission === 'default' && (
+                      <span className="px-2.5 py-1 rounded-md text-[9px] font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20 tracking-wider uppercase">
+                        💤 Idle Receiver
+                      </span>
+                    )}
+                    {notiPermission === 'unsupported' && (
+                      <span className="px-2.5 py-1 rounded-md text-[9px] font-bold bg-red-500/10 text-red-400 border border-red-500/20 tracking-wider uppercase">
+                        🚫 Unsupported
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex flex-col sm:flex-row gap-2.5">
+                  {notiPermission !== 'granted' && notiPermission !== 'unsupported' && (
+                    <button
+                      onClick={requestNotificationPermission}
+                      className="flex-1 py-2 bg-[#3fd9c7]/10 hover:bg-[#3fd9c7]/20 text-[#3fd9c7] border border-[#3fd9c7]/20 hover:border-[#3fd9c7]/40 rounded-xl text-[10px] font-bold tracking-widest uppercase transition-all duration-200 cursor-pointer"
+                    >
+                      📡 Authorize Signal Link
+                    </button>
+                  )}
+                  {notiPermission === 'granted' && (
+                    <button
+                      onClick={testNotification}
+                      className="flex-1 py-2 bg-gradient-to-r from-[#3fd9c7]/80 to-[#cf4fe6]/80 hover:brightness-110 active:scale-[0.98] text-white rounded-xl text-[10px] font-bold tracking-widest uppercase transition-all duration-200 cursor-pointer"
+                    >
+                      ⚡ Test Rift Beacon
+                    </button>
+                  )}
+                </div>
+
+                <div className="mt-4 pt-3.5 border-t border-[#3fd9c7]/10 space-y-2 text-[10px] text-[#b4aae2]/70 leading-relaxed">
+                  <div className="flex items-start gap-2">
+                    <span className="text-[#3fd9c7]">📱</span>
+                    <p>
+                      <strong>Android Companion:</strong> Standard browsers (Chrome, Firefox) support notification beams directly once authorized.
+                    </p>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-[#cf4fe6]">🍎</span>
+                    <p>
+                      <strong>iOS / Apple Companion:</strong> Notifications require PWA installation. Tap the <strong>Share</strong> button and select <strong>Add to Home Screen</strong>, then launch Portal from your Home Screen.
+                    </p>
+                  </div>
                 </div>
               </section>
 
