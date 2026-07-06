@@ -4,6 +4,7 @@ dotenv.config();
 
 import express from 'express';
 import path from 'path';
+import fs from 'fs';
 import { createServer as createHttpServer } from 'http';
 import { WebSocketServer, WebSocket } from 'ws';
 import { createServer as createViteServer } from 'vite';
@@ -213,6 +214,56 @@ async function startServer() {
       }
     }
     res.json({ rooms: activeRooms });
+  });
+
+  // Local storage for traveler feedback ideas
+  const FEEDBACK_FILE = path.join(process.cwd(), 'feedback.json');
+  let feedbackData: any[] = [];
+
+  try {
+    if (fs.existsSync(FEEDBACK_FILE)) {
+      feedbackData = JSON.parse(fs.readFileSync(FEEDBACK_FILE, 'utf-8'));
+    }
+  } catch (err) {
+    console.error('Failed to load feedback from feedback.json:', err);
+  }
+
+  function saveFeedback() {
+    try {
+      fs.writeFileSync(FEEDBACK_FILE, JSON.stringify(feedbackData, null, 2), 'utf-8');
+    } catch (err) {
+      console.error('Failed to write feedback to feedback.json:', err);
+    }
+  }
+
+  // API Submit traveler feedback
+  app.post('/api/feedback', (req, res) => {
+    try {
+      const item = req.body;
+      if (item && item.id) {
+        if (!feedbackData.some(f => f.id === item.id)) {
+          feedbackData.unshift(item); // Newest on top
+          saveFeedback();
+        }
+        res.json({ status: 'ok', count: feedbackData.length });
+      } else {
+        res.status(400).json({ error: 'Invalid feedback item structure' });
+      }
+    } catch (err: any) {
+      res.status(500).json({ error: err.message || 'Internal server error' });
+    }
+  });
+
+  // API Retrieve all traveler feedback (ordered newest first)
+  app.get('/api/feedback', (req, res) => {
+    res.json({ feedback: feedbackData });
+  });
+
+  // API Clear/Archive all feedback
+  app.post('/api/feedback/clear', (req, res) => {
+    feedbackData = [];
+    saveFeedback();
+    res.json({ status: 'ok' });
   });
 
   // API Companion Bot Chat Handler (Gemini-powered)

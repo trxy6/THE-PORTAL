@@ -198,6 +198,25 @@ export default function App() {
     }
   });
 
+  const fetchFeedbackList = useCallback(async () => {
+    try {
+      const res = await fetch('/api/feedback');
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data.feedback)) {
+          setFeedbackList(data.feedback);
+          localStorage.setItem('global_feedback_ideas', JSON.stringify(data.feedback));
+        }
+      }
+    } catch (e) {
+      console.warn("Failed to fetch feedback from server, using local cache");
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchFeedbackList();
+  }, [fetchFeedbackList]);
+
   const [githubUrl, setGithubUrl] = useState(() => {
     return localStorage.getItem('portal_github_site_url') || 'https://Treydog-ramirez.github.io/dnd-portal/';
   });
@@ -9961,6 +9980,7 @@ Since I run entirely on-device, I cannot fetch live websites or use external ser
                       localStorage.setItem('global_feedback_ideas', JSON.stringify([]));
                       setFeedbackList([]);
                       toast("📬 Ideas archived successfully!", "success");
+                      fetch('/api/feedback/clear', { method: 'POST' }).catch(() => {});
                     }
                   }}
                   className="text-[9px] text-rose-400 hover:text-rose-300 font-semibold bg-rose-500/10 px-2.5 py-1 rounded-md border border-rose-500/20 cursor-pointer"
@@ -10025,8 +10045,23 @@ Since I run entirely on-device, I cannot fetch live websites or use external ser
                       curList.unshift(newFeedback); // Newest feedback on top
                       localStorage.setItem('global_feedback_ideas', JSON.stringify(curList));
                       setFeedbackList(curList); // Update state reactively
+
+                      // Push to server
+                      fetch('/api/feedback', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(newFeedback)
+                      }).then(res => {
+                        if (res.ok) {
+                          toast("✨ Idea channeled directly to trxy6! Thank you!", "success");
+                        } else {
+                          toast("✨ Idea saved locally (offline mode).", "success");
+                        }
+                      }).catch(() => {
+                        toast("✨ Idea saved locally (offline mode).", "success");
+                      });
+
                       el.value = '';
-                      toast("✨ Idea channeled directly to trxy6! Thank you!", "success");
                     } catch (err) {
                       toast("⚠️ Rift signal disrupted. Try again.", "error");
                     }
