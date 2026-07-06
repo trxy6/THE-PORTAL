@@ -7,23 +7,63 @@ import CosmicWords from './components/CosmicWords';
 const SPORTS_LEAGUES = {
   mlb: {
     label: 'MLB Baseball',
+    path: 'baseball/mlb',
+    icon: 'baseball',
     url: 'https://site.api.espn.com/apis/site/v2/sports/baseball/mlb/scoreboard',
+  },
+  atptennis: {
+    label: "ATP Tennis",
+    path: 'tennis/atp',
+    icon: 'dribbble',
+    url: 'https://site.api.espn.com/apis/site/v2/sports/tennis/atp/scoreboard',
+  },
+  wtatennis: {
+    label: "WTA Tennis",
+    path: 'tennis/wta',
+    icon: 'dribbble',
+    url: 'https://site.api.espn.com/apis/site/v2/sports/tennis/wta/scoreboard',
+  },
+  golf: {
+    label: "PGA TOUR Golf",
+    path: 'golf/pga',
+    icon: 'flag',
+    url: 'https://site.api.espn.com/apis/site/v2/sports/golf/pga/scoreboard',
+  },
+  wnba: {
+    label: "WNBA",
+    path: 'basketball/wnba',
+    icon: 'basketball',
+    url: 'https://site.api.espn.com/apis/site/v2/sports/basketball/wnba/scoreboard',
+  },
+  nwsl: {
+    label: "NWSL Soccer",
+    path: 'soccer/usa.w.1',
+    icon: 'trophy',
+    url: 'https://site.api.espn.com/apis/site/v2/sports/soccer/usa.w.1/scoreboard',
+  },
+  worldcup: {
+    label: "FIFA World Cup",
+    path: 'soccer/fifa.world',
+    icon: 'globe',
+    url: 'https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/scoreboard',
   },
   eng1: {
     label: 'Premier League',
+    path: 'soccer/eng.1',
+    icon: 'medal',
     url: 'https://site.api.espn.com/apis/site/v2/sports/soccer/eng.1/scoreboard',
   },
   nba: {
     label: 'NBA Basketball',
+    path: 'basketball/nba',
+    icon: 'star',
     url: 'https://site.api.espn.com/apis/site/v2/sports/basketball/nba/scoreboard',
   },
   nfl: {
     label: 'NFL Football',
+    path: 'football/nfl',
+    icon: 'shield',
     url: 'https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard',
-  },
-  nhl: {
-    label: 'NHL Hockey',
-    url: 'https://site.api.espn.com/apis/site/v2/sports/hockey/nhl/scoreboard',
   },
 };
 
@@ -246,13 +286,39 @@ export default function App() {
   const [activeSportsLeague, setActiveSportsLeague] = useState<SportsLeague>('mlb');
   const [sportsGamesMap, setSportsGamesMap] = useState<Record<SportsLeague, any[]>>({
     mlb: [],
+    atptennis: [],
+    wtatennis: [],
+    golf: [],
+    wnba: [],
+    nwsl: [],
+    worldcup: [],
     eng1: [],
     nba: [],
     nfl: [],
-    nhl: [],
   });
   const sportsGames = sportsGamesMap[activeSportsLeague] || [];
   const [sportsSubTab, setSportsSubTab] = useState<'scores' | 'schedule'>('scores');
+  const [sportsDateOffset, setSportsDateOffset] = useState<number>(0);
+  const [sportsViewFilter, setSportsViewFilter] = useState<'all' | 'scores' | 'schedule'>('all');
+  const [sportsSearchQuery, setSportsSearchQuery] = useState<string>('');
+  const [sportsPinnedGames, setSportsPinnedGames] = useState<string[]>(() => {
+    try {
+      return JSON.parse(localStorage.getItem('sportcast_pinned') || '[]');
+    } catch {
+      return [];
+    }
+  });
+  const [selectedGameId, setSelectedGameId] = useState<string | null>(null);
+  const [sportsActivityLog, setSportsActivityLog] = useState<Array<{ type: string; msg: string; time: string }>>([
+    { type: 'System', msg: 'Secure FreeGate initialized. Loaded 0-cost feed.', time: new Date().toLocaleTimeString() }
+  ]);
+
+  const logSportsActivity = (type: string, msg: string) => {
+    setSportsActivityLog(prev => [
+      { type, msg, time: new Date().toLocaleTimeString() },
+      ...prev.slice(0, 49)
+    ]);
+  };
   const [sportsStatus, setSportsStatus] = useState('Initiating zero-cost feed connection...');
   const [sportsUpdated, setSportsUpdated] = useState('Just Now');
   const [sportsFavorites, setSportsFavorites] = useState<string[]>(() => {
@@ -899,11 +965,10 @@ export default function App() {
       minute: '2-digit',
     });
   }
-
   function generateMockSportsGames(league: SportsLeague): any[] {
     const today = new Date();
     const formattedToday = today.toISOString();
-    
+
     const leagueTeams: Record<SportsLeague, Array<{ abbr: string; name: string; record: string; logo: string }>> = {
       mlb: [
         { abbr: 'NYY', name: 'Yankees', record: '54-32', logo: 'https://a.espncdn.com/i/teamlogos/mlb/500/nyy.png' },
@@ -913,13 +978,61 @@ export default function App() {
         { abbr: 'CHC', name: 'Cubs', record: '41-46', logo: 'https://a.espncdn.com/i/teamlogos/mlb/500/chc.png' },
         { abbr: 'STL', name: 'Cardinals', record: '44-42', logo: 'https://a.espncdn.com/i/teamlogos/mlb/500/stl.png' },
       ],
-      nfl: [
-        { abbr: 'KC', name: 'Chiefs', record: '12-3', logo: 'https://a.espncdn.com/i/teamlogos/nfl/500/kc.png' },
-        { abbr: 'LV', name: 'Raiders', record: '6-9', logo: 'https://a.espncdn.com/i/teamlogos/nfl/500/lv.png' },
-        { abbr: 'DAL', name: 'Cowboys', record: '10-5', logo: 'https://a.espncdn.com/i/teamlogos/nfl/500/dal.png' },
-        { abbr: 'PHI', name: 'Eagles', record: '11-4', logo: 'https://a.espncdn.com/i/teamlogos/nfl/500/phi.png' },
-        { abbr: 'SF', name: '49ers', record: '12-3', logo: 'https://a.espncdn.com/i/teamlogos/nfl/500/sf.png' },
-        { abbr: 'SEA', name: 'Seahawks', record: '8-7', logo: 'https://a.espncdn.com/i/teamlogos/nfl/500/sea.png' },
+      atptennis: [
+        { abbr: 'DJOK', name: 'N. Djokovic', record: '45-12', logo: 'https://a.espncdn.com/i/teamlogos/default-team-logo-500.png' },
+        { abbr: 'ALCA', name: 'C. Alcaraz', record: '48-10', logo: 'https://a.espncdn.com/i/teamlogos/default-team-logo-500.png' },
+        { abbr: 'SINN', name: 'J. Sinner', record: '50-8', logo: 'https://a.espncdn.com/i/teamlogos/default-team-logo-500.png' },
+        { abbr: 'MEDV', name: 'D. Medvedev', record: '42-15', logo: 'https://a.espncdn.com/i/teamlogos/default-team-logo-500.png' },
+        { abbr: 'ZVER', name: 'A. Zverev', record: '38-18', logo: 'https://a.espncdn.com/i/teamlogos/default-team-logo-500.png' },
+        { abbr: 'RUUD', name: 'C. Ruud', record: '35-16', logo: 'https://a.espncdn.com/i/teamlogos/default-team-logo-500.png' },
+      ],
+      wtatennis: [
+        { abbr: 'SWIA', name: 'I. Swiatek', record: '52-7', logo: 'https://a.espncdn.com/i/teamlogos/default-team-logo-500.png' },
+        { abbr: 'SABA', name: 'A. Sabalenka', record: '46-9', logo: 'https://a.espncdn.com/i/teamlogos/default-team-logo-500.png' },
+        { abbr: 'GAUF', name: 'C. Gauff', record: '44-11', logo: 'https://a.espncdn.com/i/teamlogos/default-team-logo-500.png' },
+        { abbr: 'RYBA', name: 'E. Rybakina', record: '40-12', logo: 'https://a.espncdn.com/i/teamlogos/default-team-logo-500.png' },
+        { abbr: 'PEGU', name: 'J. Pegula', record: '38-14', logo: 'https://a.espncdn.com/i/teamlogos/default-team-logo-500.png' },
+        { abbr: 'SAKK', name: 'M. Sakkari', record: '32-16', logo: 'https://a.espncdn.com/i/teamlogos/default-team-logo-500.png' },
+      ],
+      golf: [
+        { abbr: 'SCHE', name: 'S. Scheffler', record: '-12', logo: 'https://a.espncdn.com/i/teamlogos/default-team-logo-500.png' },
+        { abbr: 'MCIL', name: 'R. McIlroy', record: '-10', logo: 'https://a.espncdn.com/i/teamlogos/default-team-logo-500.png' },
+        { abbr: 'RAHM', name: 'J. Rahm', record: '-9', logo: 'https://a.espncdn.com/i/teamlogos/default-team-logo-500.png' },
+        { abbr: 'HOVL', name: 'V. Hovland', record: '-8', logo: 'https://a.espncdn.com/i/teamlogos/default-team-logo-500.png' },
+        { abbr: 'SCHA', name: 'X. Schauffele', record: '-7', logo: 'https://a.espncdn.com/i/teamlogos/default-team-logo-500.png' },
+        { abbr: 'CLAR', name: 'W. Clark', record: '-5', logo: 'https://a.espncdn.com/i/teamlogos/default-team-logo-500.png' },
+      ],
+      wnba: [
+        { abbr: 'LVA', name: 'Las Vegas Aces', record: '28-6', logo: 'https://a.espncdn.com/i/teamlogos/default-team-logo-500.png' },
+        { abbr: 'NYL', name: 'New York Liberty', record: '27-7', logo: 'https://a.espncdn.com/i/teamlogos/default-team-logo-500.png' },
+        { abbr: 'CON', name: 'Connecticut Sun', record: '24-10', logo: 'https://a.espncdn.com/i/teamlogos/default-team-logo-500.png' },
+        { abbr: 'SEA', name: 'Seattle Storm', record: '11-23', logo: 'https://a.espncdn.com/i/teamlogos/default-team-logo-500.png' },
+        { abbr: 'IND', name: 'Indiana Fever', record: '12-22', logo: 'https://a.espncdn.com/i/teamlogos/default-team-logo-500.png' },
+        { abbr: 'CHI', name: 'Chicago Sky', record: '15-19', logo: 'https://a.espncdn.com/i/teamlogos/default-team-logo-500.png' },
+      ],
+      nwsl: [
+        { abbr: 'POR', name: 'Portland Thorns', record: '10-5-7', logo: 'https://a.espncdn.com/i/teamlogos/default-team-logo-500.png' },
+        { abbr: 'SD', name: 'San Diego Wave', record: '11-7-4', logo: 'https://a.espncdn.com/i/teamlogos/default-team-logo-500.png' },
+        { abbr: 'NJY', name: 'Gotham FC', record: '8-7-7', logo: 'https://a.espncdn.com/i/teamlogos/default-team-logo-500.png' },
+        { abbr: 'RGN', name: 'OL Reign', record: '9-8-5', logo: 'https://a.espncdn.com/i/teamlogos/default-team-logo-500.png' },
+        { abbr: 'LA', name: 'Angel City FC', record: '8-7-7', logo: 'https://a.espncdn.com/i/teamlogos/default-team-logo-500.png' },
+        { abbr: 'WAS', name: 'Washington Spirit', record: '7-9-6', logo: 'https://a.espncdn.com/i/teamlogos/default-team-logo-500.png' },
+      ],
+      worldcup: [
+        { abbr: 'ARG', name: 'Argentina', record: '6-0-1', logo: 'https://a.espncdn.com/i/teamlogos/soccer/500/203.png' },
+        { abbr: 'FRA', name: 'France', record: '5-1-1', logo: 'https://a.espncdn.com/i/teamlogos/soccer/500/164.png' },
+        { abbr: 'BRA', name: 'Brazil', record: '4-1-1', logo: 'https://a.espncdn.com/i/teamlogos/soccer/500/205.png' },
+        { abbr: 'ENG', name: 'England', record: '3-1-1', logo: 'https://a.espncdn.com/i/teamlogos/soccer/500/364.png' },
+        { abbr: 'ESP', name: 'Spain', record: '4-0-2', logo: 'https://a.espncdn.com/i/teamlogos/soccer/500/166.png' },
+        { abbr: 'GER', name: 'Germany', record: '2-1-1', logo: 'https://a.espncdn.com/i/teamlogos/soccer/500/165.png' },
+      ],
+      eng1: [
+        { abbr: 'MUN', name: 'Man United', record: '18-6-14', logo: 'https://a.espncdn.com/i/teamlogos/soccer/500/360.png' },
+        { abbr: 'LIV', name: 'Liverpool', record: '24-10-4', logo: 'https://a.espncdn.com/i/teamlogos/soccer/500/364.png' },
+        { abbr: 'ARS', name: 'Arsenal', record: '28-5-5', logo: 'https://a.espncdn.com/i/teamlogos/soccer/500/359.png' },
+        { abbr: 'CHE', name: 'Chelsea', record: '18-9-11', logo: 'https://a.espncdn.com/i/teamlogos/soccer/500/363.png' },
+        { abbr: 'MCI', name: 'Man City', record: '28-7-3', logo: 'https://a.espncdn.com/i/teamlogos/soccer/500/382.png' },
+        { abbr: 'TOT', name: 'Tottenham', record: '20-6-12', logo: 'https://a.espncdn.com/i/teamlogos/soccer/500/367.png' },
       ],
       nba: [
         { abbr: 'LAL', name: 'Lakers', record: '44-38', logo: 'https://a.espncdn.com/i/teamlogos/nba/500/lal.png' },
@@ -929,21 +1042,13 @@ export default function App() {
         { abbr: 'MIL', name: 'Bucks', record: '58-24', logo: 'https://a.espncdn.com/i/teamlogos/nba/500/mil.png' },
         { abbr: 'MIA', name: 'Heat', record: '44-38', logo: 'https://a.espncdn.com/i/teamlogos/nba/500/mia.png' },
       ],
-      nhl: [
-        { abbr: 'BOS', name: 'Bruins', record: '47-20-15', logo: 'https://a.espncdn.com/i/teamlogos/nhl/500/bos.png' },
-        { abbr: 'MTL', name: 'Canadiens', record: '30-36-16', logo: 'https://a.espncdn.com/i/teamlogos/nhl/500/mtl.png' },
-        { abbr: 'CHI', name: 'Blackhawks', record: '23-53-6', logo: 'https://a.espncdn.com/i/teamlogos/nhl/500/chi.png' },
-        { abbr: 'DET', name: 'Red Wings', record: '41-32-9', logo: 'https://a.espncdn.com/i/teamlogos/nhl/500/det.png' },
-        { abbr: 'NYR', name: 'Rangers', record: '55-23-4', logo: 'https://a.espncdn.com/i/teamlogos/nhl/500/nyr.png' },
-        { abbr: 'NJD', name: 'Devils', record: '38-39-5', logo: 'https://a.espncdn.com/i/teamlogos/nhl/500/njd.png' },
-      ],
-      eng1: [
-        { abbr: 'MUN', name: 'Man United', record: '18-6-14', logo: 'https://a.espncdn.com/i/teamlogos/soccer/500/360.png' },
-        { abbr: 'LIV', name: 'Liverpool', record: '24-10-4', logo: 'https://a.espncdn.com/i/teamlogos/soccer/500/364.png' },
-        { abbr: 'ARS', name: 'Arsenal', record: '28-5-5', logo: 'https://a.espncdn.com/i/teamlogos/soccer/500/359.png' },
-        { abbr: 'CHE', name: 'Chelsea', record: '18-9-11', logo: 'https://a.espncdn.com/i/teamlogos/soccer/500/363.png' },
-        { abbr: 'MCI', name: 'Man City', record: '28-7-3', logo: 'https://a.espncdn.com/i/teamlogos/soccer/500/382.png' },
-        { abbr: 'TOT', name: 'Tottenham', record: '20-6-12', logo: 'https://a.espncdn.com/i/teamlogos/soccer/500/367.png' },
+      nfl: [
+        { abbr: 'KC', name: 'Chiefs', record: '12-3', logo: 'https://a.espncdn.com/i/teamlogos/nfl/500/kc.png' },
+        { abbr: 'LV', name: 'Raiders', record: '6-9', logo: 'https://a.espncdn.com/i/teamlogos/nfl/500/lv.png' },
+        { abbr: 'DAL', name: 'Cowboys', record: '10-5', logo: 'https://a.espncdn.com/i/teamlogos/nfl/500/dal.png' },
+        { abbr: 'PHI', name: 'Eagles', record: '11-4', logo: 'https://a.espncdn.com/i/teamlogos/nfl/500/phi.png' },
+        { abbr: 'SF', name: '49ers', record: '12-3', logo: 'https://a.espncdn.com/i/teamlogos/nfl/500/sf.png' },
+        { abbr: 'SEA', name: 'Seahawks', record: '8-7', logo: 'https://a.espncdn.com/i/teamlogos/nfl/500/sea.png' },
       ]
     };
 
@@ -961,7 +1066,7 @@ export default function App() {
 
     let preDetail = 'MON 8:30 PM';
 
-    if (league === 'eng1') {
+    if (league === 'eng1' || league === 'nwsl' || league === 'worldcup') {
       liveDetail = "72'";
       liveAwayScore = '1';
       liveHomeScore = '2';
@@ -981,16 +1086,26 @@ export default function App() {
       postAwayWinner = true;
       postHomeWinner = false;
       preDetail = 'MON 7:05 PM';
-    } else if (league === 'nhl') {
-      liveDetail = '2nd Period';
-      liveAwayScore = '1';
-      liveHomeScore = '3';
-      postDetail = 'Final';
-      postAwayScore = '4';
-      postHomeScore = '2';
+    } else if (league === 'atptennis' || league === 'wtatennis') {
+      liveDetail = 'Set 3, 40-30';
+      liveAwayScore = '1 (6, 4, 3)';
+      liveHomeScore = '1 (3, 6, 2)';
+      postDetail = 'FT';
+      postAwayScore = '2 (6, 7)';
+      postHomeScore = '0 (4, 5)';
       postAwayWinner = true;
       postHomeWinner = false;
-      preDetail = 'TUE 7:30 PM';
+      preDetail = 'SUN 2:00 PM';
+    } else if (league === 'golf') {
+      liveDetail = 'R4 - Hole 18';
+      liveAwayScore = '-12';
+      liveHomeScore = '-10';
+      postDetail = 'Final';
+      postAwayScore = '-15';
+      postHomeScore = '-12';
+      postAwayWinner = true;
+      postHomeWinner = false;
+      preDetail = 'THU 8:00 AM';
     } else if (league === 'nfl') {
       liveDetail = '3rd Quarter';
       liveAwayScore = '17';
@@ -1001,6 +1116,16 @@ export default function App() {
       postAwayWinner = true;
       postHomeWinner = false;
       preDetail = 'SUN 8:20 PM';
+    } else if (league === 'wnba') {
+      liveDetail = '3rd Quarter';
+      liveAwayScore = '72';
+      liveHomeScore = '76';
+      postDetail = 'Final';
+      postAwayScore = '88';
+      postHomeScore = '82';
+      postAwayWinner = true;
+      postHomeWinner = false;
+      preDetail = 'TUE 7:00 PM';
     }
 
     return [
@@ -1145,8 +1270,18 @@ export default function App() {
     ];
   }
 
-  const loadSportsScores = useCallback(async (targetLeague?: SportsLeague) => {
+  const loadSportsScores = useCallback(async (dateOffset: number = sportsDateOffset) => {
     setSportsStatus("Syncing all league schedule networks...");
+
+    let dateParam = "";
+    if (dateOffset > 0) {
+      const targetDate = new Date();
+      targetDate.setDate(targetDate.getDate() + dateOffset);
+      const yyyy = targetDate.getFullYear();
+      const mm = String(targetDate.getMonth() + 1).padStart(2, '0');
+      const dd = String(targetDate.getDate()).padStart(2, '0');
+      dateParam = `?dates=${yyyy}${mm}${dd}`;
+    }
 
     const leagues = Object.keys(SPORTS_LEAGUES) as SportsLeague[];
     let anySuccess = false;
@@ -1154,8 +1289,9 @@ export default function App() {
     const fetchedResults = await Promise.all(
       leagues.map(async (league) => {
         const config = SPORTS_LEAGUES[league];
+        const fetchUrl = `${config.url}${dateParam}`;
         try {
-          const res = await fetch(config.url, { cache: 'no-store' });
+          const res = await fetch(fetchUrl, { cache: 'no-store' });
           if (!res.ok) throw new Error('Offline');
           const data = await res.json();
           let events = Array.isArray(data?.events) ? data.events : [];
@@ -1187,7 +1323,7 @@ export default function App() {
         second: '2-digit',
       })
     );
-  }, []);
+  }, [sportsDateOffset]);
 
   function addSportsFavorite() {
     const value = sportsFavoriteInput.trim();
@@ -1211,8 +1347,8 @@ export default function App() {
   }
 
   useEffect(() => {
-    loadSportsScores();
-  }, [activeSportsLeague, loadSportsScores]);
+    loadSportsScores(sportsDateOffset);
+  }, [activeSportsLeague, sportsDateOffset, loadSportsScores]);
 
   const handleLoginSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -8180,7 +8316,7 @@ Since I run entirely on-device, I cannot fetch live websites or use external ser
         </div>
 
         {/* SPORTS PANEL */}
-        <div className="panel" id="panel-sports">
+        <div className="panel animate-fade-in" id="panel-sports">
           <div className="sub-navigation flex flex-col md:flex-row gap-2.5 items-stretch md:items-center justify-between border-b border-[#2e2454]/45 pb-3 mb-4 select-none">
             {/* ORGANIZER GROUP */}
             <div className="flex items-center bg-[#150f2e]/60 rounded-xl border border-[#44387a]/45 p-0.5 w-full md:w-auto">
@@ -8203,15 +8339,20 @@ Since I run entirely on-device, I cannot fetch live websites or use external ser
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 w-full">
-            {/* Real-time scores sheet */}
+            {/* LEFT COLUMN & MIDDLE: SCORES SHEETS */}
             <div className="col-span-12 lg:col-span-8 flex flex-col gap-4">
               <section className="card p-5 rounded-2xl border border-[#44387a]/60 bg-gradient-to-b from-[#160f2e] to-[#080214] shadow-[0_10px_35px_rgba(0,0,0,0.5)]">
+                {/* Header Title */}
                 <div className="flex justify-between items-center pb-2.5 border-b border-[#2e2454]/60 mb-4 select-none">
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-[#3fd9c7]">🏆</span>
-                    <span className="text-[12px] font-bold text-[#faebd7] uppercase tracking-[0.15em]" style={{ fontFamily: "'Cormorant', serif" }}>SportCast FreeGate scoreboard</span>
+                  <div className="flex items-center gap-2">
+                    <div className="p-1.5 bg-teal-500/10 rounded-lg border border-teal-500/30">
+                      <span className="text-teal-400">🏆</span>
+                    </div>
+                    <span className="text-[12px] font-bold text-[#faebd7] uppercase tracking-[0.15em]" style={{ fontFamily: "'Cormorant', serif" }}>
+                      SportCast <span className="text-teal-400">FreeGate</span> Scoreboard
+                    </span>
                   </div>
-                  <span className="text-[8px] font-mono px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 uppercase tracking-widest font-black">Free live feeds</span>
+                  <span className="text-[8px] font-mono px-1.5 py-0.5 rounded bg-teal-500/10 text-teal-400 border border-teal-500/20 uppercase tracking-widest font-black">Free Feed</span>
                 </div>
 
                 {/* ONLINE REQUIREMENT WARNING */}
@@ -8225,68 +8366,151 @@ Since I run entirely on-device, I cannot fetch live websites or use external ser
                   </div>
                 </div>
 
-                {/* Categories and actions */}
-                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4">
-                  <div className="flex flex-wrap gap-1.5">
-                    {Object.entries(SPORTS_LEAGUES).map(([key, league]) => (
-                      <button
-                        key={key}
-                        className={`px-3 py-1.5 rounded-lg text-[10px] font-bold tracking-wider uppercase transition-all duration-150 cursor-pointer border ${
-                          activeSportsLeague === key 
-                            ? 'bg-gradient-to-r from-[#cf4fe6] to-[#ff7597] text-white border-transparent shadow-[0_0_10px_rgba(207,79,230,0.3)]' 
-                            : 'bg-[#1a1138]/60 text-[#b4aae2] border-[#44387a]/45 hover:text-white hover:border-[#cf4fe6]/50'
-                        }`}
-                        onClick={() => setActiveSportsLeague(key as SportsLeague)}
-                      >
-                        {league.label.split(' ')[0]}
-                      </button>
-                    ))}
-                  </div>
-
-                  <div className="flex gap-2">
-                    <button 
-                      className="flex items-center gap-1 px-3 py-1.5 bg-[#cf4fe6]/10 hover:bg-[#cf4fe6]/20 border border-[#cf4fe6]/40 hover:border-[#cf4fe6] rounded-lg text-[10px] font-extrabold uppercase tracking-wider text-[#cf4fe6] hover:text-white transition cursor-pointer"
-                      onClick={() => { haptic(10); if ((window as any).openRiftVision) (window as any).openRiftVision('betslip'); }}
+                {/* Categories Tab Bar */}
+                <div className="flex items-center gap-1.5 overflow-x-auto pb-2 mb-4 -mx-5 px-5 sm:mx-0 sm:px-0">
+                  {Object.entries(SPORTS_LEAGUES).map(([key, league]) => (
+                    <button
+                      key={key}
+                      className={`px-3 py-1.5 rounded-lg text-[10px] font-bold tracking-wider uppercase transition-all duration-150 cursor-pointer border shrink-0 whitespace-nowrap ${
+                        activeSportsLeague === key 
+                          ? 'bg-gradient-to-r from-teal-500 to-cyan-500 text-white border-transparent shadow-[0_0_10px_rgba(20,184,166,0.3)]' 
+                          : 'bg-[#1a1138]/60 text-[#b4aae2] border-[#44387a]/45 hover:text-white hover:border-teal-400/50'
+                      }`}
+                      onClick={() => {
+                        haptic(5);
+                        setActiveSportsLeague(key as SportsLeague);
+                        logSportsActivity('Category', `Switched sport to ${league.label}`);
+                      }}
                     >
-                      📷 Scan Slip
+                      {league.label}
                     </button>
-                    <button 
-                      className="flex items-center gap-1 px-3 py-1.5 bg-[#1a1138] hover:bg-[#251950] border border-[#cf4fe6]/40 hover:border-[#cf4fe6] rounded-lg text-[10px] font-extrabold uppercase tracking-wider text-white transition cursor-pointer" 
-                      onClick={() => loadSportsScores()}
-                    >
-                      🔄 Fetch Live
-                    </button>
-                  </div>
+                  ))}
                 </div>
 
-                {/* Status/last refreshed */}
-                <div className="flex items-center justify-between text-[9px] text-[#b4aae2]/60 bg-[#150f2e]/40 px-3 py-2 rounded-lg border border-[#44387a]/20 mb-4 select-none">
-                  <span>{sportsStatus}</span>
-                  <span className="font-mono text-[#faebd7]">Updated: {sportsUpdated}</span>
+                {/* DATE SELECTOR & FILTER HEADER */}
+                <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between bg-[#150f2e]/45 p-4 rounded-xl border border-[#44387a]/25 mb-4">
+                  <div className="flex flex-wrap items-center justify-between gap-4 w-full md:w-auto">
+                    <div>
+                      <h3 className="text-xs font-bold text-white uppercase tracking-wider">
+                        {SPORTS_LEAGUES[activeSportsLeague]?.label} Results
+                      </h3>
+                      <span className="text-[9px] text-[#b4aae2]/60 font-mono">Telemetry Active</span>
+                    </div>
+
+                    {/* Date Quick Pickers */}
+                    <div className="flex items-center bg-[#0c0720]/60 p-0.5 rounded-lg border border-[#44387a]/35">
+                      <button
+                        onClick={() => {
+                          haptic(5);
+                          setSportsDateOffset(0);
+                          logSportsActivity('Filter', 'Selected schedules for Today.');
+                        }}
+                        className={`px-2 py-0.5 rounded text-[9.5px] font-bold transition-all ${
+                          sportsDateOffset === 0 
+                            ? 'bg-teal-500 text-white' 
+                            : 'text-[#b4aae2]/70 hover:text-white'
+                        }`}
+                      >
+                        Today
+                      </button>
+                      <button
+                        onClick={() => {
+                          haptic(5);
+                          setSportsDateOffset(1);
+                          logSportsActivity('Filter', 'Selected schedules for Tomorrow.');
+                        }}
+                        className={`px-2 py-0.5 rounded text-[9.5px] font-bold transition-all ${
+                          sportsDateOffset === 1 
+                            ? 'bg-teal-500 text-white' 
+                            : 'text-[#b4aae2]/70 hover:text-white'
+                        }`}
+                      >
+                        Tomorrow
+                      </button>
+                      <button
+                        onClick={() => {
+                          haptic(5);
+                          setSportsDateOffset(2);
+                          logSportsActivity('Filter', 'Selected future schedules.');
+                        }}
+                        className={`px-2 py-0.5 rounded text-[9.5px] font-bold transition-all ${
+                          sportsDateOffset === 2 
+                            ? 'bg-teal-500 text-white' 
+                            : 'text-[#b4aae2]/70 hover:text-white'
+                        }`}
+                      >
+                        Future
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 w-full md:w-auto justify-between md:justify-end">
+                    {/* View mode toggle */}
+                    <div className="flex bg-[#0c0720]/60 p-0.5 rounded-lg border border-[#44387a]/35 text-[9.5px] font-bold">
+                      <button
+                        onClick={() => setSportsViewFilter('all')}
+                        className={`px-2 py-0.5 rounded transition-all ${
+                          sportsViewFilter === 'all' 
+                            ? 'bg-teal-500 text-white' 
+                            : 'text-[#b4aae2]/70 hover:text-white'
+                        }`}
+                      >
+                        All
+                      </button>
+                      <button
+                        onClick={() => setSportsViewFilter('scores')}
+                        className={`px-2 py-0.5 rounded transition-all ${
+                          sportsViewFilter === 'scores' 
+                            ? 'bg-teal-500 text-white' 
+                            : 'text-[#b4aae2]/70 hover:text-white'
+                        }`}
+                      >
+                        Live/Final
+                      </button>
+                      <button
+                        onClick={() => setSportsViewFilter('schedule')}
+                        className={`px-2 py-0.5 rounded transition-all ${
+                          sportsViewFilter === 'schedule' 
+                            ? 'bg-teal-500 text-white' 
+                            : 'text-[#b4aae2]/70 hover:text-white'
+                        }`}
+                      >
+                        Schedules
+                      </button>
+                    </div>
+
+                    {/* Search Field */}
+                    <div className="relative">
+                      <input
+                        type="text"
+                        placeholder="Search..."
+                        value={sportsSearchQuery}
+                        onChange={(e) => setSportsSearchQuery(e.target.value)}
+                        className="bg-[#0c0720]/50 border border-[#44387a]/35 rounded-lg px-2.5 py-1 text-[10px] text-white placeholder-slate-500 focus:outline-none focus:border-teal-400 w-28"
+                      />
+                    </div>
+                  </div>
                 </div>
 
                 {/* Score vs Schedule Sub Tabs */}
-                <div className="flex border-b border-[#2e2454]/40 mb-4 select-none">
-                  <button 
-                    className={`flex-1 py-2 text-center text-[10px] font-bold uppercase tracking-wider transition-all duration-200 cursor-pointer border-b-2 ${
-                      sportsSubTab === 'scores' 
-                        ? 'text-[#3fd9c7] border-[#3fd9c7] bg-[#3fd9c7]/5' 
-                        : 'text-[#b4aae2] border-transparent hover:text-white'
-                    }`}
-                    onClick={() => { haptic(5); setSportsSubTab('scores'); }}
-                  >
-                    🔴 Live & Results
-                  </button>
-                  <button 
-                    className={`flex-1 py-2 text-center text-[10px] font-bold uppercase tracking-wider transition-all duration-200 cursor-pointer border-b-2 ${
-                      sportsSubTab === 'schedule' 
-                        ? 'text-[#cf4fe6] border-[#cf4fe6] bg-[#cf4fe6]/5' 
-                        : 'text-[#b4aae2] border-transparent hover:text-white'
-                    }`}
-                    onClick={() => { haptic(5); setSportsSubTab('schedule'); }}
-                  >
-                    📅 Upcoming Schedule
-                  </button>
+                <div className="flex items-center justify-between text-[9px] text-[#b4aae2]/60 bg-[#150f2e]/45 px-3 py-2.5 rounded-lg border border-[#44387a]/20 mb-4 select-none">
+                  <span className="flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-ping"></span>
+                    {sportsStatus}
+                  </span>
+                  <div className="flex items-center gap-3">
+                    <span className="font-mono text-[#faebd7]">Refreshed: {sportsUpdated}</span>
+                    <button 
+                      className="text-teal-400 hover:text-teal-300 font-bold border border-teal-500/25 px-2 py-0.5 rounded bg-teal-500/5 transition cursor-pointer"
+                      onClick={() => {
+                        haptic(15);
+                        loadSportsScores(sportsDateOffset);
+                        logSportsActivity('Refresh', 'Manual score synchronization triggered.');
+                      }}
+                    >
+                      Fetch Live
+                    </button>
+                  </div>
                 </div>
 
                 {/* Score grid */}
@@ -8294,24 +8518,54 @@ Since I run entirely on-device, I cannot fetch live websites or use external ser
                   {(() => {
                     let filteredGames = sportsGames.filter((event) => {
                       const competition = event.competitions?.[0];
+                      const competitors = competition?.competitors || [];
                       const state = competition?.status?.type?.state || event.status?.type?.state || '';
-                      if (sportsSubTab === 'schedule') {
-                        return state === 'pre';
-                      } else {
-                        return state !== 'pre';
+
+                      // Search keyword filter
+                      const q = sportsSearchQuery.toLowerCase().trim();
+                      if (q) {
+                        const matchesName = competitors.some((c: any) => 
+                          (c.team?.displayName || '').toLowerCase().includes(q) ||
+                          (c.team?.shortDisplayName || '').toLowerCase().includes(q) ||
+                          (c.athlete?.displayName || '').toLowerCase().includes(q)
+                        );
+                        if (!matchesName) return false;
                       }
+
+                      // View Mode Filter
+                      if (sportsViewFilter === 'scores') {
+                        return state === 'in' || state === 'post';
+                      } else if (sportsViewFilter === 'schedule') {
+                        return state === 'pre';
+                      }
+                      return true;
                     });
 
                     if (filteredGames.length === 0) {
                       const mockFeed = generateMockSportsGames(activeSportsLeague);
                       filteredGames = mockFeed.filter((event) => {
                         const competition = event.competitions?.[0];
+                        const competitors = competition?.competitors || [];
                         const state = competition?.status?.type?.state || event.status?.type?.state || '';
-                        if (sportsSubTab === 'schedule') {
-                          return state === 'pre';
-                        } else {
-                          return state !== 'pre';
+
+                        // Search keyword filter
+                        const q = sportsSearchQuery.toLowerCase().trim();
+                        if (q) {
+                          const matchesName = competitors.some((c: any) => 
+                            (c.team?.displayName || '').toLowerCase().includes(q) ||
+                            (c.team?.shortDisplayName || '').toLowerCase().includes(q) ||
+                            (c.athlete?.displayName || '').toLowerCase().includes(q)
+                          );
+                          if (!matchesName) return false;
                         }
+
+                        // View Mode Filter
+                        if (sportsViewFilter === 'scores') {
+                          return state === 'in' || state === 'post';
+                        } else if (sportsViewFilter === 'schedule') {
+                          return state === 'pre';
+                        }
+                        return true;
                       });
                     }
 
@@ -8326,21 +8580,47 @@ Since I run entirely on-device, I cannot fetch live websites or use external ser
                       const detail = statusType.detail || formatSportsDate(event.date);
 
                       const isFavorite = competitors.some(teamMatchesFavorite);
+                      const isPinned = sportsPinnedGames.includes(event.id);
+
+                      const toggleGamePin = (e: React.MouseEvent, gId: string) => {
+                        e.stopPropagation();
+                        haptic(10);
+                        setSportsPinnedGames(prev => {
+                          const next = prev.includes(gId) ? prev.filter(id => id !== gId) : [...prev, gId];
+                          localStorage.setItem('sportcast_pinned', JSON.stringify(next));
+                          logSportsActivity('Star Pin', `${prev.includes(gId) ? 'Unpinned' : 'Pinned'} match ${gId}.`);
+                          return next;
+                        });
+                      };
 
                       return (
                         <article
                           key={event.id}
-                          className={`p-3.5 border rounded-xl flex flex-col justify-between gap-3 transition-all duration-200 bg-[#0c0720]/45 ${
+                          className={`p-3.5 border rounded-xl flex flex-col justify-between gap-3 transition-all duration-200 bg-[#0c0720]/45 cursor-pointer ${
                             isFavorite 
                               ? 'border-teal-500/60 bg-teal-500/5 shadow-[0_0_12px_rgba(20,184,166,0.1)]' 
-                              : 'border-[#44387a]/40 hover:border-[#cf4fe6]/50'
+                              : isPinned 
+                                ? 'border-amber-500/60 bg-amber-500/5' 
+                                : 'border-[#44387a]/40 hover:border-[#cf4fe6]/50'
                           }`}
+                          onClick={() => {
+                            haptic(5);
+                            setSelectedGameId(event.id);
+                          }}
                         >
                           <div className="flex justify-between items-center text-[9px] text-[#b4aae2]/60 font-mono uppercase tracking-wider">
-                            <span className="font-bold text-[#b4aae2]">{SPORTS_LEAGUES[activeSportsLeague].label}</span>
-                            <span className={state === 'in' ? 'text-red-400 animate-pulse font-black' : state === 'post' ? 'text-gray-400' : 'text-[#3fd9c7]'}>
-                              {detail || 'Scheduled'}
-                            </span>
+                            <span className="font-bold text-[#b4aae2]">{SPORTS_LEAGUES[activeSportsLeague]?.label}</span>
+                            <div className="flex items-center gap-1.5">
+                              <button
+                                onClick={(e) => toggleGamePin(e, event.id)}
+                                className="text-[#b4aae2]/40 hover:text-yellow-400 p-0.5"
+                              >
+                                {isPinned ? '★' : '☆'}
+                              </button>
+                              <span className={state === 'in' ? 'text-red-400 animate-pulse font-black' : state === 'post' ? 'text-gray-400' : 'text-[#3fd9c7]'}>
+                                {detail || 'Scheduled'}
+                              </span>
+                            </div>
                           </div>
 
                           <div className="flex flex-col gap-2">
@@ -8373,7 +8653,7 @@ Since I run entirely on-device, I cannot fetch live websites or use external ser
                                       </div>
                                     )}
                                     <span className={`text-[11px] font-semibold truncate ${competitor.winner ? 'text-teal-400 font-bold' : 'text-[#faebd7]'}`}>
-                                      {competitor.team?.shortDisplayName || competitor.team?.displayName || 'Team'}
+                                      {competitor.team?.shortDisplayName || competitor.team?.displayName || competitor.athlete?.displayName || 'Competitor'}
                                     </span>
                                     <span className="text-[8.5px] text-[#b4aae2]/40 font-normal shrink-0">{getRecord(competitor)}</span>
                                   </div>
@@ -8389,70 +8669,178 @@ Since I run entirely on-device, I cannot fetch live websites or use external ser
                     });
                   })()}
                 </div>
+
+                {/* SELECTED GAME DETAILED VIEW PANEL */}
+                <div className="mt-4 bg-[#0a061c]/60 border border-[#44387a]/40 rounded-2xl p-5 shadow-lg flex flex-col gap-4 select-none">
+                  {(() => {
+                    const activeGame = sportsGames.find((g) => g.id === selectedGameId) || 
+                                       generateMockSportsGames(activeSportsLeague).find((g) => g.id === selectedGameId) ||
+                                       sportsGames[0] || 
+                                       generateMockSportsGames(activeSportsLeague)[0];
+
+                    if (!activeGame) {
+                      return <p className="text-xs text-[#b4aae2]/50 italic text-center py-6">Select a match above to stream detailed telemetry.</p>;
+                    }
+
+                    const competition = activeGame.competitions?.[0];
+                    const competitors = competition?.competitors || [];
+                    const statusType = competition?.status?.type || activeGame.status?.type || {};
+                    const venue = competition?.venue?.fullName || 'TBD Arena';
+                    const odds = competition?.odds?.[0]?.details || 'Even / Matchplay';
+                    const broadcasters = competition?.broadcasts?.[0]?.names || [];
+                    const tvChannel = broadcasters.length > 0 ? broadcasters.join(' / ') : 'TV: Local Streams Only';
+                    const headlines = competition?.headlines?.[0]?.description || 'No urgent highlights posted for this fixture.';
+
+                    return (
+                      <>
+                        <div className="flex justify-between items-center border-b border-[#2e2454]/40 pb-3">
+                          <span className="text-xs font-extrabold uppercase tracking-widest text-teal-400 flex items-center gap-1.5">
+                            🎮 Match Center Telemetry
+                          </span>
+                          <span className="text-[10px] text-[#b4aae2]/60 truncate max-w-[50%]">{venue}</span>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                          {/* Situation status list */}
+                          <div className="bg-[#120a2c]/65 p-4 rounded-xl border border-[#44387a]/35 flex flex-col gap-2.5">
+                            <h4 className="text-[9.5px] font-black text-teal-400 uppercase tracking-wide">Detailed Situation</h4>
+                            <div className="flex justify-between py-1 border-b border-[#2e2454]/20">
+                              <span className="text-[#b4aae2]/60">Status Detail</span>
+                              <span className="text-white font-bold">{statusType.detail || 'Scheduled'}</span>
+                            </div>
+                            <div className="flex justify-between py-1 border-b border-[#2e2454]/20">
+                              <span className="text-[#b4aae2]/60">Odds Details</span>
+                              <span className="text-[#3fd9c7] font-bold">{odds}</span>
+                            </div>
+                            <div className="flex justify-between py-1 border-b border-[#2e2454]/20">
+                              <span className="text-[#b4aae2]/60">Broadcast Network</span>
+                              <span className="text-white font-bold">{tvChannel}</span>
+                            </div>
+                          </div>
+
+                          {/* Highlights headlines */}
+                          <div className="bg-[#120a2c]/65 p-4 rounded-xl border border-[#44387a]/35 flex flex-col gap-2.5">
+                            <h4 className="text-[9.5px] font-black text-[#cf4fe6] uppercase tracking-wide">Press Headlines</h4>
+                            <p className="text-[10.5px] text-[#b4aae2]/90 leading-relaxed italic">
+                              "{headlines}"
+                            </p>
+                          </div>
+                        </div>
+                      </>
+                    );
+                  })()}
+                </div>
               </section>
             </div>
 
-            {/* Pinned tracker sidebar */}
+            {/* RIGHT COLUMN: PINNED TRACKER & PARLAY TRACKER */}
             <div className="col-span-12 lg:col-span-4 flex flex-col gap-4">
-              <section className="card p-5 rounded-2xl border border-[#44387a]/60 bg-gradient-to-b from-[#160f2e] to-[#080214] shadow-[0_10px_35px_rgba(0,0,0,0.5)]">
-                <div className="flex justify-between items-center pb-2.5 border-b border-[#2e2454]/60 mb-3 select-none">
+              {/* PRIVATE PIN TRAY */}
+              <section className="card p-5 rounded-2xl border border-teal-500/30 bg-teal-500/5 shadow-[0_0_20px_rgba(20,184,166,0.08)] select-none">
+                <div className="flex justify-between items-center pb-2.5 border-b border-teal-500/20 mb-3">
                   <div className="flex items-center gap-1.5">
-                    <span className="text-[#ff7597]">📌</span>
-                    <span className="text-[12px] font-bold text-[#faebd7] uppercase tracking-[0.15em]" style={{ fontFamily: "'Cormorant', serif" }}>Pinned Highlights</span>
+                    <span className="text-teal-400">★</span>
+                    <span className="text-[12px] font-bold text-white uppercase tracking-[0.15em]" style={{ fontFamily: "'Cormorant', serif" }}>
+                      My Pinned Tracker
+                    </span>
                   </div>
-                  <span className="text-[8px] font-mono px-1.5 py-0.5 rounded bg-pink-500/10 text-pink-400 border border-pink-500/10 uppercase">Tracker</span>
+                  <span className="text-[8px] font-mono px-1.5 py-0.5 rounded bg-teal-500/10 text-teal-400 border border-teal-500/20 uppercase font-black">Private</span>
                 </div>
 
-                <p className="text-[10px] text-[#b4aae2]/75 mb-3 leading-snug">
-                  Add keywords for your favorite teams to pin and highlight their matches in teal instantly!
-                </p>
+                <div className="space-y-2 max-h-[220px] overflow-y-auto pr-1">
+                  {(() => {
+                    const allGames = [
+                      ...sportsGames, 
+                      ...generateMockSportsGames(activeSportsLeague)
+                    ];
+                    const pinnedList = allGames.filter((g) => sportsPinnedGames.includes(g.id));
 
-                <div className="flex gap-2 mb-4">
-                  <input
-                    type="text"
-                    value={sportsFavoriteInput}
-                    placeholder="e.g. Yankees, Lakers, Arsenal"
-                    className="flex-grow bg-[#1a1138]/40 border border-[#3d2766]/50 rounded-lg px-2.5 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-purple-400 font-sans"
-                    onChange={(e) => setSportsFavoriteInput(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') addSportsFavorite();
-                    }}
-                  />
-                  <button className="px-3 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:brightness-110 active:scale-[0.98] text-white font-bold text-[10px] uppercase tracking-wider rounded-lg transition-all duration-150 shrink-0 cursor-pointer" onClick={addSportsFavorite}>
-                    Pin
-                  </button>
-                </div>
+                    if (pinnedList.length === 0) {
+                      return (
+                        <div className="text-center py-4 text-[10px] text-[#b4aae2]/40 italic">
+                          Click star (★) on any score card above to pin and track live updates here in real-time.
+                        </div>
+                      );
+                    }
 
-                <div className="flex flex-wrap gap-1.5">
-                  {sportsFavorites.length === 0 ? (
-                    <div className="text-center py-4 text-[10px] text-[#b4aae2]/50 italic w-full">
-                      No pinned teams yet. Add some keywords above!
-                    </div>
-                  ) : (
-                    sportsFavorites.map((team, index) => (
-                      <span className="inline-flex items-center gap-1.5 border border-teal-500/30 bg-teal-500/5 text-white rounded-lg px-2 py-1 text-[10.5px] font-mono" key={team}>
-                        <span>{team}</span>
-                        <button className="text-red-400 hover:text-red-300 ml-1 font-bold cursor-pointer" onClick={() => removeSportsFavorite(index)}>×</button>
-                      </span>
-                    ))
-                  )}
+                    return pinnedList.map((m) => {
+                      const competition = m.competitions?.[0];
+                      const competitors = competition?.competitors || [];
+                      const state = competition?.status?.type?.state || m.status?.type?.state || '';
+                      const detail = competition?.status?.type?.detail || m.status?.type?.detail || 'Scheduled';
+
+                      return (
+                        <div 
+                          key={m.id} 
+                          className="p-3 rounded-xl border border-teal-500/20 bg-teal-500/5 flex flex-col gap-1.5 hover:border-teal-400 cursor-pointer"
+                          onClick={() => setSelectedGameId(m.id)}
+                        >
+                          <div className="flex justify-between items-center text-[8.5px] text-teal-400/80 font-mono">
+                            <span>{m.league || 'Telemetry'}</span>
+                            <span>{detail}</span>
+                          </div>
+                          <div className="space-y-1 text-[10.5px]">
+                            {competitors.map((c: any) => (
+                              <div key={c.id} className="flex justify-between items-center">
+                                <span className="text-gray-200">{c.team?.shortDisplayName || c.team?.displayName || c.athlete?.displayName || 'Competitor'}</span>
+                                <span className="font-bold text-white">{c.score || (state === 'pre' ? '-' : '0')}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    });
+                  })()}
                 </div>
               </section>
 
-              {/* PARLAY TRACKER CARD */}
+              {/* LOCAL ACTIVITY LOG */}
+              <section className="card p-5 rounded-2xl border border-[#44387a]/60 bg-gradient-to-b from-[#160f2e] to-[#080214] shadow-[0_10px_35px_rgba(0,0,0,0.5)]">
+                <div className="flex justify-between items-center pb-2.5 border-b border-[#2e2454]/60 mb-3 select-none">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-teal-400">⚡</span>
+                    <span className="text-[12px] font-bold text-[#faebd7] uppercase tracking-[0.15em]" style={{ fontFamily: "'Cormorant', serif" }}>
+                      Local Activity Log
+                    </span>
+                  </div>
+                  <button 
+                    onClick={() => {
+                      haptic(5);
+                      setSportsActivityLog([{ type: 'System', msg: 'Secure FreeGate initialized.', time: new Date().toLocaleTimeString() }]);
+                    }}
+                    className="text-[9px] text-[#b4aae2]/40 hover:text-white uppercase font-bold"
+                  >
+                    Clear
+                  </button>
+                </div>
+
+                <div className="space-y-2 max-h-[160px] overflow-y-auto pr-1">
+                  {sportsActivityLog.map((log, index) => (
+                    <div key={index} className="bg-[#120a2c]/40 p-2.5 border border-[#44387a]/20 rounded-xl text-[10px] text-[#b4aae2]/80 flex gap-2">
+                      <span className="text-teal-400 font-bold shrink-0">{log.type}</span>
+                      <div className="flex flex-col text-left">
+                        <span className="leading-snug">{log.msg}</span>
+                        <span className="text-[8.5px] text-[#b4aae2]/40 font-mono mt-0.5">{log.time}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </section>
+
+              {/* PARLAY SLIP */}
               <section className="card p-5 rounded-2xl border border-purple-500/30 bg-purple-950/5 backdrop-blur-md shadow-[0_0_30px_rgba(168,85,247,0.12)]">
                 <div className="flex justify-between items-center pb-2.5 border-b border-purple-500/20 mb-3 select-none">
                   <div className="flex items-center gap-1.5">
                     <span className="text-purple-400">🔮</span>
-                    <span className="text-[12px] font-bold text-purple-200 uppercase tracking-[0.15em]" style={{ fontFamily: "'Cormorant', serif" }}>Parlay Tracker</span>
+                    <span className="text-[12px] font-bold text-purple-200 uppercase tracking-[0.15em]" style={{ fontFamily: "'Cormorant', serif" }}>Parlay Slip</span>
                   </div>
                   <span className="text-[8px] font-mono px-1.5 py-0.5 rounded bg-purple-500/10 text-purple-300 border border-purple-500/20 uppercase font-bold">Free slip</span>
                 </div>
 
                 {/* CURRENT PARLAY SLIP */}
                 <div className="mb-4">
-                  <div className="flex justify-between items-center mb-2">
-                    <span className="text-[10px] font-bold text-purple-300 uppercase tracking-wider">Parlay Slip</span>
+                  <div className="flex justify-between items-center mb-2 select-none">
+                    <span className="text-[10px] font-bold text-purple-300 uppercase tracking-wider">Parlay Legs</span>
                     {parlaySlip.length > 0 && (
                       <span className="text-[9px] font-mono bg-purple-500/10 text-purple-300 px-1.5 py-0.5 rounded border border-purple-500/20">
                         {parlaySlip.length} {parlaySlip.length === 1 ? 'Pick' : 'Picks'}
@@ -8465,30 +8853,32 @@ Since I run entirely on-device, I cannot fetch live websites or use external ser
                       No active picks on the slip. Click the "+" button next to any team on the scoreboard to build your parlay!
                     </div>
                   ) : (
-                    <div className="space-y-2 max-h-[160px] overflow-y-auto pr-1">
-                      {parlaySlip.map((leg) => (
-                        <div key={leg.id} className="flex items-center justify-between p-2.5 rounded-xl bg-purple-500/5 border border-purple-500/20 text-left">
-                          <div className="flex flex-col gap-0.5 max-w-[85%]">
-                            <span className="text-[11px] font-bold text-white flex items-center gap-1">
-                              <span className="text-[9px] font-mono text-purple-300 uppercase bg-purple-500/5 px-1 rounded border border-purple-500/10">Pick</span>
-                              {leg.teamName}
-                            </span>
-                            <span className="text-[9px] text-purple-300/60 truncate">
-                              vs {leg.opponentName} ({leg.league.toUpperCase()})
-                            </span>
+                    <div className="space-y-2">
+                      <div className="max-h-[160px] overflow-y-auto pr-1 space-y-2">
+                        {parlaySlip.map((leg) => (
+                          <div key={leg.id} className="flex items-center justify-between p-2.5 rounded-xl bg-purple-500/5 border border-purple-500/20 text-left">
+                            <div className="flex flex-col gap-0.5 max-w-[85%]">
+                              <span className="text-[11px] font-bold text-white flex items-center gap-1">
+                                <span className="text-[9px] font-mono text-purple-300 uppercase bg-purple-500/5 px-1 rounded border border-purple-500/10">Pick</span>
+                                {leg.teamName}
+                              </span>
+                              <span className="text-[9px] text-purple-300/60 truncate">
+                                vs {leg.opponentName} ({leg.league.toUpperCase()})
+                              </span>
+                            </div>
+                            <button 
+                              onClick={() => {
+                                haptic(10);
+                                setParlaySlip(prev => prev.filter(l => l.id !== leg.id));
+                              }}
+                              className="text-red-400 hover:text-red-300 font-bold text-xs p-1 cursor-pointer"
+                              title="Remove pick"
+                            >
+                              ×
+                            </button>
                           </div>
-                          <button 
-                            onClick={() => {
-                              haptic(10);
-                              setParlaySlip(prev => prev.filter(l => l.id !== leg.id));
-                            }}
-                            className="text-red-400 hover:text-red-300 font-bold text-xs p-1 cursor-pointer"
-                            title="Remove pick"
-                          >
-                            ×
-                          </button>
-                        </div>
-                      ))}
+                        ))}
+                      </div>
 
                       {/* Slip Action Buttons */}
                       <div className="flex gap-2 pt-2 select-none">
@@ -8496,6 +8886,7 @@ Since I run entirely on-device, I cannot fetch live websites or use external ser
                           onClick={() => {
                             haptic(15);
                             saveParlay();
+                            logSportsActivity('Parlay', `Saved a new ${parlaySlip.length}-leg parlay.`);
                           }}
                           className="flex-1 py-2 bg-purple-500/15 hover:bg-purple-500/30 border border-purple-500/40 hover:border-purple-300 text-purple-300 hover:text-white font-bold text-[10px] uppercase tracking-wider rounded-lg transition-all cursor-pointer hover:shadow-[0_0_15px_rgba(168,85,247,0.4)] focus:outline-none"
                         >
@@ -8524,6 +8915,7 @@ Since I run entirely on-device, I cannot fetch live websites or use external ser
                     onClick={() => {
                       haptic(15);
                       refreshParlays();
+                      logSportsActivity('Parlay', 'Refreshed active parlay legs.');
                     }}
                     className="text-[9px] text-purple-300 hover:text-white uppercase font-bold font-mono tracking-wider shrink-0 transition-all cursor-pointer whitespace-nowrap bg-purple-500/15 px-2 py-1 rounded-lg border border-purple-500/30 hover:border-purple-400"
                   >
@@ -8583,7 +8975,6 @@ Since I run entirely on-device, I cannot fetch live websites or use external ser
                           {/* Legs inside parlay collapse */}
                           <div className="space-y-1.5 pl-1.5 border-l border-[#cf4fe6]/20">
                             {parlay.legs.map((leg) => {
-                              // evaluate won, lost, live, pending per leg status
                               const legStatus = leg.status || 'pending';
                               return (
                                 <div key={leg.id} className="flex items-center justify-between text-[10px]">
