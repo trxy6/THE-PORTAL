@@ -178,21 +178,35 @@ export default function App() {
     }
   };
 
-  function sendNotification(title: string, body: string) {
+  function sendNotification(title: string, body: string, delayMs?: number) {
     if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
-      if (typeof navigator !== 'undefined' && navigator.serviceWorker && navigator.serviceWorker.ready) {
-        navigator.serviceWorker.ready.then(reg => {
-          reg.showNotification(title, {
-            body,
-            icon: './icon.svg',
-            badge: './icon.svg',
-            vibrate: [100, 50, 100],
-          } as any);
-        }).catch(() => {
-          new Notification(title, { body, icon: './icon.svg' });
-        });
+      const options: any = {
+        body,
+        icon: './icon.svg',
+        badge: './icon.svg',
+        vibrate: [100, 50, 100],
+      };
+
+      if (delayMs && typeof (window as any).TimestampTrigger !== 'undefined') {
+        options.showTrigger = new (window as any).TimestampTrigger(Date.now() + delayMs);
+      }
+
+      const show = () => {
+        if (typeof navigator !== 'undefined' && navigator.serviceWorker && navigator.serviceWorker.ready) {
+          navigator.serviceWorker.ready.then(reg => {
+            reg.showNotification(title, options);
+          }).catch(() => {
+            new Notification(title, { body: options.body, icon: options.icon });
+          });
+        } else {
+          new Notification(title, { body: options.body, icon: options.icon });
+        }
+      };
+
+      if (delayMs && !options.showTrigger) {
+        setTimeout(show, delayMs);
       } else {
-        new Notification(title, { body, icon: './icon.svg' });
+        show();
       }
     }
   }
