@@ -74,32 +74,177 @@ const store = {
   },
 };
 
+const inlineStyles = `
+  @keyframes blink {
+    50% { opacity: 0; }
+  }
+  .cursor-blink {
+    animation: blink 1s step-start infinite;
+  }
+  .lcd-glow {
+    box-shadow: inset 0 0 15px rgba(0, 0, 0, 0.4);
+  }
+  .glossy-btn {
+    background: linear-gradient(180deg, rgba(255,255,255,0.07) 0%, rgba(0,0,0,0.2) 100%);
+    box-shadow: 
+      inset 0 1px 0 rgba(255,255,255,0.1),
+      0 2px 0 rgba(0,0,0,0.5),
+      0 3px 4px rgba(0,0,0,0.4);
+  }
+  .glossy-btn:active {
+    transform: translateY(1.5px);
+    box-shadow: 
+      inset 0 1px 0 rgba(255,255,255,0.05),
+      0 0.5px 0 rgba(0,0,0,0.5),
+      0 1px 2px rgba(0,0,0,0.4);
+  }
+  /* Retro Boot Bar Animation */
+  @keyframes loadBar {
+    0% { width: 0%; }
+    50% { width: 70%; }
+    100% { width: 100%; }
+  }
+  .animate-loading-bar {
+    animation: loadBar 2s ease-in-out infinite;
+  }
+  /* Grid layouts for Retro Games */
+  .grid-cols-20 {
+    grid-template-columns: repeat(20, minmax(0, 1fr));
+  }
+  .grid-rows-12 {
+    grid-template-rows: repeat(12, minmax(0, 1fr));
+  }
+  .grid-cols-10 {
+    grid-template-columns: repeat(10, minmax(0, 1fr));
+  }
+  .grid-rows-15 {
+    grid-template-rows: repeat(15, minmax(0, 1fr));
+  }
+
+  /* Galaxy Cosmic Theme Skins */
+  .galaxy-shell {
+    background: radial-gradient(circle at 50% 30%, rgba(139, 92, 246, 0.35) 0%, rgba(67, 56, 202, 0.15) 50%, rgba(10, 6, 22, 0.98) 100%);
+    box-shadow: 
+      0 20px 50px rgba(0, 0, 0, 0.9),
+      0 0 35px rgba(139, 92, 246, 0.25),
+      inset 0 0 25px rgba(79, 70, 229, 0.1);
+    border: 2px solid rgba(139, 92, 246, 0.3);
+  }
+  .galaxy-bezel {
+    background: radial-gradient(circle at center, #170d30 0%, #080314 100%);
+    box-shadow: 
+      inset 0 0 20px rgba(0, 0, 0, 0.95),
+      0 0 15px rgba(139, 92, 246, 0.15);
+    border: 1px solid rgba(168, 85, 247, 0.25);
+  }
+  .galaxy-screen {
+    background: #020008;
+    color: #3fd9c7;
+    text-shadow: 0 0 6px rgba(63, 217, 199, 0.85);
+  }
+  .galaxy-btn-black {
+    background: rgba(12, 8, 28, 0.7);
+    border: 1px solid rgba(139, 92, 246, 0.25);
+    color: #f1f5f9;
+  }
+  .galaxy-btn-black:hover {
+    border-color: rgba(139, 92, 246, 0.65);
+    box-shadow: 
+      0 0 8px rgba(139, 92, 246, 0.45),
+      inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  }
+  .galaxy-btn-blue {
+    background: rgba(30, 41, 88, 0.75);
+    border: 1px solid rgba(59, 130, 246, 0.35);
+    color: #93c5fd;
+  }
+  .galaxy-btn-blue:hover {
+    border-color: rgba(59, 130, 246, 0.75);
+    box-shadow: 0 0 8px rgba(59, 130, 246, 0.55);
+  }
+  .galaxy-btn-white {
+    background: rgba(255, 255, 255, 0.09);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    color: #f8fafc;
+  }
+  .galaxy-btn-white:hover {
+    background: rgba(255, 255, 255, 0.16);
+    border-color: rgba(255, 255, 255, 0.4);
+    box-shadow: 0 0 8px rgba(255, 255, 255, 0.25);
+  }
+  .galaxy-btn-operator {
+    background: rgba(107, 33, 168, 0.55);
+    border: 1px solid rgba(168, 85, 247, 0.45);
+    color: #fae8ff;
+  }
+  .galaxy-btn-operator:hover {
+    border-color: rgba(168, 85, 247, 0.85);
+    box-shadow: 0 0 10px rgba(168, 85, 247, 0.65);
+  }
+  .galaxy-text-cyan {
+    color: #3fd9c7;
+    text-shadow: 0 0 4px rgba(63, 217, 199, 0.6);
+  }
+  .galaxy-text-purple {
+    color: #c084fc;
+    text-shadow: 0 0 4px rgba(192, 132, 252, 0.6);
+  }
+  .galaxy-text-yellow {
+    color: #fbbf24;
+    text-shadow: 0 0 4px rgba(251, 191, 36, 0.6);
+  }
+  .galaxy-star {
+    position: absolute;
+    background: #ffffff;
+    border-radius: 50%;
+    box-shadow: 0 0 4px #ffffff;
+    animation: twinkle var(--duration, 3s) infinite ease-in-out;
+  }
+  @keyframes twinkle {
+    0%, 100% { opacity: 0.15; transform: scale(0.7); }
+    50% { opacity: 0.95; transform: scale(1.15); }
+  }
+`;
+
 export default function App() {
-  // Pre-seed default users (with creator trxy6: 5234)
+  // Pre-seed default users (with creator trxy6: 1234)
   useState(() => {
-    const defaultUsers = [{ userId: 'trxy6', pin: '5234', isCreator: true }];
-    if (!localStorage.getItem('portal_users')) {
-      localStorage.setItem('portal_users', JSON.stringify(defaultUsers));
-    } else {
-      // Check if "blackmama" exists and remove all instances of it
-      try {
-        const raw = localStorage.getItem('portal_users');
-        if (raw) {
-          const users = JSON.parse(raw);
-          const filtered = users.filter((u: any) => u.userId && u.userId.toLowerCase() !== 'blackmama');
-          if (users.length !== filtered.length) {
-            localStorage.setItem('portal_users', JSON.stringify(filtered));
-            
-            // Also if the currently logged-in user is blackmama, clear it to log them out
-            const curr = localStorage.getItem('portal_current_user');
-            if (curr && curr.toLowerCase() === 'blackmama') {
-              localStorage.removeItem('portal_current_user');
-            }
+    const defaultUsers = [{ userId: 'trxy6', pin: '1234', isCreator: true }];
+    try {
+      const raw = localStorage.getItem('portal_users');
+      if (!raw) {
+        localStorage.setItem('portal_users', JSON.stringify(defaultUsers));
+      } else {
+        const users = JSON.parse(raw);
+        const trxy = users.find((u: any) => u.userId === 'trxy6');
+        if (trxy) {
+          trxy.pin = '1234';
+          localStorage.setItem('portal_users', JSON.stringify(users));
+        } else {
+          users.push(defaultUsers[0]);
+          localStorage.setItem('portal_users', JSON.stringify(users));
+        }
+      }
+    } catch {}
+    
+    // Check if "blackmama" exists and remove all instances of it
+    try {
+      const raw = localStorage.getItem('portal_users');
+      if (raw) {
+        const users = JSON.parse(raw);
+        const filtered = users.filter((u: any) => u.userId && u.userId.toLowerCase() !== 'blackmama');
+        if (users.length !== filtered.length) {
+          localStorage.setItem('portal_users', JSON.stringify(filtered));
+          
+          // Also if the currently logged-in user is blackmama, clear it to log them out
+          const curr = localStorage.getItem('portal_current_user');
+          if (curr && curr.toLowerCase() === 'blackmama') {
+            localStorage.removeItem('portal_current_user');
           }
         }
-      } catch (e) {
-        console.error(e);
       }
+    } catch (e) {
+      console.error(e);
     }
   });
 
@@ -197,7 +342,777 @@ export default function App() {
     }
   });
 
-  // Home Page Customization States
+  // --- TI-84 Plus CE Graphing Calculator States ---
+  const [mathLoaded, setMathLoaded] = useState(false);
+  const [currentScreen, setCurrentScreen] = useState('HOME');
+  const [inputVal, setInputVal] = useState('');
+  const [cursorIndex, setCursorIndex] = useState(0);
+  const [history, setHistory] = useState([
+    { input: '2 * cos(pi / 3)', output: '1' },
+    { input: 'sin(pi / 2) + 5^2', output: '26' }
+  ]);
+  const [lastAnswer, setLastAnswer] = useState('26');
+
+  const [equations, setEquations] = useState<Record<string, string>>({
+    Y1: 'x^2 - 4',
+    Y2: '2 * sin(x)',
+    Y3: '',
+    Y4: ''
+  });
+  const [activeEqIndex, setActiveEqIndex] = useState('Y1');
+
+  const [windowSettings, setWindowSettings] = useState<Record<string, number>>({
+    Xmin: -10,
+    Xmax: 10,
+    Xscl: 1,
+    Ymin: -10,
+    Ymax: 10,
+    Yscl: 1
+  });
+  const [activeWindowIndex, setActiveWindowIndex] = useState('Xmin');
+
+  const [tblSettings, setTblSettings] = useState<Record<string, number>>({
+    TblStart: 0,
+    dTbl: 1
+  });
+  const [activeTblIndex, setActiveTblIndex] = useState('TblStart');
+  const [tableOffset, setTableOffset] = useState(0);
+
+  const [angleMode, setAngleMode] = useState('RADIAN');
+  const [numberFormat, setNumberFormat] = useState('NORMAL');
+  const [decimalPlaces, setDecimalPlaces] = useState('FLOAT');
+  const [is2nd, setIs2nd] = useState(false);
+  const [isAlpha, setIsAlpha] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  const [isTracing, setIsTracing] = useState(false);
+  const [traceX, setTraceX] = useState(0);
+  const [traceEquationIndex, setTraceEquationIndex] = useState('Y1');
+
+  const [programList] = useState(['SNAKE', 'TETRIS']);
+  const [activeProgIndex, setActiveProgIndex] = useState(0);
+
+  const [snake, setSnake] = useState<Array<{x: number, y: number}>>([]);
+  const [snakeDir, setSnakeDir] = useState({ x: 1, y: 0 });
+  const [snakeFood, setSnakeFood] = useState({ x: 5, y: 5 });
+  const [snakeScore, setSnakeScore] = useState(0);
+  const [snakeHighScore, setSnakeHighScore] = useState(0);
+  const [snakeOver, setSnakeOver] = useState(false);
+
+  const [tetrisBoard, setTetrisBoard] = useState<Array<Array<number>>>([]);
+  const [tetrisPiece, setTetrisPiece] = useState<any>(null);
+  const [tetrisPos, setTetrisPos] = useState({ x: 0, y: 0 });
+  const [tetrisScore, setTetrisScore] = useState(0);
+  const [tetrisOver, setTetrisOver] = useState(false);
+
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const lcdScreenRef = useRef<HTMLDivElement | null>(null);
+
+  // --- TI-84 Plus CE Graphs & Calculation Kernels ---
+  useEffect(() => {
+    const styleSheet = document.createElement("style");
+    styleSheet.innerText = inlineStyles;
+    document.head.appendChild(styleSheet);
+
+    if ((window as any).math) {
+      setMathLoaded(true);
+    } else {
+      const script = document.createElement('script');
+      script.src = 'https://cdnjs.cloudflare.com/ajax/libs/mathjs/12.4.0/math.js';
+      script.async = true;
+      script.onload = () => {
+        setMathLoaded(true);
+      };
+      script.onerror = () => {
+        setErrorMessage("Critical Error: Failed to load TI-84 Math Kernel. Please check internet connection.");
+      };
+      document.head.appendChild(script);
+    }
+
+    return () => {
+      styleSheet.remove();
+    };
+  }, []);
+
+  const formatImpliedMultiplication = (expr: string) => {
+    return expr
+      .replace(/(\d+)([a-zA-Zπθn])/g, '$1 * $2')
+      .replace(/([a-zA-Zπθn])(\d+)/g, '$1 * $2')
+      .replace(/\)([\w(π])/g, ') * $1')
+      .replace(/([a-zA-Zπθn])\(/g, '$1 * (');
+  };
+
+  const sanitizeExpressionForMathJS = (expr: string) => {
+    let sanitized = formatImpliedMultiplication(expr);
+    sanitized = sanitized
+      .replace(/π/g, 'pi')
+      .replace(/e\^/g, 'exp')
+      .replace(/√\(/g, 'sqrt(')
+      .replace(/²/g, '^2')
+      .replace(/–/g, '-')
+      .replace(/¯/g, '-')
+      .replace(/×/g, '*')
+      .replace(/÷/g, '/')
+      .replace(/ln\(/g, 'log(')
+      .replace(/log\(/g, 'log10(')
+      .replace(/x/g, 'x')
+      .replace(/X/g, 'x');
+
+    if (angleMode === 'DEGREE') {
+      sanitized = sanitized
+        .replace(/sin\(([^)]+)\)/g, 'sin(($1) * deg)')
+        .replace(/cos\(([^)]+)\)/g, 'cos(($1) * deg)')
+        .replace(/tan\(([^)]+)\)/g, 'tan(($1) * deg)')
+        .replace(/asin\(([^)]+)\)/g, 'asin($1) / deg')
+        .replace(/acos\(([^)]+)\)/g, 'acos($1) / deg')
+        .replace(/atan\(([^)]+)\)/g, 'atan($1) / deg');
+    }
+    return sanitized;
+  };
+
+  const executeCalculation = () => {
+    const math = (window as any).math;
+    if (!math || !inputVal.trim()) return;
+
+    try {
+      const mathFormatted = sanitizeExpressionForMathJS(inputVal);
+      const scope = { x: 0, deg: math.unit('deg'), Ans: Number(lastAnswer) || 0 };
+      let result = math.evaluate(mathFormatted, scope);
+
+      if (typeof result === 'object' && result.entries) {
+        result = result.entries[0];
+      }
+
+      let formattedResult = '';
+      if (typeof result === 'number') {
+        if (decimalPlaces !== 'FLOAT') {
+          formattedResult = result.toFixed(parseInt(decimalPlaces));
+        } else {
+          formattedResult = math.format(result, { precision: 10 });
+        }
+      } else {
+        formattedResult = result.toString();
+      }
+
+      setHistory([...history, { input: inputVal, output: formattedResult }]);
+      setLastAnswer(formattedResult);
+      setInputVal('');
+      setCursorIndex(0);
+    } catch (err) {
+      setErrorMessage(`ERR:SYNTAX \n\nCheck mathematical operators or parenthesis alignment.`);
+    }
+  };
+
+  const insertToken = (token: string) => {
+    if (currentScreen === 'HOME') {
+      setInputVal(prev => prev.slice(0, cursorIndex) + token + prev.slice(cursorIndex));
+      setCursorIndex(prev => prev + token.length);
+    } else if (currentScreen === 'Y_EDIT') {
+      setEquations(prev => ({
+        ...prev,
+        [activeEqIndex]: prev[activeEqIndex] + token
+      }));
+    } else if (currentScreen === 'WINDOW') {
+      const currentVal = windowSettings[activeWindowIndex]?.toString() || '';
+      const newVal = parseFloat(currentVal + token) || parseFloat(token) || 0;
+      setWindowSettings(prev => ({ ...prev, [activeWindowIndex]: newVal }));
+    } else if (currentScreen === 'TBLSET') {
+      const currentVal = tblSettings[activeTblIndex]?.toString() || '';
+      const newVal = parseFloat(currentVal + token) || parseFloat(token) || 0;
+      setTblSettings(prev => ({ ...prev, [activeTblIndex]: newVal }));
+    }
+  };
+
+  const handleDirectionalArrow = (direction: 'UP' | 'DOWN' | 'LEFT' | 'RIGHT') => {
+    if (currentScreen === 'HOME') {
+      if (direction === 'LEFT') setCursorIndex(Math.max(0, cursorIndex - 1));
+      if (direction === 'RIGHT') setCursorIndex(Math.min(inputVal.length, cursorIndex + 1));
+      if (direction === 'UP' && history.length > 0) {
+        setInputVal(history[history.length - 1].input);
+        setCursorIndex(history[history.length - 1].input.length);
+      }
+    } else if (currentScreen === 'Y_EDIT') {
+      const list = ['Y1', 'Y2', 'Y3', 'Y4'];
+      let curr = list.indexOf(activeEqIndex);
+      if (direction === 'UP') setActiveEqIndex(list[(curr - 1 + 4) % 4]);
+      if (direction === 'DOWN') setActiveEqIndex(list[(curr + 1) % 4]);
+    } else if (currentScreen === 'WINDOW') {
+      const list = ['Xmin', 'Xmax', 'Xscl', 'Ymin', 'Ymax', 'Yscl'];
+      let curr = list.indexOf(activeWindowIndex);
+      if (direction === 'UP') setActiveWindowIndex(list[(curr - 1 + 6) % 6]);
+      if (direction === 'DOWN') setActiveWindowIndex(list[(curr + 1) % 6]);
+    } else if (currentScreen === 'TBLSET') {
+      setActiveTblIndex(activeTblIndex === 'TblStart' ? 'dTbl' : 'TblStart');
+    } else if (currentScreen === 'GRAPH') {
+      if (!isTracing) {
+        setIsTracing(true);
+        setTraceX((windowSettings.Xmax + windowSettings.Xmin) / 2);
+      } else {
+        const step = (windowSettings.Xmax - windowSettings.Xmin) / 40;
+        if (direction === 'LEFT') setTraceX(prev => Math.max(windowSettings.Xmin, prev - step));
+        if (direction === 'RIGHT') setTraceX(prev => Math.min(windowSettings.Xmax, prev + step));
+        if (direction === 'UP') {
+          const list = ['Y1', 'Y2', 'Y3', 'Y4'];
+          let curr = list.indexOf(traceEquationIndex);
+          setTraceEquationIndex(list[(curr - 1 + 4) % 4]);
+        }
+        if (direction === 'DOWN') {
+          const list = ['Y1', 'Y2', 'Y3', 'Y4'];
+          let curr = list.indexOf(traceEquationIndex);
+          setTraceEquationIndex(list[(curr + 1) % 4]);
+        }
+      }
+    } else if (currentScreen === 'TABLE') {
+      if (direction === 'UP') setTableOffset(prev => prev - 1);
+      if (direction === 'DOWN') setTableOffset(prev => prev + 1);
+    } else if (currentScreen === 'PROGRAM_MENU') {
+      if (direction === 'UP') setActiveProgIndex(prev => (prev - 1 + programList.length) % programList.length);
+      if (direction === 'DOWN') setActiveProgIndex(prev => (prev + 1) % programList.length);
+    } else if (currentScreen === 'S_GAME') {
+      if (direction === 'UP' && snakeDir.y === 0) setSnakeDir({ x: 0, y: -1 });
+      if (direction === 'DOWN' && snakeDir.y === 0) setSnakeDir({ x: 0, y: 1 });
+      if (direction === 'LEFT' && snakeDir.x === 0) setSnakeDir({ x: -1, y: 0 });
+      if (direction === 'RIGHT' && snakeDir.x === 0) setSnakeDir({ x: 1, y: 0 });
+    } else if (currentScreen === 'TETRIS_GAME') {
+      if (direction === 'LEFT') moveTetrisPiece(-1, 0);
+      if (direction === 'RIGHT') moveTetrisPiece(1, 0);
+      if (direction === 'DOWN') moveTetrisPiece(0, 1);
+      if (direction === 'UP') rotateTetrisPiece();
+    }
+  };
+
+  const handleButtonPress = (keyName: string, label2nd: string | null = null, labelAlpha: string | null = null) => {
+    let action = keyName;
+    if (is2nd && label2nd) {
+      action = label2nd;
+      setIs2nd(false);
+    } else if (isAlpha && labelAlpha) {
+      action = labelAlpha;
+      setIsAlpha(false);
+    }
+
+    switch (action) {
+      case '2ND':
+        setIs2nd(!is2nd);
+        setIsAlpha(false);
+        break;
+      case 'ALPHA':
+        setIsAlpha(!isAlpha);
+        setIs2nd(false);
+        break;
+      case 'CLEAR':
+        if (currentScreen === 'HOME') {
+          if (inputVal === '') setHistory([]);
+          setInputVal('');
+          setCursorIndex(0);
+        } else if (currentScreen === 'Y_EDIT') {
+          setEquations({ ...equations, [activeEqIndex]: '' });
+        } else if (currentScreen === 'WINDOW') {
+          setWindowSettings({ ...windowSettings, [activeWindowIndex]: 0 });
+        }
+        break;
+      case 'DEL':
+        if (currentScreen === 'HOME') {
+          if (cursorIndex > 0) {
+            setInputVal(prev => prev.slice(0, cursorIndex - 1) + prev.slice(cursorIndex));
+            setCursorIndex(prev => prev - 1);
+          }
+        } else if (currentScreen === 'Y_EDIT') {
+          const currentEq = equations[activeEqIndex] || '';
+          setEquations({ ...equations, [activeEqIndex]: currentEq.slice(0, -1) });
+        }
+        break;
+      case 'ENTER':
+        if (currentScreen === 'HOME') {
+          executeCalculation();
+        } else if (currentScreen === 'Y_EDIT') {
+          const list = ['Y1', 'Y2', 'Y3', 'Y4'];
+          const nextIdx = (list.indexOf(activeEqIndex) + 1) % list.length;
+          setActiveEqIndex(list[nextIdx]);
+        } else if (currentScreen === 'WINDOW') {
+          const list = ['Xmin', 'Xmax', 'Xscl', 'Ymin', 'Ymax', 'Yscl'];
+          const nextIdx = (list.indexOf(activeWindowIndex) + 1) % list.length;
+          setActiveWindowIndex(list[nextIdx]);
+        } else if (currentScreen === 'TBLSET') {
+          setActiveTblIndex(activeTblIndex === 'TblStart' ? 'dTbl' : 'TblStart');
+        } else if (currentScreen === 'PROGRAM_MENU') {
+          const selectedProg = programList[activeProgIndex];
+          if (selectedProg === 'SNAKE') {
+            initSnakeGame();
+            setCurrentScreen('S_GAME');
+          } else if (selectedProg === 'TETRIS') {
+            initTetrisGame();
+            setCurrentScreen('TETRIS_GAME');
+          }
+        } else if (currentScreen === 'CATALOG') {
+          insertToken('sin(');
+          setCurrentScreen('HOME');
+        }
+        break;
+
+      case 'UP':
+        handleDirectionalArrow('UP');
+        break;
+      case 'DOWN':
+        handleDirectionalArrow('DOWN');
+        break;
+      case 'LEFT':
+        handleDirectionalArrow('LEFT');
+        break;
+      case 'RIGHT':
+        handleDirectionalArrow('RIGHT');
+        break;
+
+      case 'Y=':
+        setCurrentScreen('Y_EDIT');
+        break;
+      case 'WINDOW':
+        setCurrentScreen('WINDOW');
+        break;
+      case 'GRAPH':
+        setCurrentScreen('GRAPH');
+        setIsTracing(false);
+        break;
+      case 'TABLE':
+        setCurrentScreen('TABLE');
+        break;
+      case 'TBLSET':
+        setCurrentScreen('TBLSET');
+        break;
+      case 'MODE':
+        setCurrentScreen('MODE_MENU');
+        break;
+      case 'MATH':
+        setCurrentScreen('MATH_MENU');
+        break;
+      case 'PRGM':
+        setCurrentScreen('PROGRAM_MENU');
+        break;
+      case 'CATALOG':
+        setCurrentScreen('CATALOG');
+        break;
+      case 'QUIT':
+        setCurrentScreen('HOME');
+        break;
+
+      case 'x':
+      case 'X':
+        insertToken('x');
+        break;
+      case 'sin(':
+      case 'cos(':
+      case 'tan(':
+      case 'ln(':
+      case 'log(':
+        insertToken(action);
+        break;
+      case 'asin(':
+        insertToken('asin(');
+        break;
+      case 'acos(':
+        insertToken('acos(');
+        break;
+      case 'atan(':
+        insertToken('atan(');
+        break;
+      case 'π':
+        insertToken('π');
+        break;
+      case '√(':
+        insertToken('√(');
+        break;
+      case '²':
+        insertToken('²');
+        break;
+      case '^':
+        insertToken('^');
+        break;
+      case '10^':
+        insertToken('10^(');
+        break;
+      case 'e^':
+        insertToken('e^(');
+        break;
+      case 'Ans':
+        insertToken('Ans');
+        break;
+      case '(-)':
+        insertToken('–');
+        break;
+
+      default:
+        if (action && action.length <= 5) {
+          insertToken(action);
+        }
+        break;
+    }
+  };
+
+  // --- Cartesian Canvas Drawing Hook ---
+  useEffect(() => {
+    const math = (window as any).math;
+    if (!math || currentScreen !== 'GRAPH' || !canvasRef.current) return;
+
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    const width = canvas.width;
+    const height = canvas.height;
+
+    ctx.fillStyle = '#100b26';
+    ctx.fillRect(0, 0, width, height);
+
+    const { Xmin, Xmax, Xscl, Ymin, Ymax, Yscl } = windowSettings;
+
+    const toScreenX = (x: number) => ((x - Xmin) / (Xmax - Xmin)) * width;
+    const toScreenY = (y: number) => height - ((y - Ymin) / (Ymax - Ymin)) * height;
+
+    ctx.strokeStyle = '#201640';
+    ctx.lineWidth = 1;
+
+    for (let x = Math.ceil(Xmin / Xscl) * Xscl; x <= Xmax; x += Xscl) {
+      const sx = toScreenX(x);
+      ctx.beginPath();
+      ctx.moveTo(sx, 0);
+      ctx.lineTo(sx, height);
+      ctx.stroke();
+    }
+    for (let y = Math.ceil(Ymin / Yscl) * Yscl; y <= Ymax; y += Yscl) {
+      const sy = toScreenY(y);
+      ctx.beginPath();
+      ctx.moveTo(0, sy);
+      ctx.lineTo(width, sy);
+      ctx.stroke();
+    }
+
+    ctx.strokeStyle = '#4c3f85';
+    ctx.lineWidth = 2;
+    const zeroX = toScreenX(0);
+    const zeroY = toScreenY(0);
+
+    ctx.beginPath();
+    ctx.moveTo(zeroX, 0);
+    ctx.lineTo(zeroX, height);
+    ctx.moveTo(0, zeroY);
+    ctx.lineTo(width, zeroY);
+    ctx.stroke();
+
+    const colors = ['#f43f5e', '#3b82f6', '#10b981', '#fbbf24'];
+    Object.keys(equations).forEach((eqKey, index) => {
+      const equationStr = equations[eqKey];
+      if (!equationStr || !equationStr.trim()) return;
+
+      ctx.strokeStyle = colors[index % colors.length];
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+
+      let parsedEq: any;
+      try {
+        const mathFormatted = sanitizeExpressionForMathJS(equationStr);
+        parsedEq = math.compile(mathFormatted);
+      } catch (err) {
+        return;
+      }
+
+      let first = true;
+      const step = (Xmax - Xmin) / 150;
+      for (let x = Xmin; x <= Xmax; x += step) {
+        try {
+          const scope = { x, deg: math.unit('deg'), Ans: Number(lastAnswer) || 0 };
+          const y = parsedEq.evaluate(scope);
+
+          if (typeof y === 'number' && !isNaN(y) && isFinite(y)) {
+            const sx = toScreenX(x);
+            const sy = toScreenY(y);
+
+            if (first) {
+              ctx.moveTo(sx, sy);
+              first = false;
+            } else {
+              ctx.lineTo(sx, sy);
+            }
+          } else {
+            first = true;
+          }
+        } catch (err) {
+          first = true;
+        }
+      }
+      ctx.stroke();
+    });
+
+    if (isTracing) {
+      const eqStr = equations[traceEquationIndex];
+      if (eqStr && eqStr.trim()) {
+        try {
+          const mathFormatted = sanitizeExpressionForMathJS(eqStr);
+          const yVal = math.evaluate(mathFormatted, { x: traceX, deg: math.unit('deg'), Ans: Number(lastAnswer) || 0 });
+
+          if (typeof yVal === 'number' && !isNaN(yVal)) {
+            const sx = toScreenX(traceX);
+            const sy = toScreenY(yVal);
+
+            ctx.strokeStyle = '#ffffff';
+            ctx.fillStyle = '#ef4444';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(sx, sy, 6, 0, 2 * Math.PI);
+            ctx.fill();
+            ctx.stroke();
+          }
+        } catch (err) {}
+      }
+    }
+  }, [currentScreen, equations, windowSettings, isTracing, traceX, traceEquationIndex, mathLoaded, lastAnswer]);
+
+  // --- Embedded ROM Games Logic ---
+  const initSnakeGame = () => {
+    setSnake([
+      { x: 5, y: 5 },
+      { x: 4, y: 5 },
+      { x: 3, y: 5 }
+    ]);
+    setSnakeDir({ x: 1, y: 0 });
+    setSnakeFood({ x: 10, y: 8 });
+    setSnakeScore(0);
+    setSnakeOver(false);
+  };
+
+  useEffect(() => {
+    if (currentScreen !== 'S_GAME' || snakeOver) return;
+
+    const gameTick = setInterval(() => {
+      setSnake(prev => {
+        if (prev.length === 0) return prev;
+        const head = prev[0];
+        const newHead = { x: head.x + snakeDir.x, y: head.y + snakeDir.y };
+
+        if (newHead.x < 0 || newHead.x >= 20 || newHead.y < 0 || newHead.y >= 12) {
+          setSnakeOver(true);
+          return prev;
+        }
+
+        for (let segment of prev) {
+          if (segment.x === newHead.x && segment.y === newHead.y) {
+            setSnakeOver(true);
+            return prev;
+          }
+        }
+
+        const newSnake = [newHead, ...prev];
+
+        if (newHead.x === snakeFood.x && newHead.y === snakeFood.y) {
+          setSnakeScore(s => {
+            const next = s + 10;
+            if (next > snakeHighScore) setSnakeHighScore(next);
+            return next;
+          });
+          setSnakeFood({
+            x: Math.floor(Math.random() * 20),
+            y: Math.floor(Math.random() * 12)
+          });
+        } else {
+          newSnake.pop();
+        }
+        return newSnake;
+      });
+    }, 180);
+
+    return () => clearInterval(gameTick);
+  }, [currentScreen, snakeDir, snakeFood, snakeOver, snakeHighScore]);
+
+  const initTetrisGame = () => {
+    const emptyBoard = Array(15).fill(null).map(() => Array(10).fill(0));
+    setTetrisBoard(emptyBoard);
+    setTetrisScore(0);
+    setTetrisOver(false);
+    spawnTetrisPiece(emptyBoard);
+  };
+
+  const SHAPES = [
+    [[1, 1, 1, 1]],
+    [[1, 1, 1], [0, 1, 0]],
+    [[1, 1], [1, 1]],
+    [[1, 1, 0], [0, 1, 1]],
+    [[0, 1, 1], [1, 1, 0]]
+  ];
+
+  const spawnTetrisPiece = (board: number[][]) => {
+    const shape = SHAPES[Math.floor(Math.random() * SHAPES.length)];
+    const newPiece = {
+      shape,
+      color: '#ef4444'
+    };
+    setTetrisPiece(newPiece);
+    setTetrisPos({ x: 3, y: 0 });
+
+    if (checkCollision(shape, { x: 3, y: 0 }, board)) {
+      setTetrisOver(true);
+    }
+  };
+
+  const checkCollision = (shape: number[][], pos: {x: number, y: number}, board: number[][]) => {
+    for (let r = 0; r < shape.length; r++) {
+      for (let c = 0; c < shape[r].length; c++) {
+        if (shape[r][c]) {
+          const nextX = pos.x + c;
+          const nextY = pos.y + r;
+          if (nextX < 0 || nextX >= 10 || nextY >= 15) return true;
+          if (nextY >= 0 && board[nextY] && board[nextY][nextX]) return true;
+        }
+      }
+    }
+    return false;
+  };
+
+  const moveTetrisPiece = (dx: number, dy: number) => {
+    if (tetrisOver || !tetrisPiece) return;
+    const nextPos = { x: tetrisPos.x + dx, y: tetrisPos.y + dy };
+    if (!checkCollision(tetrisPiece.shape, nextPos, tetrisBoard)) {
+      setTetrisPos(nextPos);
+    } else if (dy > 0) {
+      lockTetrisPiece();
+    }
+  };
+
+  const rotateTetrisPiece = () => {
+    if (tetrisOver || !tetrisPiece) return;
+    const shape = tetrisPiece.shape;
+    const rotated = shape[0].map((_, colIndex) => shape.map(row => row[colIndex]).reverse());
+    if (!checkCollision(rotated, tetrisPos, tetrisBoard)) {
+      setTetrisPiece({ ...tetrisPiece, shape: rotated });
+    }
+  };
+
+  const lockTetrisPiece = () => {
+    const newBoard = tetrisBoard.map(row => [...row]);
+    const shape = tetrisPiece.shape;
+    for (let r = 0; r < shape.length; r++) {
+      for (let c = 0; c < shape[r].length; c++) {
+        if (shape[r][c]) {
+          const boardY = tetrisPos.y + r;
+          const boardX = tetrisPos.x + c;
+          if (boardY >= 0 && boardY < 15) {
+            newBoard[boardY][boardX] = 1;
+          }
+        }
+      }
+    }
+
+    let linesCleared = 0;
+    const filteredBoard = newBoard.filter(row => {
+      const isFull = row.every(cell => cell === 1);
+      if (isFull) linesCleared++;
+      return !isFull;
+    });
+
+    while (filteredBoard.length < 15) {
+      filteredBoard.unshift(Array(10).fill(0));
+    }
+
+    setTetrisBoard(filteredBoard);
+    setTetrisScore(prev => prev + linesCleared * 100);
+    spawnTetrisPiece(filteredBoard);
+  };
+
+  useEffect(() => {
+    if (currentScreen !== 'TETRIS_GAME' || tetrisOver) return;
+    const gameTick = setInterval(() => {
+      moveTetrisPiece(0, 1);
+    }, 700);
+    return () => clearInterval(gameTick);
+  }, [currentScreen, tetrisPos, tetrisPiece, tetrisBoard, tetrisOver]);
+
+  const renderTableRows = () => {
+    const math = (window as any).math;
+    if (!math) return [];
+
+    const rows = [];
+    const start = tblSettings.TblStart + tableOffset * tblSettings.dTbl;
+
+    const compiled: Record<string, any> = {};
+    Object.keys(equations).forEach(k => {
+      try {
+        const eqStr = equations[k];
+        if (eqStr && eqStr.trim()) {
+          compiled[k] = math.compile(sanitizeExpressionForMathJS(eqStr));
+        }
+      } catch (e) {}
+    });
+
+    for (let i = 0; i < 7; i++) {
+      const x = start + i * tblSettings.dTbl;
+      const rowVals: Record<string, string> = { X: x.toFixed(2), Y1: '---', Y2: '---' };
+
+      Object.keys(compiled).forEach(k => {
+        try {
+          const val = compiled[k].evaluate({ x, deg: math.unit('deg'), Ans: Number(lastAnswer) || 0 });
+          rowVals[k] = typeof val === 'number' && !isNaN(val) ? val.toFixed(4) : 'ERR';
+        } catch (e) {
+          rowVals[k] = 'ERR';
+        }
+      });
+
+      rows.push(rowVals);
+    }
+    return rows;
+  };
+
+  // Feedback ideas persistence and sync
+  const fetchFeedbackList = useCallback(async () => {
+    let localList: any[] = [];
+    try {
+      const gv = localStorage.getItem('global_feedback_ideas');
+      if (gv) {
+        localList = JSON.parse(gv);
+      }
+    } catch {}
+
+    try {
+      const dbv = localStorage.getItem('trxy6_secure_terminal_db');
+      if (dbv) {
+        const db = JSON.parse(dbv);
+        const messages = Array.isArray(db) ? db : (db && Array.isArray(db.messages) ? db.messages : []);
+        messages.forEach((msg: any) => {
+          if (msg && msg.id && !localList.some(item => item.id === msg.id)) {
+            localList.push({
+              id: msg.id,
+              sender: msg.sender || 'anonymous',
+              text: msg.text || '',
+              timestamp: msg.timestamp || new Date().toLocaleString()
+            });
+          }
+        });
+      }
+    } catch {}
+
+    localList.sort((a, b) => b.id.localeCompare(a.id));
+    setFeedbackList(localList);
+
+    try {
+      const res = await fetch('/api/feedback');
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data.feedback)) {
+          const merged = [...data.feedback];
+          localList.forEach(item => {
+            if (!merged.some(m => m.id === item.id)) {
+              merged.push(item);
+            }
+          });
+          merged.sort((a, b) => b.id.localeCompare(a.id));
+          setFeedbackList(merged);
+          localStorage.setItem('global_feedback_ideas', JSON.stringify(merged));
+        }
+      }
+    } catch (e) {
+      console.warn("Failed to fetch feedback from server, using local cache");
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchFeedbackList();
+  }, [fetchFeedbackList]);
   const [showCustomizeModal, setShowCustomizeModal] = useState(false);
   const [visibleWidgets, setVisibleWidgets] = useState<Record<string, boolean>>(() => {
     try {
@@ -7497,6 +8412,9 @@ Since I run entirely on-device, I cannot fetch live websites or use external ser
               <div className="calc-tab active" data-calc="basic">
                 Calculator
               </div>
+              <div className="calc-tab" data-calc="ti84">
+                TI-84
+              </div>
               <div className="calc-tab" data-calc="tip">
                 Tip / Split
               </div>
@@ -7524,6 +8442,741 @@ Since I run entirely on-device, I cannot fetch live websites or use external ser
                     {k}
                   </button>
                 ))}
+              </div>
+            </div>
+
+            <div className="calc-sub" id="calc-ti84">
+              <div className="w-full flex flex-col items-center justify-center p-2 bg-[#0b061d]/60 rounded-3xl border border-purple-500/20 relative overflow-hidden">
+                {/* TI-84 Shell Container with cosmic galaxy styling */}
+                <div className="w-full max-w-[430px] galaxy-shell rounded-[40px] p-4.5 pt-6 pb-6 flex flex-col relative overflow-hidden">
+                  
+                  {/* Texas Instruments Top Branding Banner */}
+                  <div className="flex justify-between items-center px-3 mb-2.5 z-10">
+                    <span className="text-[9px] uppercase tracking-widest text-purple-300/60 font-black">Texas Instruments</span>
+                    <span className="text-xs font-black text-white tracking-tight flex items-center gap-1.5">
+                      TI-84 Plus CE <span className="text-[#3fd9c7] text-[8px] tracking-widest bg-[#3fd9c7]/10 px-1.5 py-0.5 rounded-full border border-[#3fd9c7]/20 uppercase">Cosmic OS</span>
+                    </span>
+                  </div>
+
+                  {/* Calculator Bezel screen space styled with galaxy elements */}
+                  <div className="galaxy-bezel p-2.5 rounded-2xl mb-4.5 shadow-inner relative overflow-hidden">
+                    
+                    {/* Twinkling star decorations inside bezel for authentic galaxy feel */}
+                    <div className="galaxy-star" style={{ top: '8%', left: '12%', width: '2px', height: '2px', '--duration': '2.2s' } as any} />
+                    <div className="galaxy-star" style={{ top: '15%', right: '15%', width: '1.5px', height: '1.5px', '--duration': '3.1s' } as any} />
+                    <div className="galaxy-star" style={{ top: '4%', right: '40%', width: '2.5px', height: '2.5px', '--duration': '1.8s' } as any} />
+                    <div className="galaxy-star" style={{ bottom: '10%', left: '22%', width: '1.5px', height: '1.5px', '--duration': '2.7s' } as any} />
+                    <div className="galaxy-star" style={{ bottom: '6%', right: '28%', width: '2px', height: '2px', '--duration': '3.5s' } as any} />
+                    
+                    {/* Status Bar Header */}
+                    <div className="flex justify-between items-center text-[9px] font-mono font-bold text-[#3fd9c7] border-b border-purple-500/10 pb-1.5 mb-2 z-10 relative">
+                      <div className="flex items-center space-x-1.5">
+                        <span className="bg-[#10092b] border border-purple-500/25 px-1.5 py-0.5 rounded text-[#b4aae2] text-[8px] uppercase">{angleMode}</span>
+                        <span className="text-[#3fd9c7]/80">FUNC</span>
+                      </div>
+                      <div className="flex items-center space-x-1.5">
+                        {is2nd && <span className="bg-amber-500 text-slate-950 px-1.5 rounded text-[8px] font-extrabold animate-pulse">2ND</span>}
+                        {isAlpha && <span className="bg-emerald-500 text-slate-950 px-1.5 rounded text-[8px] font-extrabold animate-pulse">ALPHA</span>}
+                        <span className="text-[#b4aae2]/50">4:20 PM</span>
+                        {/* Battery Icon */}
+                        <div className="w-4.5 h-2.5 border border-[#3fd9c7]/50 rounded-sm p-[1.5px] flex items-center bg-[#070414]/80">
+                          <div className="h-full bg-gradient-to-r from-[#3fd9c7] to-emerald-400 w-full rounded-2xs"></div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Main Interactive LCD Screen Space */}
+                    <div ref={lcdScreenRef} className="h-44 galaxy-screen p-2.5 font-mono text-xs overflow-y-auto rounded-lg lcd-glow flex flex-col relative select-none border border-[#3fd9c7]/10 z-10">
+                      
+                      {/* Dynamic OS Bootloader fallback to guard MathJS installation */}
+                      {!mathLoaded ? (
+                        <div className="flex-1 flex flex-col items-center justify-center font-mono p-2">
+                          <div className="text-center space-y-2.5">
+                            <div className="text-[9px] font-black tracking-widest animate-pulse text-[#3fd9c7]">TEXAS INSTRUMENTS</div>
+                            <div className="text-sm font-black tracking-tight text-white">TI-84 Plus CE</div>
+                            <div className="text-[8px] mt-1 font-bold text-[#b4aae2]/80">BOOTING COSMIC OS v6.2...</div>
+                            <div className="w-24 h-2.5 border border-purple-500/40 rounded-sm p-[1px] mt-2.5 mx-auto bg-transparent">
+                              <div className="h-full bg-gradient-to-r from-[#3fd9c7] to-[#cf4fe6] animate-loading-bar rounded-[1px]" style={{ width: '70%' }}></div>
+                            </div>
+                            <div className="text-[8px] mt-2 opacity-75 font-semibold text-[#b4aae2]/60">STAR DUST CALIBRATED • OK</div>
+                          </div>
+                        </div>
+                      ) : (
+                        <>
+                          {/* Error Popup Handler Window */}
+                          {errorMessage && (
+                            <div className="absolute inset-0 bg-[#0f0a28]/95 z-50 p-3.5 flex flex-col justify-between rounded-lg shadow-lg text-[#faebd7] border border-[#cf4fe6]/60">
+                              <div>
+                                <h4 className="font-extrabold text-[#cf4fe6] tracking-widest border-b border-[#cf4fe6]/20 pb-1 mb-2 text-[10px] uppercase">Rift Error</h4>
+                                <p className="text-[10px] font-bold leading-relaxed whitespace-pre-line text-rose-300">{errorMessage}</p>
+                              </div>
+                              <button 
+                                onClick={() => setErrorMessage(null)} 
+                                className="w-full bg-purple-900/60 hover:bg-purple-800/80 text-white font-extrabold text-[9px] py-1.5 rounded-lg border border-purple-500/30 transition-colors cursor-pointer"
+                              >
+                                1: CLEAR ERROR
+                              </button>
+                            </div>
+                          )}
+
+                          {/* SCREEN SWITCHING RENDERING SCHEME */}
+                          {currentScreen === 'HOME' && (
+                            <div className="flex-1 flex flex-col justify-end">
+                              {/* Previous calculation logs */}
+                              <div className="overflow-y-auto space-y-1.5 max-h-28 flex-1 pr-0.5">
+                                {history.map((h, i) => (
+                                  <div key={i} className="text-[10px]">
+                                    <div className="text-left text-[#b4aae2]/85">{h.input}</div>
+                                    <div className="text-right font-black text-[#3fd9c7]">{h.output}</div>
+                                  </div>
+                                ))}
+                              </div>
+
+                              {/* Active calculation input line with blinking block cursor */}
+                              <div className="border-t border-purple-500/10 pt-1 mt-1 flex items-center">
+                                <span className="text-[#3fd9c7] mr-1.5 font-bold">&gt;</span>
+                                <span className="relative inline-block break-all max-w-full font-bold text-white">
+                                  {inputVal.slice(0, cursorIndex)}
+                                  <span className="bg-[#3fd9c7] text-[#020008] cursor-blink inline-block w-1.5 h-3 text-center">
+                                    {inputVal[cursorIndex] || ' '}
+                                  </span>
+                                  {inputVal.slice(cursorIndex + 1)}
+                                </span>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Y= Equation Plot list editor screen */}
+                          {currentScreen === 'Y_EDIT' && (
+                            <div className="flex-1 flex flex-col">
+                              <div className="border-b border-purple-500/20 pb-1 mb-1.5 flex justify-between font-black text-[9px] tracking-wider text-purple-300">
+                                <span>Y= EDITOR</span>
+                                <span className="text-[#3fd9c7]">PLOT 1 2 3</span>
+                              </div>
+                              <div className="space-y-1 flex-1">
+                                {['Y1', 'Y2', 'Y3', 'Y4'].map((eqKey) => (
+                                  <div 
+                                    key={eqKey} 
+                                    onClick={() => setActiveEqIndex(eqKey)}
+                                    className={`p-1 rounded-lg cursor-pointer transition-all flex items-center justify-between border ${activeEqIndex === eqKey ? 'bg-purple-950/40 border-purple-500/40' : 'border-transparent'}`}
+                                  >
+                                    <span className="font-bold text-[9px] text-[#b4aae2]">{`\\${eqKey} =`}</span>
+                                    <span className="flex-1 ml-2 font-bold font-mono text-white truncate max-w-[170px]">
+                                      {equations[eqKey] || <span className="text-[#b4aae2]/20 italic text-[8px]">empty</span>}
+                                    </span>
+                                    {activeEqIndex === eqKey && <span className="w-1.5 h-1.5 bg-[#3fd9c7] rounded-full animate-pulse"></span>}
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* WINDOW View Settings Editor */}
+                          {currentScreen === 'WINDOW' && (
+                            <div className="flex-1 flex flex-col">
+                              <div className="border-b border-purple-500/20 pb-1 mb-1.5 font-black text-[9px] tracking-wider text-purple-300">WINDOW CONFIG</div>
+                              <div className="grid grid-cols-2 gap-1.5 flex-1 overflow-y-auto pt-0.5">
+                                {Object.keys(windowSettings).map((settingKey) => (
+                                  <div 
+                                    key={settingKey} 
+                                    onClick={() => setActiveWindowIndex(settingKey)}
+                                    className={`p-1.5 rounded-lg border ${activeWindowIndex === settingKey ? 'bg-purple-950/40 border-purple-500/40' : 'border-transparent'}`}
+                                  >
+                                    <div className="text-[8px] font-extrabold uppercase text-[#b4aae2]">{settingKey}</div>
+                                    <input 
+                                      type="number" 
+                                      value={windowSettings[settingKey]} 
+                                      onChange={(e) => setWindowSettings({ ...windowSettings, [settingKey]: parseFloat(e.target.value) || 0 })}
+                                      className="w-full bg-transparent font-bold font-mono text-white border-none outline-none focus:ring-0 p-0 text-[10px]"
+                                    />
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* TBLSET View Settings Editor */}
+                          {currentScreen === 'TBLSET' && (
+                            <div className="flex-1 flex flex-col justify-between">
+                              <div>
+                                <div className="border-b border-purple-500/20 pb-1 mb-2 font-black text-[9px] tracking-wider text-purple-300">TABLE SETUP</div>
+                                <div className="space-y-2">
+                                  <div 
+                                    onClick={() => setActiveTblIndex('TblStart')}
+                                    className={`p-1.5 rounded-lg border flex items-center justify-between ${activeTblIndex === 'TblStart' ? 'bg-purple-950/40 border-purple-500/40' : 'border-transparent'}`}
+                                  >
+                                    <span className="font-bold text-[9px] text-[#b4aae2]">TblStart = </span>
+                                    <span className="font-bold font-mono text-white">{tblSettings.TblStart}</span>
+                                  </div>
+                                  <div 
+                                    onClick={() => setActiveTblIndex('dTbl')}
+                                    className={`p-1.5 rounded-lg border flex items-center justify-between ${activeTblIndex === 'dTbl' ? 'bg-purple-950/40 border-purple-500/40' : 'border-transparent'}`}
+                                  >
+                                    <span className="font-bold text-[9px] text-[#b4aae2]">ΔTbl = </span>
+                                    <span className="font-bold font-mono text-white">{tblSettings.dTbl}</span>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Dynamic Cartesian Canvas Plotter Screen */}
+                          {currentScreen === 'GRAPH' && (
+                            <div className="flex-1 flex flex-col relative rounded-md overflow-hidden border border-purple-500/10">
+                              <canvas 
+                                ref={canvasRef} 
+                                width={380} 
+                                height={210} 
+                                className="w-full h-full flex-1 bg-[#100b26] cursor-crosshair"
+                              />
+                              {/* Tracing coordinates read-out overlay */}
+                              {isTracing && (
+                                <div className="absolute bottom-0 inset-x-0 bg-[#070414]/90 border-t border-purple-500/10 text-white text-[8px] font-mono p-1 px-2 flex justify-between">
+                                  <span className="font-black text-[#cf4fe6]">{traceEquationIndex}</span>
+                                  <span>X={traceX.toFixed(2)}</span>
+                                  <span>Y={(() => {
+                                    try {
+                                      const eq = equations[traceEquationIndex];
+                                      if (!eq) return '0.00';
+                                      const math = (window as any).math;
+                                      const y = math ? math.evaluate(sanitizeExpressionForMathJS(eq), { x: traceX, deg: math.unit('deg'), Ans: Number(lastAnswer) || 0 }) : 0;
+                                      return typeof y === 'number' && !isNaN(y) ? y.toFixed(2) : 'ERR';
+                                    } catch(e) { return 'ERR'; }
+                                  })()}</span>
+                                </div>
+                              )}
+                            </div>
+                          )}
+
+                          {/* dynamic coordinate table spreadsheet screen */}
+                          {currentScreen === 'TABLE' && (
+                            <div className="flex-1 flex flex-col">
+                              <div className="grid grid-cols-3 font-black text-[9px] tracking-wider text-purple-300 border-b border-purple-500/20 pb-1 mb-1 text-center">
+                                <span className="text-left pl-2">X</span>
+                                <span>Y1</span>
+                                <span>Y2</span>
+                              </div>
+                              <div className="flex-1 overflow-y-hidden divide-y divide-purple-500/5 text-center">
+                                {renderTableRows().map((row, i) => (
+                                  <div key={i} className="grid grid-cols-3 text-[9px] py-1 font-mono font-bold">
+                                    <span className="text-left pl-2 text-white bg-purple-950/20">{row.X}</span>
+                                    <span className="text-[#f43f5e]">{row.Y1}</span>
+                                    <span className="text-[#3b82f6]">{row.Y2}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Mode Adjuster Screen */}
+                          {currentScreen === 'MODE_MENU' && (
+                            <div className="flex-1 flex flex-col text-[9px] space-y-1.5 overflow-y-auto">
+                              <div className="font-black border-b border-purple-500/20 pb-1 mb-1.5 text-[9px] tracking-wider text-purple-300">MODE SETTINGS</div>
+                              
+                              <div className="flex justify-between items-center py-0.5">
+                                <span className="font-bold text-[#b4aae2]">ANGLE:</span>
+                                <div className="flex space-x-1">
+                                  {['RADIAN', 'DEGREE'].map(opt => (
+                                    <button 
+                                      key={opt}
+                                      onClick={() => setAngleMode(opt)}
+                                      className={`px-1.5 py-0.5 rounded text-[8px] font-bold font-mono border ${angleMode === opt ? 'bg-[#3fd9c7] text-[#020008] border-[#3fd9c7]' : 'bg-[#10092b] text-[#b4aae2]/60 border-purple-500/20'} cursor-pointer`}
+                                    >
+                                      {opt}
+                                    </button>
+                                  ))}
+                                </div>
+                              </div>
+
+                              <div className="flex justify-between items-center py-0.5">
+                                <span className="font-bold text-[#b4aae2]">DECIMALS:</span>
+                                <select 
+                                  value={decimalPlaces} 
+                                  onChange={(e) => setDecimalPlaces(e.target.value)}
+                                  className="bg-[#10092b] text-[#3fd9c7] border border-purple-500/20 font-bold font-mono text-[8px] rounded px-1 py-0.5 outline-none"
+                                >
+                                  <option value="FLOAT">FLOAT</option>
+                                  {[0, 1, 2, 3, 4, 5, 6].map(v => <option key={v} value={v.toString()}>{v}</option>)}
+                                </select>
+                              </div>
+
+                              <div className="flex justify-between items-center py-0.5">
+                                <span className="font-bold text-[#b4aae2]">NOTATION:</span>
+                                <div className="flex space-x-1">
+                                  {['NORMAL', 'SCI'].map(opt => (
+                                    <button 
+                                      key={opt}
+                                      onClick={() => setNumberFormat(opt)}
+                                      className={`px-1.5 py-0.5 rounded text-[8px] font-bold font-mono border ${numberFormat === opt ? 'bg-[#3fd9c7] text-[#020008] border-[#3fd9c7]' : 'bg-[#10092b] text-[#b4aae2]/60 border-purple-500/20'} cursor-pointer`}
+                                    >
+                                      {opt}
+                                    </button>
+                                  ))}
+                                </div>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* MATH Menu screen helper */}
+                          {currentScreen === 'MATH_MENU' && (
+                            <div className="flex-1 flex flex-col">
+                              <div className="border-b border-purple-500/20 pb-1 mb-1.5 font-black text-[9px] tracking-wider text-purple-300">MATH FUNCTIONS</div>
+                              <div className="space-y-1 pt-0.5">
+                                {[
+                                  { l: '1: ▶Frac', d: 'Convert to fraction', t: 'toFraction(' },
+                                  { l: '2: ▶Dec', d: 'Convert to decimal', t: 'string(' },
+                                  { l: '3: abs(', d: 'Absolute value operator', t: 'abs(' },
+                                  { l: '4: gcd(', d: 'Greatest common divisor', t: 'gcd(' },
+                                  { l: '5: lcm(', d: 'Least common multiple', t: 'lcm(' }
+                                ].map((item, i) => (
+                                  <div 
+                                    key={i} 
+                                    onClick={() => {
+                                      insertToken(item.t);
+                                      setCurrentScreen('HOME');
+                                    }}
+                                    className="p-1 hover:bg-purple-950/40 rounded-lg cursor-pointer border-b border-purple-500/5 text-[9px] font-bold text-white flex justify-between"
+                                  >
+                                    <span>{item.l}</span>
+                                    <span className="text-[#b4aae2]/40 text-[8px]">{item.d}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* PROGRAM ROM list screen selector */}
+                          {currentScreen === 'PROGRAM_MENU' && (
+                            <div className="flex-1 flex flex-col">
+                              <div className="border-b border-purple-500/20 pb-1 mb-2 font-black text-[9px] tracking-wider text-purple-300">EXEC PROGRAM</div>
+                              <div className="space-y-1.5 flex-1">
+                                {programList.map((prog, i) => (
+                                  <div 
+                                    key={prog} 
+                                    onClick={() => setActiveProgIndex(i)}
+                                    className={`p-1.5 rounded-lg cursor-pointer flex justify-between items-center border ${activeProgIndex === i ? 'bg-purple-950/40 border-purple-500/40' : 'border-transparent'}`}
+                                  >
+                                    <span className="font-bold text-[10px] text-white">{`${i+1}: ${prog}`}</span>
+                                    <span className="text-[8px] text-[#3fd9c7] uppercase bg-[#3fd9c7]/10 px-1 rounded border border-[#3fd9c7]/20 font-mono">ROM</span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* CATALOG Catalog screen list */}
+                          {currentScreen === 'CATALOG' && (
+                            <div className="flex-1 flex flex-col">
+                              <div className="border-b border-purple-500/20 pb-1 mb-2 font-black text-[9px] tracking-wider text-purple-300">CATALOG</div>
+                              <div className="space-y-1 flex-1 overflow-y-auto pr-0.5">
+                                {[
+                                  { n: 'abs(', t: 'abs(' },
+                                  { n: 'acos(', t: 'acos(' },
+                                  { n: 'asin(', t: 'asin(' },
+                                  { n: 'atan(', t: 'atan(' },
+                                  { n: 'cos(', t: 'cos(' },
+                                  { n: 'sin(', t: 'sin(' },
+                                  { n: 'tan(', t: 'tan(' },
+                                  { n: 'log(', t: 'log(' }
+                                ].map((item) => (
+                                  <div 
+                                    key={item.n} 
+                                    onClick={() => {
+                                      insertToken(item.t);
+                                      setCurrentScreen('HOME');
+                                    }}
+                                    className="p-1 hover:bg-purple-950/40 rounded-lg cursor-pointer border-b border-purple-500/5 text-[9px] font-bold text-white"
+                                  >
+                                    {item.n}
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Snake Game Screen layout */}
+                          {currentScreen === 'S_GAME' && (
+                            <div className="flex-1 flex flex-col justify-between">
+                              <div className="flex justify-between items-center text-[8px] font-bold text-[#b4aae2] border-b border-purple-500/10 pb-1 mb-1.5">
+                                <span>SCORE: {snakeScore}</span>
+                                <span className="text-[#cf4fe6]">HI: {snakeHighScore}</span>
+                              </div>
+                              {snakeOver ? (
+                                <div className="flex-1 flex flex-col items-center justify-center text-center">
+                                  <div className="text-[11px] font-black text-rose-400">GAME OVER</div>
+                                  <button 
+                                    onClick={initSnakeGame} 
+                                    className="mt-2 px-3 py-1 bg-purple-900/60 hover:bg-purple-800/80 border border-purple-500/30 text-white rounded-lg text-[8px] font-bold cursor-pointer"
+                                  >
+                                    RETRY (ENTER)
+                                  </button>
+                                </div>
+                              ) : (
+                                <div className="flex-grow grid grid-cols-20 grid-rows-12 gap-px bg-purple-950/20 p-0.5 border border-purple-500/10 rounded">
+                                  {Array.from({ length: 12 }).map((_, r) => (
+                                    Array.from({ length: 20 }).map((_, c) => {
+                                      const isSnake = snake.some(s => s.x === c && s.y === r);
+                                      const isFood = snakeFood.x === c && snakeFood.y === r;
+                                      return (
+                                        <div 
+                                          key={`${r}-${c}`}
+                                          className={`w-full h-full rounded-[1px] ${isSnake ? 'bg-[#3fd9c7] shadow-[0_0_2px_#3fd9c7]' : isFood ? 'bg-rose-500 animate-pulse' : 'bg-transparent'}`}
+                                          style={{ aspectRatio: '1/1' }}
+                                        />
+                                      );
+                                    })
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          )}
+
+                          {/* Tetris Game Screen layout */}
+                          {currentScreen === 'TETRIS_GAME' && (
+                            <div className="flex-1 flex flex-col justify-between">
+                              <div className="flex justify-between items-center text-[8px] font-bold text-[#b4aae2] border-b border-purple-500/10 pb-1 mb-1.5">
+                                <span>TETRIS ROM</span>
+                                <span>SCORE: {tetrisScore}</span>
+                              </div>
+                              {tetrisOver ? (
+                                <div className="flex-1 flex flex-col items-center justify-center text-center">
+                                  <div className="text-[11px] font-black text-rose-400">GAME OVER</div>
+                                  <button 
+                                    onClick={initTetrisGame} 
+                                    className="mt-2 px-3 py-1 bg-purple-900/60 hover:bg-purple-800/80 border border-purple-500/30 text-white rounded-lg text-[8px] font-bold cursor-pointer"
+                                  >
+                                    RETRY (ENTER)
+                                  </button>
+                                </div>
+                              ) : (
+                                <div className="flex-grow grid grid-cols-10 grid-rows-15 gap-px bg-purple-950/20 p-0.5 border border-purple-500/10 rounded max-h-[120px] overflow-hidden">
+                                  {Array.from({ length: 15 }).map((_, r) => (
+                                    Array.from({ length: 10 }).map((_, c) => {
+                                      let hasBlock = tetrisBoard[r]?.[c] === 1;
+                                      if (tetrisPiece) {
+                                        const shape = tetrisPiece.shape;
+                                        const shapeR = r - tetrisPos.y;
+                                        const shapeC = c - tetrisPos.x;
+                                        if (shapeR >= 0 && shapeR < shape.length && shapeC >= 0 && shapeC < shape[shapeR].length) {
+                                          if (shape[shapeR][shapeC]) hasBlock = true;
+                                        }
+                                      }
+                                      return (
+                                        <div 
+                                          key={`${r}-${c}`}
+                                          className={`w-full h-full rounded-[1px] ${hasBlock ? 'bg-[#cf4fe6] shadow-[0_0_2px_#cf4fe6]' : 'bg-transparent'}`}
+                                          style={{ aspectRatio: '1/1' }}
+                                        />
+                                      );
+                                    })
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Calculator Pad Keys Layout */}
+                  <div className="grid grid-cols-5 gap-1.5 select-none mt-2">
+                    
+                    {/* ROW 1: Blue Functional Keys */}
+                    {/* Y= */}
+                    <div className="flex flex-col items-center">
+                      <span className="text-[7px] galaxy-text-yellow font-bold uppercase">Stat Plot</span>
+                      <span className="text-[7px] galaxy-text-cyan font-bold uppercase">Frac</span>
+                      <button onClick={() => { haptic(10); handleButtonPress('Y='); }} className="w-full py-1.5 galaxy-btn-blue rounded text-[9px] font-bold cursor-pointer transition-all">Y=</button>
+                    </div>
+                    
+                    {/* GRAPH */}
+                    <div className="flex flex-col items-center">
+                      <span className="text-[7px] galaxy-text-yellow font-bold uppercase">Window</span>
+                      <span className="text-[7px] galaxy-text-cyan font-bold uppercase">Func</span>
+                      <button onClick={() => { haptic(10); handleButtonPress('GRAPH'); }} className="w-full py-1.5 galaxy-btn-blue rounded text-[9px] font-bold cursor-pointer transition-all">GRAPH</button>
+                    </div>
+
+                    {/* Home */}
+                    <div className="flex flex-col items-center">
+                      <span className="text-[7px] galaxy-text-yellow font-bold uppercase">Format</span>
+                      <span className="text-[7px] galaxy-text-cyan font-bold uppercase">Mtrx</span>
+                      <button onClick={() => { haptic(10); handleButtonPress('QUIT'); }} className="w-full py-1.5 galaxy-btn-blue rounded text-[9px] font-bold cursor-pointer transition-all">Home</button>
+                    </div>
+
+                    {/* TABLE */}
+                    <div className="flex flex-col items-center">
+                      <span className="text-[7px] galaxy-text-yellow font-bold uppercase">TblSet</span>
+                      <span className="text-[7px] galaxy-text-cyan font-bold uppercase">Yvar</span>
+                      <button onClick={() => { haptic(10); handleButtonPress('TABLE'); }} className="w-full py-1.5 galaxy-btn-blue rounded text-[9px] font-bold cursor-pointer transition-all">TABLE</button>
+                    </div>
+
+                    {/* Undo */}
+                    <div className="flex flex-col items-center">
+                      <span className="text-[7px] galaxy-text-yellow font-bold uppercase">Redo</span>
+                      <span className="text-[7px] galaxy-text-cyan font-bold uppercase">Conv</span>
+                      <button onClick={() => { haptic(10); setInputVal(''); setCursorIndex(0); }} className="w-full py-1.5 galaxy-btn-blue rounded text-[9px] font-bold cursor-pointer transition-all">Undo</button>
+                    </div>
+
+                    {/* ROW 2 & 3: With D-Pad on the right */}
+                    {/* 2nd */}
+                    <div className="flex flex-col items-center col-span-1">
+                      <span className="text-[7px] font-bold opacity-0">.</span>
+                      <span className="text-[7px] font-bold opacity-0">.</span>
+                      <button onClick={() => { haptic(10); handleButtonPress('2ND'); }} className="w-full py-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 rounded text-[9px] font-black uppercase cursor-pointer transition-all shadow-[0_0_8px_rgba(245,158,11,0.3)]">2nd</button>
+                    </div>
+
+                    {/* MODE */}
+                    <div className="flex flex-col items-center">
+                      <span className="text-[7px] galaxy-text-yellow font-bold uppercase">Quit</span>
+                      <span className="text-[7px] galaxy-text-cyan font-bold uppercase">User</span>
+                      <button onClick={() => { haptic(10); handleButtonPress('MODE'); }} className="w-full py-1.5 galaxy-btn-white rounded text-[9px] font-bold cursor-pointer transition-all">MODE</button>
+                    </div>
+
+                    {/* DEL */}
+                    <div className="flex flex-col items-center">
+                      <span className="text-[7px] galaxy-text-yellow font-bold uppercase">Ins</span>
+                      <span className="text-[7px] galaxy-text-cyan font-bold uppercase">uKeys</span>
+                      <button onClick={() => { haptic(10); handleButtonPress('DEL'); }} className="w-full py-1.5 galaxy-btn-white rounded text-[9px] font-bold cursor-pointer transition-all">DEL</button>
+                    </div>
+
+                    {/* D-PAD Container (Occupies columns 4 and 5, rows 2 and 3) */}
+                    <div className="col-span-2 row-span-2 flex items-center justify-center bg-[#070414]/90 border border-purple-500/20 rounded-2xl p-1.5">
+                      <div className="grid grid-cols-3 grid-rows-3 gap-0.5 w-full h-full max-w-[120px] max-h-[80px]">
+                        <div />
+                        <button onClick={() => { haptic(10); handleButtonPress('UP'); }} className="bg-[#1b2650]/80 hover:bg-[#2b3a6c]/90 text-white rounded-lg flex flex-col items-center justify-center p-0.5 cursor-pointer border border-[#3b82f6]/20">
+                          <span className="text-[6px] galaxy-text-cyan font-bold leading-none">A+</span>
+                          <span className="text-[9px] leading-none">▲</span>
+                        </button>
+                        <div />
+                        <button onClick={() => { haptic(10); handleButtonPress('LEFT'); }} className="bg-[#1b2650]/80 hover:bg-[#2b3a6c]/90 text-white rounded-lg flex items-center justify-center text-[9px] cursor-pointer border border-[#3b82f6]/20">◀</button>
+                        <div className="bg-[#cf4fe6]/20 rounded-full w-2 h-2 m-auto animate-pulse" />
+                        <button onClick={() => { haptic(10); handleButtonPress('RIGHT'); }} className="bg-[#1b2650]/80 hover:bg-[#2b3a6c]/90 text-white rounded-lg flex items-center justify-center text-[9px] cursor-pointer border border-[#3b82f6]/20">▶</button>
+                        <div />
+                        <button onClick={() => { haptic(10); handleButtonPress('DOWN'); }} className="bg-[#1b2650]/80 hover:bg-[#2b3a6c]/90 text-white rounded-lg flex flex-col items-center justify-center p-0.5 cursor-pointer border border-[#3b82f6]/20">
+                          <span className="text-[9px] leading-none">▼</span>
+                          <span className="text-[6px] galaxy-text-cyan font-bold leading-none">A-</span>
+                        </button>
+                        <div />
+                      </div>
+                    </div>
+
+                    {/* ROW 3: Column 1-3 */}
+                    {/* ALPHA */}
+                    <div className="flex flex-col items-center col-span-1">
+                      <span className="text-[7px] galaxy-text-cyan font-bold uppercase">A-Lock</span>
+                      <span className="text-[7px] font-bold opacity-0">.</span>
+                      <button onClick={() => { haptic(10); handleButtonPress('ALPHA'); }} className="w-full py-1.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 rounded text-[9px] font-black cursor-pointer transition-all shadow-[0_0_8px_rgba(16,185,129,0.3)]">ALPHA</button>
+                    </div>
+
+                    {/* X */}
+                    <div className="flex flex-col items-center">
+                      <span className="text-[7px] galaxy-text-yellow font-bold uppercase">Share</span>
+                      <span className="text-[7px] galaxy-text-cyan font-bold uppercase">n/d</span>
+                      <button onClick={() => { haptic(10); handleButtonPress('x'); }} className="w-full py-1.5 galaxy-btn-white rounded text-[9px] font-bold cursor-pointer transition-all">X</button>
+                    </div>
+
+                    {/* STAT */}
+                    <div className="flex flex-col items-center">
+                      <span className="text-[7px] galaxy-text-yellow font-bold uppercase">List</span>
+                      <span className="text-[7px] galaxy-text-cyan font-bold uppercase">0h</span>
+                      <button onClick={() => { haptic(10); handleButtonPress('PRGM'); }} className="w-full py-1.5 galaxy-btn-white rounded text-[9px] font-bold cursor-pointer transition-all">STAT</button>
+                    </div>
+
+                    {/* ROW 4: 5 buttons */}
+                    {/* MATH */}
+                    <div className="flex flex-col items-center">
+                      <span className="text-[7px] galaxy-text-yellow font-bold uppercase">Test</span>
+                      <button onClick={() => { haptic(10); handleButtonPress('MATH'); }} className="w-full py-1.5 galaxy-btn-white rounded text-[9px] font-bold cursor-pointer transition-all">MATH</button>
+                    </div>
+                    {/* APPS */}
+                    <div className="flex flex-col items-center">
+                      <span className="text-[7px] galaxy-text-yellow font-bold uppercase">Angle</span>
+                      <button onClick={() => { haptic(10); handleButtonPress('MODE'); }} className="w-full py-1.5 galaxy-btn-blue rounded text-[9px] font-bold cursor-pointer transition-all">APPS</button>
+                    </div>
+                    {/* PRGM */}
+                    <div className="flex flex-col items-center">
+                      <span className="text-[7px] galaxy-text-yellow font-bold uppercase">Draw</span>
+                      <button onClick={() => { haptic(10); handleButtonPress('PRGM'); }} className="w-full py-1.5 galaxy-btn-white rounded text-[9px] font-bold cursor-pointer transition-all">PRGM</button>
+                    </div>
+                    {/* VARS */}
+                    <div className="flex flex-col items-center">
+                      <span className="text-[7px] galaxy-text-yellow font-bold uppercase">Distr</span>
+                      <button onClick={() => { haptic(10); handleButtonPress('MATH'); }} className="w-full py-1.5 galaxy-btn-white rounded text-[9px] font-bold cursor-pointer transition-all">VARS</button>
+                    </div>
+                    {/* CLEAR */}
+                    <div className="flex flex-col items-center">
+                      <span className="text-[7px] galaxy-text-yellow font-bold uppercase">ClrDraw</span>
+                      <button onClick={() => { haptic(10); handleButtonPress('CLEAR'); }} className="w-full py-1.5 galaxy-btn-white rounded text-[9px] font-bold cursor-pointer transition-all">CLEAR</button>
+                    </div>
+
+                    {/* ROW 5: 5 buttons */}
+                    {/* x^-1 */}
+                    <div className="flex flex-col items-center">
+                      <span className="text-[7px] galaxy-text-yellow font-bold uppercase">Matrix</span>
+                      <button onClick={() => { haptic(10); insertToken('^-1'); }} className="w-full py-1.5 galaxy-btn-black rounded text-[9px] font-mono cursor-pointer transition-all">x⁻¹</button>
+                    </div>
+                    {/* SIN */}
+                    <div className="flex flex-col items-center">
+                      <span className="text-[7px] galaxy-text-yellow font-bold uppercase">Sin⁻¹</span>
+                      <button onClick={() => { haptic(10); handleButtonPress('sin(', 'asin('); }} className="w-full py-1.5 galaxy-btn-black rounded text-[9px] font-mono cursor-pointer transition-all">SIN</button>
+                    </div>
+                    {/* COS */}
+                    <div className="flex flex-col items-center">
+                      <span className="text-[7px] galaxy-text-yellow font-bold uppercase">Cos⁻¹</span>
+                      <button onClick={() => { haptic(10); handleButtonPress('cos(', 'acos('); }} className="w-full py-1.5 galaxy-btn-black rounded text-[9px] font-mono cursor-pointer transition-all">COS</button>
+                    </div>
+                    {/* TAN */}
+                    <div className="flex flex-col items-center">
+                      <span className="text-[7px] galaxy-text-yellow font-bold uppercase">Tan⁻¹</span>
+                      <button onClick={() => { haptic(10); handleButtonPress('tan(', 'atan('); }} className="w-full py-1.5 galaxy-btn-black rounded text-[9px] font-mono cursor-pointer transition-all">TAN</button>
+                    </div>
+                    {/* ^ */}
+                    <div className="flex flex-col items-center">
+                      <span className="text-[7px] galaxy-text-yellow font-bold uppercase">π</span>
+                      <button onClick={() => { haptic(10); handleButtonPress('^', 'π'); }} className="w-full py-1.5 galaxy-btn-black rounded text-[9px] font-mono cursor-pointer transition-all">^</button>
+                    </div>
+
+                    {/* ROW 6: 5 buttons */}
+                    {/* x^2 */}
+                    <div className="flex flex-col items-center">
+                      <span className="text-[7px] galaxy-text-yellow font-bold uppercase">√</span>
+                      <button onClick={() => { haptic(10); handleButtonPress('²', '√('); }} className="w-full py-1.5 galaxy-btn-black rounded text-[9px] font-mono cursor-pointer transition-all">x²</button>
+                    </div>
+                    {/* , */}
+                    <div className="flex flex-col items-center">
+                      <span className="text-[7px] galaxy-text-yellow font-bold uppercase">EE</span>
+                      <button onClick={() => { haptic(10); insertToken(','); }} className="w-full py-1.5 galaxy-btn-black rounded text-[9px] font-mono cursor-pointer transition-all">,</button>
+                    </div>
+                    {/* ( */}
+                    <div className="flex flex-col items-center">
+                      <span className="text-[7px] galaxy-text-yellow font-bold uppercase">{"{"}</span>
+                      <button onClick={() => { haptic(10); insertToken('('); }} className="w-full py-1.5 galaxy-btn-black rounded text-[9px] font-mono cursor-pointer transition-all">(</button>
+                    </div>
+                    {/* ) */}
+                    <div className="flex flex-col items-center">
+                      <span className="text-[7px] galaxy-text-yellow font-bold uppercase">{"}"}</span>
+                      <button onClick={() => { haptic(10); insertToken(')'); }} className="w-full py-1.5 galaxy-btn-black rounded text-[9px] font-mono cursor-pointer transition-all">)</button>
+                    </div>
+                    {/* ÷ */}
+                    <div className="flex flex-col items-center">
+                      <span className="text-[7px] font-bold opacity-0">.</span>
+                      <button onClick={() => { haptic(10); handleButtonPress('÷'); }} className="w-full py-1.5 galaxy-btn-operator rounded text-[10px] font-bold cursor-pointer transition-all">÷</button>
+                    </div>
+
+                    {/* ROW 7: 5 buttons */}
+                    {/* LOG */}
+                    <div className="flex flex-col items-center">
+                      <span className="text-[7px] galaxy-text-yellow font-bold uppercase">10^x</span>
+                      <button onClick={() => { haptic(10); handleButtonPress('log(', '10^'); }} className="w-full py-1.5 galaxy-btn-black rounded text-[9px] font-mono cursor-pointer transition-all">LOG</button>
+                    </div>
+                    {/* 7 */}
+                    <div className="flex flex-col items-center">
+                      <span className="text-[7px] galaxy-text-cyan font-bold uppercase">u</span>
+                      <button onClick={() => { haptic(10); insertToken('7'); }} className="w-full py-1.5 galaxy-btn-white rounded text-[10px] font-bold cursor-pointer transition-all">7</button>
+                    </div>
+                    {/* 8 */}
+                    <div className="flex flex-col items-center">
+                      <span className="text-[7px] galaxy-text-cyan font-bold uppercase">v</span>
+                      <button onClick={() => { haptic(10); insertToken('8'); }} className="w-full py-1.5 galaxy-btn-white rounded text-[10px] font-bold cursor-pointer transition-all">8</button>
+                    </div>
+                    {/* 9 */}
+                    <div className="flex flex-col items-center">
+                      <span className="text-[7px] galaxy-text-cyan font-bold uppercase">w</span>
+                      <button onClick={() => { haptic(10); insertToken('9'); }} className="w-full py-1.5 galaxy-btn-white rounded text-[10px] font-bold cursor-pointer transition-all">9</button>
+                    </div>
+                    {/* × */}
+                    <div className="flex flex-col items-center">
+                      <span className="text-[7px] galaxy-text-yellow font-bold uppercase">[</span>
+                      <button onClick={() => { haptic(10); handleButtonPress('×'); }} className="w-full py-1.5 galaxy-btn-operator rounded text-[10px] font-bold cursor-pointer transition-all">×</button>
+                    </div>
+
+                    {/* ROW 8: 5 buttons */}
+                    {/* LN */}
+                    <div className="flex flex-col items-center">
+                      <span className="text-[7px] galaxy-text-yellow font-bold uppercase">e^x</span>
+                      <button onClick={() => { haptic(10); handleButtonPress('ln(', 'e^'); }} className="w-full py-1.5 galaxy-btn-black rounded text-[9px] font-mono cursor-pointer transition-all">LN</button>
+                    </div>
+                    {/* 4 */}
+                    <div className="flex flex-col items-center">
+                      <span className="text-[7px] galaxy-text-cyan font-bold uppercase">L4</span>
+                      <button onClick={() => { haptic(10); insertToken('4'); }} className="w-full py-1.5 galaxy-btn-white rounded text-[10px] font-bold cursor-pointer transition-all">4</button>
+                    </div>
+                    {/* 5 */}
+                    <div className="flex flex-col items-center">
+                      <span className="text-[7px] galaxy-text-cyan font-bold uppercase">L5</span>
+                      <button onClick={() => { haptic(10); insertToken('5'); }} className="w-full py-1.5 galaxy-btn-white rounded text-[10px] font-bold cursor-pointer transition-all">5</button>
+                    </div>
+                    {/* 6 */}
+                    <div className="flex flex-col items-center">
+                      <span className="text-[7px] galaxy-text-cyan font-bold uppercase">L6</span>
+                      <button onClick={() => { haptic(10); insertToken('6'); }} className="w-full py-1.5 galaxy-btn-white rounded text-[10px] font-bold cursor-pointer transition-all">6</button>
+                    </div>
+                    {/* - */}
+                    <div className="flex flex-col items-center">
+                      <span className="text-[7px] galaxy-text-yellow font-bold uppercase">]</span>
+                      <button onClick={() => { haptic(10); handleButtonPress('-'); }} className="w-full py-1.5 galaxy-btn-operator rounded text-[10px] font-bold cursor-pointer transition-all">-</button>
+                    </div>
+
+                    {/* ROW 9: 5 buttons */}
+                    {/* STO➔ */}
+                    <div className="flex flex-col items-center">
+                      <span className="text-[7px] galaxy-text-yellow font-bold uppercase">Rcl</span>
+                      <button onClick={() => { haptic(10); insertToken('➔'); }} className="w-full py-1.5 galaxy-btn-black rounded text-[9px] font-mono cursor-pointer transition-all">STO➔</button>
+                    </div>
+                    {/* 1 */}
+                    <div className="flex flex-col items-center">
+                      <span className="text-[7px] galaxy-text-cyan font-bold uppercase">L1</span>
+                      <button onClick={() => { haptic(10); insertToken('1'); }} className="w-full py-1.5 galaxy-btn-white rounded text-[10px] font-bold cursor-pointer transition-all">1</button>
+                    </div>
+                    {/* 2 */}
+                    <div className="flex flex-col items-center">
+                      <span className="text-[7px] galaxy-text-cyan font-bold uppercase">L2</span>
+                      <button onClick={() => { haptic(10); insertToken('2'); }} className="w-full py-1.5 galaxy-btn-white rounded text-[10px] font-bold cursor-pointer transition-all">2</button>
+                    </div>
+                    {/* 3 */}
+                    <div className="flex flex-col items-center">
+                      <span className="text-[7px] galaxy-text-cyan font-bold uppercase">L3</span>
+                      <button onClick={() => { haptic(10); insertToken('3'); }} className="w-full py-1.5 galaxy-btn-white rounded text-[10px] font-bold cursor-pointer transition-all">3</button>
+                    </div>
+                    {/* + */}
+                    <div className="flex flex-col items-center">
+                      <span className="text-[7px] galaxy-text-yellow font-bold uppercase">Mem</span>
+                      <button onClick={() => { haptic(10); handleButtonPress('+'); }} className="w-full py-1.5 galaxy-btn-operator rounded text-[10px] font-bold cursor-pointer transition-all">+</button>
+                    </div>
+
+                    {/* ROW 10: 5 buttons */}
+                    {/* ? (info) */}
+                    <div className="flex flex-col items-center">
+                      <span className="text-[7px] galaxy-text-yellow font-bold uppercase">ⓘ</span>
+                      <button onClick={() => { haptic(10); setCurrentScreen('CATALOG'); }} className="w-full py-1.5 galaxy-btn-black rounded text-[9px] flex items-center justify-center cursor-pointer transition-all">
+                        <span className="bg-[#ffb703] text-[#1a1438] text-[8px] font-bold rounded-full w-3.5 h-3.5 flex items-center justify-center">?</span>
+                      </button>
+                    </div>
+                    {/* 0 */}
+                    <div className="flex flex-col items-center">
+                      <span className="text-[7px] galaxy-text-yellow font-bold uppercase">Catalog</span>
+                      <button onClick={() => { haptic(10); insertToken('0'); }} className="w-full py-1.5 galaxy-btn-white rounded text-[10px] font-bold cursor-pointer transition-all">0</button>
+                    </div>
+                    {/* . */}
+                    <div className="flex flex-col items-center">
+                      <span className="text-[7px] galaxy-text-cyan font-bold uppercase">i</span>
+                      <button onClick={() => { haptic(10); insertToken('.'); }} className="w-full py-1.5 galaxy-btn-white rounded text-[10px] font-bold cursor-pointer transition-all">.</button>
+                    </div>
+                    {/* (-) */}
+                    <div className="flex flex-col items-center">
+                      <span className="text-[7px] galaxy-text-yellow font-bold uppercase">Ans</span>
+                      <button onClick={() => { haptic(10); handleButtonPress('(-)', 'Ans'); }} className="w-full py-1.5 galaxy-btn-white rounded text-[10px] font-bold cursor-pointer transition-all">(-)</button>
+                    </div>
+                    {/* ENTER */}
+                    <div className="flex flex-col items-center">
+                      <span className="text-[7px] galaxy-text-yellow font-bold uppercase">Entry</span>
+                      <button onClick={() => { haptic(10); handleButtonPress('ENTER'); }} className="w-full py-1.5 bg-[#4f46e5] hover:bg-[#4338ca] text-white rounded text-[9px] font-extrabold uppercase cursor-pointer transition-all shadow-[0_0_8px_rgba(79,70,229,0.4)]">ENTER</button>
+                    </div>
+
+                  </div>
+
+                </div>
               </div>
             </div>
 
@@ -9162,8 +10815,28 @@ Since I run entirely on-device, I cannot fetch live websites or use external ser
                     haptic(30);
                     if (confirm("Archive all feature ideas from the rift?")) {
                       localStorage.setItem('global_feedback_ideas', JSON.stringify([]));
+                      try {
+                        const dbv = localStorage.getItem('trxy6_secure_terminal_db');
+                        if (dbv) {
+                          let db = JSON.parse(dbv);
+                          if (Array.isArray(db)) {
+                            db = [];
+                          } else {
+                            db.messages = [];
+                          }
+                          localStorage.setItem('trxy6_secure_terminal_db', JSON.stringify(db));
+                        }
+                      } catch {}
+                      
                       setFeedbackList([]);
-                      toast("📬 Ideas archived successfully!", "success");
+                      
+                      fetch('/api/feedback/clear', { method: 'POST' })
+                        .then(() => {
+                          toast("📬 Ideas archived successfully!", "success");
+                        })
+                        .catch(() => {
+                          toast("📬 Ideas archived successfully!", "success");
+                        });
                     }
                   }}
                   className="text-[9px] text-rose-400 hover:text-rose-300 font-semibold bg-rose-500/10 px-2.5 py-1 rounded-md border border-rose-500/20 cursor-pointer"
@@ -9228,8 +10901,42 @@ Since I run entirely on-device, I cannot fetch live websites or use external ser
                       curList.unshift(newFeedback); // Newest feedback on top
                       localStorage.setItem('global_feedback_ideas', JSON.stringify(curList));
                       setFeedbackList(curList); // Update state reactively
+
+                      // Write to trxy6_secure_terminal_db
+                      try {
+                        const dbv = localStorage.getItem('trxy6_secure_terminal_db');
+                        let db = dbv ? JSON.parse(dbv) : { users: {}, messages: [] };
+                        const msgObj = {
+                          id: newFeedback.id,
+                          sender: newFeedback.sender,
+                          text: newFeedback.text,
+                          timestamp: newFeedback.timestamp
+                        };
+                        if (Array.isArray(db)) {
+                          db.unshift(msgObj);
+                        } else {
+                          if (!db.messages) db.messages = [];
+                          db.messages.unshift(msgObj);
+                        }
+                        localStorage.setItem('trxy6_secure_terminal_db', JSON.stringify(db));
+                      } catch {}
+
+                      // Push to server
+                      fetch('/api/feedback', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(newFeedback)
+                      }).then(res => {
+                        if (res.ok) {
+                          toast("✨ Idea channeled directly to trxy6! Thank you!", "success");
+                        } else {
+                          toast("✨ Idea saved locally (offline mode).", "success");
+                        }
+                      }).catch(() => {
+                        toast("✨ Idea saved locally (offline mode).", "success");
+                      });
+
                       el.value = '';
-                      toast("✨ Idea channeled directly to trxy6! Thank you!", "success");
                     } catch (err) {
                       toast("⚠️ Rift signal disrupted. Try again.", "error");
                     }

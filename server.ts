@@ -353,6 +353,48 @@ Use beautiful Markdown formatting, bold headings, and bullet points to organize 
     }
   });
 
+  // Feedback ideas persistence API
+  const FEEDBACK_FILE = path.join(process.cwd(), 'feedback.json');
+
+  app.get('/api/feedback', (req, res) => {
+    try {
+      if (fs.existsSync(FEEDBACK_FILE)) {
+        const raw = fs.readFileSync(FEEDBACK_FILE, 'utf8');
+        return res.json({ feedback: JSON.parse(raw) });
+      }
+      res.json({ feedback: [] });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  app.post('/api/feedback', (req, res) => {
+    try {
+      const newFb = req.body;
+      let list = [];
+      if (fs.existsSync(FEEDBACK_FILE)) {
+        try {
+          list = JSON.parse(fs.readFileSync(FEEDBACK_FILE, 'utf8'));
+        } catch {}
+      }
+      if (!Array.isArray(list)) list = [];
+      list.unshift(newFb);
+      fs.writeFileSync(FEEDBACK_FILE, JSON.stringify(list, null, 2), 'utf8');
+      res.json({ success: true, feedback: list });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  app.post('/api/feedback/clear', (req, res) => {
+    try {
+      fs.writeFileSync(FEEDBACK_FILE, JSON.stringify([]), 'utf8');
+      res.json({ success: true });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
   // Integrate Vite dev server middleware or static distribution server
   if (process.env.NODE_ENV !== 'production') {
     const vite = await createViteServer({
