@@ -948,7 +948,61 @@ export default function App() {
     };
 
     const teams = leagueTeams[league] || leagueTeams['nfl'];
-    
+
+    let liveDetail = '3rd Quarter';
+    let liveAwayScore = '84';
+    let liveHomeScore = '91';
+
+    let postDetail = 'Final';
+    let postAwayScore = '108';
+    let postHomeScore = '97';
+    let postAwayWinner = true;
+    let postHomeWinner = false;
+
+    let preDetail = 'MON 8:30 PM';
+
+    if (league === 'eng1') {
+      liveDetail = "72'";
+      liveAwayScore = '1';
+      liveHomeScore = '2';
+      postDetail = 'FT';
+      postAwayScore = '3';
+      postHomeScore = '1';
+      postAwayWinner = true;
+      postHomeWinner = false;
+      preDetail = 'SUN 11:30 AM';
+    } else if (league === 'mlb') {
+      liveDetail = 'Top 7th';
+      liveAwayScore = '2';
+      liveHomeScore = '4';
+      postDetail = 'Final';
+      postAwayScore = '6';
+      postHomeScore = '3';
+      postAwayWinner = true;
+      postHomeWinner = false;
+      preDetail = 'MON 7:05 PM';
+    } else if (league === 'nhl') {
+      liveDetail = '2nd Period';
+      liveAwayScore = '1';
+      liveHomeScore = '3';
+      postDetail = 'Final';
+      postAwayScore = '4';
+      postHomeScore = '2';
+      postAwayWinner = true;
+      postHomeWinner = false;
+      preDetail = 'TUE 7:30 PM';
+    } else if (league === 'nfl') {
+      liveDetail = '3rd Quarter';
+      liveAwayScore = '17';
+      liveHomeScore = '20';
+      postDetail = 'Final';
+      postAwayScore = '28';
+      postHomeScore = '24';
+      postAwayWinner = true;
+      postHomeWinner = false;
+      preDetail = 'SUN 8:20 PM';
+    }
+
     return [
       {
         id: `mock-${league}-1`,
@@ -960,7 +1014,7 @@ export default function App() {
             status: {
               type: {
                 state: 'in',
-                detail: '3rd Quarter'
+                detail: liveDetail
               }
             },
             competitors: [
@@ -974,7 +1028,7 @@ export default function App() {
                   displayName: `${teams[0].abbr} ${teams[0].name}`,
                   logo: teams[0].logo
                 },
-                score: '84',
+                score: liveAwayScore,
                 winner: false,
                 records: [{ type: 'total', summary: teams[0].record }]
               },
@@ -988,7 +1042,7 @@ export default function App() {
                   displayName: `${teams[1].abbr} ${teams[1].name}`,
                   logo: teams[1].logo
                 },
-                score: '91',
+                score: liveHomeScore,
                 winner: false,
                 records: [{ type: 'total', summary: teams[1].record }]
               }
@@ -1006,7 +1060,7 @@ export default function App() {
             status: {
               type: {
                 state: 'post',
-                detail: 'Final'
+                detail: postDetail
               }
             },
             competitors: [
@@ -1020,8 +1074,8 @@ export default function App() {
                   displayName: `${teams[2].abbr} ${teams[2].name}`,
                   logo: teams[2].logo
                 },
-                score: '108',
-                winner: true,
+                score: postAwayScore,
+                winner: postAwayWinner,
                 records: [{ type: 'total', summary: teams[2].record }]
               },
               {
@@ -1034,8 +1088,8 @@ export default function App() {
                   displayName: `${teams[3].abbr} ${teams[3].name}`,
                   logo: teams[3].logo
                 },
-                score: '97',
-                winner: false,
+                score: postHomeScore,
+                winner: postHomeWinner,
                 records: [{ type: 'total', summary: teams[3].record }]
               }
             ]
@@ -1052,7 +1106,7 @@ export default function App() {
             status: {
               type: {
                 state: 'pre',
-                detail: 'MON 8:30 PM'
+                detail: preDetail
               }
             },
             competitors: [
