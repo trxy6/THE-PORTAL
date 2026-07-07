@@ -1,0 +1,191 @@
+@import "tailwindcss";
+
+/* Premium Futuristic Light-Mode & Glassmorphism styles matching the NextGenPortal screenshot */
+
+:root {
+  --bg-primary: #f1f3f9;
+  --bg-secondary: #f4f6fc;
+  --text-main: #1e293b;
+  --text-muted: #64748b;
+  --accent-purple: #8b5cf6;
+  --accent-blue: #3b82f6;
+  --accent-pink: #ec4899;
+}
+
+body {
+  background-color: var(--bg-primary);
+  color: var(--text-main);
+  font-family: ui-sans-serif, system-ui, sans-serif;
+}
+
+@keyframes breathe-purple {
+  0%, 100% {
+    border-color: rgba(139, 92, 246, 0.25);
+    box-shadow: 0 4px 14px rgba(139, 92, 246, 0.05), inset 0 0 4px rgba(139, 92, 246, 0.02);
+  }
+  50% {
+    border-color: rgba(139, 92, 246, 0.6);
+    box-shadow: 0 8px 24px rgba(139, 92, 246, 0.15), inset 0 0 8px rgba(139, 92, 246, 0.05);
+  }
+}
+
+@keyframes breathe-silver {
+  0%, 100% {
+    border-color: rgba(148, 163, 184, 0.2);
+    box-shadow: 0 4px 12px rgba(148, 163, 184, 0.03);
+  }
+  50% {
+    border-color: rgba(148, 163, 184, 0.5);
+    box-shadow: 0 8px 20px rgba(148, 163, 184, 0.1);
+  }
+}
+
+@keyframes breathe-blue {
+  0%, 100% {
+    border-color: rgba(59, 130, 246, 0.2);
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.03);
+  }
+  50% {
+    border-color: rgba(59, 130, 246, 0.55);
+    box-shadow: 0 8px 20px rgba(59, 130, 246, 0.1);
+  }
+}
+
+@keyframes breathe-pink {
+  0%, 100% {
+    border-color: rgba(236, 72, 153, 0.2);
+    box-shadow: 0 4px 12px rgba(236, 72, 153, 0.03);
+  }
+  50% {
+    border-color: rgba(236, 72, 153, 0.55);
+    box-shadow: 0 8px 20px rgba(236, 72, 153, 0.1);
+  }
+}
+
+@keyframes float-brain {
+  0%, 100% {
+    transform: translateY(0px) scale(1);
+    filter: drop-shadow(0 4px 8px rgba(139, 92, 246, 0.15));
+  }
+  50% {
+    transform: translateY(-5px) scale(1.02);
+    filter: drop-shadow(0 12px 20px rgba(139, 92, 246, 0.25));
+  }
+}
+
+@keyframes grid-drift {
+  0% {
+    background-position: 0 0;
+  }
+  100% {
+    background-position: 40px 40px;
+  }
+}
+
+@keyframes pulse-ring {
+  0% {
+    transform: scale(0.95);
+    opacity: 0.15;
+  }
+  50% {
+    opacity: 0.35;
+  }
+  100% {
+    transform: scale(1.1);
+    opacity: 0;
+  }
+}
+
+/* Custom classes for interactive items */
+.glow-purple {
+  animation: breathe-purple 4s infinite ease-in-out;
+}
+
+.glow-silver {
+  animation: breathe-silver 3.5s infinite ease-in-out;
+}
+
+.glow-blue {
+  animation: breathe-blue 4s infinite ease-in-out;
+}
+
+.glow-pink {
+  animation: breathe-pink 4s infinite ease-in-out;
+}
+
+.float-animated {
+  animation: float-brain 4s infinite ease-in-out;
+}
+
+.pulse-circle {
+  animation: pulse-ring 2.5s infinite cubic-bezier(0.215, 0.610, 0.355, 1);
+}
+
+.cyber-grid {
+  background-size: 40px 40px;
+  background-image: 
+    linear-gradient(to right, rgba(99, 102, 241, 0.02) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(99, 102, 241, 0.02) 1px, transparent 1px);
+  animation: grid-drift 30s linear infinite;
+}
+
+.cyber-grid-dense {
+  background-size: 16px 16px;
+  background-image: 
+    linear-gradient(to right, rgba(99, 102, 241, 0.035) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(99, 102, 241, 0.035) 1px, transparent 1px);
+}
+
+/* Scrollbar styles for the light theme */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(241, 243, 249, 0.8);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.3);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(148, 163, 184, 0.5);
+}
+
+/* Glassmorphism panel base (Ultra Clean & High-Contrast Light Glass) */
+.glass-panel {
+  background: rgba(255, 255, 255, 0.72);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  box-shadow: 0 4px 18px -2px rgba(148, 163, 184, 0.12), 0 1px 2px rgba(148, 163, 184, 0.04);
+}
+
+.silver-shimmer {
+  position: relative;
+  overflow: hidden;
+}
+
+.silver-shimmer::before {
+  content: '';
+  position: absolute;
+  top: 0; left: -150%; width: 50%; height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.3) 50%,
+    transparent 100%
+  );
+  transform: skewX(-25deg);
+  animation: shimmer 6s infinite linear;
+}
+
+@keyframes shimmer {
+  0% { left: -150%; }
+  50% { left: 150%; }
+  100% { left: 150%; }
+}
