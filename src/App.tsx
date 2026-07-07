@@ -2444,7 +2444,7 @@ export default function App() {
 
   const renderSidebarIcon = (id: string, isActive: boolean) => {
     const activeColor = getThemeHex();
-    const inactiveColor = '#64748b'; // slate-500 monochrome
+    const inactiveColor = portalDarkMode ? 'rgba(167, 139, 250, 0.55)' : '#64748b';
     
     switch (id) {
       case 'home':
@@ -3121,18 +3121,22 @@ export default function App() {
           </button>
 
           {/* User profile capsule */}
-          <div className="flex items-center gap-2 pl-2 border-l border-slate-200">
+          <button 
+            onClick={() => { haptic(5); setActiveTab('settings'); }}
+            className={`flex items-center gap-2 pl-2 border-l transition-all duration-300 hover:scale-105 active:scale-98 cursor-pointer outline-none ${portalDarkMode ? 'border-purple-500/20' : 'border-slate-200'}`}
+            title="Open Settings & Account"
+          >
             <div className="relative">
               <img 
                 src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=128&auto=format&fit=crop" 
                 alt="Trey User Avatar" 
-                className="w-6 h-6 sm:w-7 sm:h-7 rounded-full border border-slate-200 object-cover"
+                className={`w-6 h-6 sm:w-7 sm:h-7 rounded-full border object-cover transition-all ${portalDarkMode ? 'border-purple-500/40 ring-1 ring-purple-500/20' : 'border-slate-200'}`}
               />
-              <div className="absolute bottom-0 right-0 w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-emerald-500 ring-2 ring-white" />
+              <div className={`absolute bottom-0 right-0 w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-emerald-500 ring-2 ${portalDarkMode ? 'ring-[#0a021c]' : 'ring-white'}`} />
             </div>
-            <span className="text-xs font-semibold text-slate-700 hidden lg:inline">Trey</span>
-            <ChevronDown className="w-3.5 h-3.5 text-slate-500 hidden lg:block" />
-          </div>
+            <span className={`text-xs font-semibold hidden lg:inline ${portalDarkMode ? 'text-purple-200' : 'text-slate-700'}`}>{currentUser || 'Traveler'}</span>
+            <ChevronDown className={`w-3.5 h-3.5 hidden lg:block ${portalDarkMode ? 'text-purple-400' : 'text-slate-500'}`} />
+          </button>
         </div>
       </header>
 

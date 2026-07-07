@@ -305,7 +305,7 @@ body {
   --bg-primary: #06000f;
   --bg-secondary: #0d0221;
   --text-main: #e2d9f3;
-  --text-muted: rgba(167,139,250,0.6);
+  --text-muted: rgba(167, 139, 250, 0.6);
 }
 
 /* Root background */
@@ -331,21 +331,31 @@ body {
 .portal-dark aside {
   background: rgba(10, 2, 28, 0.88) !important;
   border-color: rgba(139, 92, 246, 0.15) !important;
-  backdrop-filter: blur(24px);
+  backdrop-filter: blur(24px) !important;
 }
 
 /* All glass panels */
 .portal-dark .glass-panel {
-  background: rgba(10, 2, 28, 0.75) !important;
-  border-color: rgba(139, 92, 246, 0.2) !important;
-  box-shadow: 0 8px 32px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.04) !important;
+  background: rgba(10, 2, 28, 0.82) !important;
+  border-color: rgba(139, 92, 246, 0.25) !important;
+  box-shadow: 0 32px 80px rgba(0, 0, 0, 0.65), inset 0 1px 0 rgba(255, 255, 255, 0.04) !important;
+  backdrop-filter: blur(32px) !important;
 }
 
 /* Cards / rounded containers */
-.portal-dark [class*="bg-white"],
+.portal-dark [class*="bg-white/"],
 .portal-dark [class*="bg-slate-50"],
-.portal-dark [class*="bg-slate-100"] {
-  background-color: rgba(18, 3, 48, 0.7) !important;
+.portal-dark [class*="bg-slate-100/"],
+.portal-dark [class*="bg-slate-200/"],
+.portal-dark [class*="bg-slate-300/"] {
+  background-color: rgba(18, 3, 48, 0.72) !important;
+  border-color: rgba(139, 92, 246, 0.18) !important;
+}
+
+.portal-dark div[class*="bg-white"],
+.portal-dark div[class*="bg-slate-100"] {
+  background-color: rgba(18, 3, 48, 0.72) !important;
+  border-color: rgba(139, 92, 246, 0.18) !important;
 }
 
 /* Text colors */
@@ -366,14 +376,14 @@ body {
 /* Borders */
 .portal-dark [class*="border-slate-100"],
 .portal-dark [class*="border-slate-200"],
-.portal-dark [class*="border-white"] {
+.portal-dark [class*="border-white/"] {
   border-color: rgba(139, 92, 246, 0.15) !important;
 }
 
 /* Nav buttons in dark mode */
 .portal-dark nav button,
 .portal-dark aside button {
-  color: rgba(167, 139, 250, 0.7) !important;
+  color: rgba(167, 139, 250, 0.75) !important;
 }
 .portal-dark nav button:hover,
 .portal-dark aside button:hover {
@@ -387,13 +397,21 @@ body {
   color: #e2d9f3 !important;
 }
 
-/* Input fields */
+/* Tab button controllers in dark mode */
+.portal-dark button[class*="bg-white"] {
+  background: rgba(139, 92, 246, 0.18) !important;
+  border-color: rgba(139, 92, 246, 0.35) !important;
+  color: #e2d9f3 !important;
+}
+
+/* Input fields matching the screenshot style */
 .portal-dark input,
 .portal-dark textarea,
 .portal-dark select {
-  background: rgba(18, 3, 48, 0.7) !important;
-  border-color: rgba(139, 92, 246, 0.25) !important;
+  background: rgba(139, 92, 246, 0.06) !important;
+  border: 1px solid rgba(139, 92, 246, 0.25) !important;
   color: #e2d9f3 !important;
+  outline: none !important;
 }
 .portal-dark input::placeholder,
 .portal-dark textarea::placeholder {
@@ -411,15 +429,15 @@ body {
 .portal-dark [class*="bg-indigo-50"],
 .portal-dark [class*="bg-purple-50"],
 .portal-dark [class*="bg-violet-50"] {
-  background: rgba(139, 92, 246, 0.1) !important;
+  background: rgba(139, 92, 246, 0.12) !important;
 }
 
 /* Header bar */
 .portal-dark header,
 .portal-dark .app-header {
-  background: rgba(6, 0, 15, 0.9) !important;
+  background: rgba(6, 0, 15, 0.88) !important;
   border-color: rgba(139, 92, 246, 0.15) !important;
-  backdrop-filter: blur(20px);
+  backdrop-filter: blur(20px) !important;
 }
 
 /* Scrollbar in dark mode */
