@@ -3,6 +3,7 @@ import { Camera, Upload, X, Sparkles, RefreshCw, FileText, Dices, CalendarRange,
 import DiceTrayCanvas from './components/DiceTrayCanvas';
 import D20War from './components/D20War';
 import CosmicWords from './components/CosmicWords';
+import TenGamesArena from './components/TenGamesArena';
 
 const SPORTS_LEAGUES = {
   mlb: {
@@ -304,7 +305,7 @@ export default function App() {
     return localStorage.getItem('portal_github_site_url') || 'https://Treydog-ramirez.github.io/dnd-portal/';
   });
   const [qrType, setQrType] = useState<'live' | 'github'>('live');
-  const [gameTab, setGameTab] = useState<'war' | 'cosmic'>('war');
+  const [gameTab, setGameTab] = useState<'war' | 'cosmic' | 'arcade'>('war');
 
   const haptic = (pattern: number | number[]) => {
     if (typeof (window as any).haptic === 'function') {
@@ -8172,22 +8173,30 @@ Since I run entirely on-device, I cannot fetch live websites or use external ser
             <div className="segmented flex p-1 bg-[#120826]/80 border border-[#3fd9c7]/15 rounded-xl w-full">
               <button
                 onClick={() => { setGameTab('war'); haptic(10); }}
-                className={`flex-1 py-2 text-[10px] font-extrabold tracking-widest uppercase transition-all rounded-lg ${gameTab === 'war' ? 'active bg-[#3fd9c7]/20 text-[#3fd9c7] border border-[#3fd9c7]/30' : 'text-[#b4aae2]/50'}`}
+                className={`flex-grow py-2 text-[10px] font-extrabold tracking-widest uppercase transition-all rounded-lg ${gameTab === 'war' ? 'active bg-[#3fd9c7]/20 text-[#3fd9c7] border border-[#3fd9c7]/30' : 'text-[#b4aae2]/50'}`}
               >
                 ⚔️ D20 War
               </button>
               <button
                 onClick={() => { setGameTab('cosmic'); haptic(10); }}
-                className={`flex-1 py-2 text-[10px] font-extrabold tracking-widest uppercase transition-all rounded-lg ${gameTab === 'cosmic' ? 'active bg-[#3fd9c7]/20 text-[#3fd9c7] border border-[#3fd9c7]/30' : 'text-[#b4aae2]/50'}`}
+                className={`flex-grow py-2 text-[10px] font-extrabold tracking-widest uppercase transition-all rounded-lg ${gameTab === 'cosmic' ? 'active bg-[#3fd9c7]/20 text-[#3fd9c7] border border-[#3fd9c7]/30' : 'text-[#b4aae2]/50'}`}
               >
                 🔮 Cosmic Words
+              </button>
+              <button
+                onClick={() => { setGameTab('arcade'); haptic(10); }}
+                className={`flex-grow py-2 text-[10px] font-extrabold tracking-widest uppercase transition-all rounded-lg ${gameTab === 'arcade' ? 'active bg-[#3fd9c7]/20 text-[#3fd9c7] border border-[#3fd9c7]/30' : 'text-[#b4aae2]/50'}`}
+              >
+                🎮 Cabin Arcade
               </button>
             </div>
 
             {gameTab === 'war' ? (
               <D20War currentUser={currentUser} />
-            ) : (
+            ) : gameTab === 'cosmic' ? (
               <CosmicWords currentUser={currentUser} />
+            ) : (
+              <TenGamesArena />
             )}
           </div>
         </div>
