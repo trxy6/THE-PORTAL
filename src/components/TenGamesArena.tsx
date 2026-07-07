@@ -56,7 +56,7 @@ export default function TenGamesArena() {
   };
 
   return (
-    <div className="w-full max-w-5xl mx-auto p-4 bg-[#0d081e]/90 text-[#faebd7] rounded-3xl border border-[#44387a]/40 shadow-2xl relative overflow-hidden backdrop-blur-md">
+    <div className="w-full max-w-5xl mx-auto p-6 bg-[#0c061a]/75 text-[#faebd7] rounded-2xl border border-[#cf4fe6]/15 shadow-2xl relative overflow-hidden backdrop-blur-xl transition-all duration-300">
       {/* Background radial atmosphere */}
       <div className="absolute top-0 right-0 w-64 h-64 bg-[#cf4fe6]/10 rounded-full blur-3xl pointer-events-none"></div>
       <div className="absolute bottom-0 left-0 w-64 h-64 bg-[#3fd9c7]/10 rounded-full blur-3xl pointer-events-none"></div>
@@ -94,18 +94,18 @@ export default function TenGamesArena() {
       </div>
 
       {/* Game Selector Menu Grid */}
-      <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5 mb-6 select-none font-mono text-[10px] font-bold">
+      <div className="grid grid-cols-2 sm:grid-cols-5 gap-4 mb-6 select-none font-mono text-[10px] font-bold">
         {[
-          { id: 'cheat', label: '🃏 Cheat / Doubt', color: 'border-pink-500/30' },
-          { id: 'mafia', label: '🐺 Werewolf', color: 'border-fuchsia-500/30' },
-          { id: 'celebrity', label: '🎫 Fishbowl', color: 'border-amber-500/30' },
-          { id: 'blackjack', label: '🎩 Alchem-21', color: 'border-blue-500/30' },
-          { id: 'categories', label: '✏️ Categories', color: 'border-teal-500/30' },
-          { id: 'grid_domain', label: '🟩 Grid Domain', color: 'border-emerald-500/30' },
-          { id: 'dice_duel', label: '🎲 Dice Duel', color: 'border-yellow-500/30' },
-          { id: 'labyrinth', label: '🔦 Fog Escape', color: 'border-cyan-500/30' },
-          { id: 'chain_reaction', label: '💥 Chain Burst', color: 'border-indigo-500/30' },
-          { id: 'blink', label: '⚡ Blink Tap', color: 'border-rose-500/30' }
+          { id: 'cheat', label: '🃏 Cheat / Doubt' },
+          { id: 'mafia', label: '🐺 Werewolf' },
+          { id: 'celebrity', label: '🎫 Fishbowl' },
+          { id: 'blackjack', label: '🎩 Alchem-21' },
+          { id: 'categories', label: '✏️ Categories' },
+          { id: 'grid_domain', label: '🟩 Grid Domain' },
+          { id: 'dice_duel', label: '🎲 Dice Duel' },
+          { id: 'labyrinth', label: '🔦 Fog Escape' },
+          { id: 'chain_reaction', label: '💥 Chain Burst' },
+          { id: 'blink', label: '⚡ Blink Tap' }
         ].map((g) => (
           <button
             key={g.id}
@@ -114,10 +114,10 @@ export default function TenGamesArena() {
               triggerHaptic(10);
               playTone(300 + (Math.random() * 200), 'sine', 0.08);
             }}
-            className={`py-2 px-1.5 border rounded-xl transition-all duration-300 ${
+            className={`py-3 px-2 border rounded-xl transition-all duration-300 transform hover:-translate-y-0.5 hover:shadow-[0_4px_12px_rgba(207,79,230,0.15)] ${
               activeGame === g.id 
                 ? 'bg-gradient-to-tr from-[#1b1035] to-[#0c051a] border-[#cf4fe6] shadow-[0_0_12px_rgba(207,79,230,0.3)] text-white scale-[1.02]' 
-                : `${g.color} bg-black/20 text-[#b4aae2]/70 hover:text-white hover:border-[#cf4fe6]/45`
+                : 'border-[#44387a]/25 bg-black/20 text-[#b4aae2]/70 hover:text-white hover:border-[#cf4fe6]/45'
             }`}
           >
             {g.label}
@@ -126,7 +126,7 @@ export default function TenGamesArena() {
       </div>
 
       {/* ACTIVE GAME CANVAS / RENDER AREA */}
-      <div className="min-h-[420px] bg-[#120826]/40 rounded-2xl border border-[#44387a]/25 p-5 flex flex-col justify-between">
+      <div className="min-h-[440px] bg-[#090314]/55 rounded-2xl border border-[#3fd9c7]/10 p-6 flex flex-col justify-between backdrop-blur-md">
         
         {/* GAME 1: CHEAT (I DOUBT IT) */}
         {activeGame === 'cheat' && <CheatGame playTone={playTone} triggerHaptic={triggerHaptic} />}
@@ -425,30 +425,30 @@ function MafiaGame({ playTone, triggerHaptic }: { playTone: any, triggerHaptic: 
         </div>
       ) : (
         <div className="space-y-4 my-3">
-          <div className="bg-[#120a2c]/60 p-3 rounded-xl border border-purple-500/10 flex justify-between items-center">
+          <div className="bg-[#120a2c]/60 px-6 py-4 rounded-xl border border-purple-500/10 flex justify-between items-center">
             <span className="text-[10px] text-slate-400 uppercase tracking-wider block">Your Secret Assignment</span>
             <span className="text-xs font-bold text-fuchsia-400 font-mono tracking-widest uppercase">{role}</span>
           </div>
 
-          <div className="space-y-2">
+          <div className="space-y-2.5">
             <span className="text-[10px] text-slate-400 uppercase tracking-wider font-bold block mb-1">Select target character</span>
             {Object.keys(aiStatuses).map((name) => {
               const status = aiStatuses[name];
               if (!status.alive) return null;
               return (
-                <div key={name} className="flex justify-between items-center p-2 rounded-xl bg-[#120a24]/40 border border-[#44387a]/25 hover:border-fuchsia-500/35 transition">
+                <div key={name} className="flex justify-between items-center px-4 py-3 rounded-xl bg-[#120a24]/40 border border-[#44387a]/25 hover:border-fuchsia-500/35 transition-all duration-300">
                   <span className="text-xs font-bold">{name}</span>
                   {phase === 'night' && role === 'Werewolf' ? (
                     <button
                       onClick={() => handleNightKill(name)}
-                      className="px-3 py-1 bg-red-600/20 hover:bg-red-500 text-red-300 hover:text-white border border-red-500/30 rounded-lg text-[10px] uppercase font-bold tracking-wider cursor-pointer"
+                      className="px-3.5 py-1.5 bg-transparent border border-red-500/40 text-red-400 hover:bg-red-600 hover:text-white rounded-lg text-[10px] uppercase font-bold tracking-wider transition-all duration-200 cursor-pointer"
                     >
                       Eliminate ⚔️
                     </button>
                   ) : (
                     <button
                       onClick={() => handleVote(name)}
-                      className="px-3 py-1 bg-fuchsia-600/20 hover:bg-fuchsia-500 text-fuchsia-300 hover:text-white border border-fuchsia-500/30 rounded-lg text-[10px] uppercase font-bold tracking-wider cursor-pointer"
+                      className="px-3.5 py-1.5 bg-transparent border border-fuchsia-500/40 text-fuchsia-400 hover:bg-fuchsia-600 hover:text-white rounded-lg text-[10px] uppercase font-bold tracking-wider transition-all duration-200 cursor-pointer"
                     >
                       Banished ⚖️
                     </button>

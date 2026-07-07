@@ -36,6 +36,20 @@
   background-clip: padding-box;
 }
 
+input[type="checkbox"] {
+  accent-color: #cf4fe6;
+  cursor: pointer;
+  width: 14px;
+  height: 14px;
+  border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(0, 0, 0, 0.35);
+  transition: all 0.2s ease-in-out;
+}
+input[type="checkbox"]:hover {
+  border-color: #cf4fe6;
+}
+
 :root {
   --ink: #070411;
   --surface: #140A24;
@@ -538,35 +552,39 @@ header h1 .accent {
 .header-clock {
   text-align: right;
   flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
 }
 
 .clock-time {
-  font-size: 16px;
-  font-weight: 600;
+  font-size: 13px;
+  font-weight: 700;
   color: var(--parchment);
-  line-height: 1.1;
+  line-height: 1;
   letter-spacing: 0.02em;
 }
 
 .clock-date {
-  font-size: 9px;
+  font-size: 8px;
   color: var(--parchment-dim);
   text-transform: uppercase;
   letter-spacing: 0.1em;
-  margin-top: 1px;
+  line-height: 1;
+  margin-top: 3px;
 }
 
 /* ===== Panels ===== */
 main {
   flex: 1;
   position: relative;
-  padding-bottom: 110px;
+  padding-bottom: 140px;
 }
 
 .panel {
   display: none;
-  padding: 20px;
-  padding-bottom: 40px;
+  padding: 24px;
+  padding-bottom: 60px;
 }
 
 .panel.active {
@@ -606,13 +624,14 @@ main {
 }
 
 section.card {
-  background: linear-gradient(180deg, rgba(28, 14, 46, 0.8) 0%, rgba(13, 6, 24, 0.85) 100%);
-  border: 1px solid rgba(212, 79, 230, 0.16);
-  border-top: 1.5px solid rgba(212, 79, 230, 0.45);
+  background: rgba(20, 10, 30, 0.6);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-top: 1px solid rgba(212, 79, 230, 0.25);
   border-radius: 18px;
-  padding: 18px;
-  margin-bottom: 16px;
-  backdrop-filter: blur(16px);
+  padding: 1.5rem;
+  margin-bottom: 20px;
   position: relative;
   overflow: hidden;
   box-shadow:
@@ -1234,31 +1253,44 @@ section.card::before {
 /* ===== Calculator ===== */
 .calc-tabs {
   display: flex;
-  gap: 6px;
-  margin-bottom: 14px;
+  gap: 8px;
+  margin-bottom: 20px;
   flex-wrap: wrap;
+  background: rgba(14, 7, 28, 0.55);
+  border-bottom: 1px solid rgba(63, 217, 199, 0.15);
+  padding: 6px;
+  border-radius: 12px;
 }
 
 .calc-tab {
-  background: var(--raised);
-  border: 1px solid var(--line);
+  background: transparent;
+  border: 1px solid transparent;
   color: var(--parchment-dim);
-  border-radius: var(--radius-sm);
-  padding: 8px 13px;
-  font-size: 12px;
-  transition: transform var(--btn-press), background 0.15s, border-color 0.15s;
+  border-radius: 8px;
+  padding: 8px 16px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  transition: all 0.25s ease-in-out;
+  cursor: pointer;
 }
 
 .calc-tab:active {
   transform: scale(0.95);
 }
 
-.calc-tab.active {
-  background: linear-gradient(155deg, var(--nebula-magenta) 0%, var(--crimson) 100%);
-  border-color: transparent;
+.calc-tab:hover {
   color: #fff;
-  font-weight: 600;
-  box-shadow: 0 0 12px rgba(212, 79, 230, 0.45);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.calc-tab.active {
+  background: rgba(63, 217, 199, 0.15) !important;
+  border: 1px solid rgba(63, 217, 199, 0.35) !important;
+  color: #3fd9c7 !important;
+  font-weight: 700;
+  box-shadow: 0 0 10px rgba(63, 217, 199, 0.15);
 }
 
 .calc-sub {
