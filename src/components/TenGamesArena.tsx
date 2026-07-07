@@ -508,6 +508,7 @@ export default function TenGamesArena({ currentUser = 'Traveler' }: TenGamesAren
 interface Card {
   id: string;
   value: string;
+  suit?: string;
 }
 
 function CheatGame({ playTone, triggerHaptic, joined, currentUser, lastAction, sendGameAction }: GameSyncProps) {
@@ -515,30 +516,38 @@ function CheatGame({ playTone, triggerHaptic, joined, currentUser, lastAction, s
   const [botHands, setBots] = useState<Record<string, Card[]>>({ AI_1: [], AI_2: [] });
   const [pile, setPile] = useState<Card[]>([]);
   const [targetValue, setTargetValue] = useState<string>('A');
-  const [log, setLog] = useState<string>('The round has started! Discard cards matching the target value.');
+  const [log, setLog] = useState<string>('Welcome to the Deception Chamber. Shuffle the deck to begin.');
   const [selectedCards, setSelectedCards] = useState<string[]>([]);
+  const [turnOwner, setTurnOwner] = useState<string>('Player'); // 'Player', 'AI_1', 'AI_2'
+  const [lastPlay, setLastPlay] = useState<{ player: string; count: number; declared: string; actual: Card[] } | null>(null);
+  const [doubtPeriod, setDoubtPeriod] = useState<boolean>(false);
 
   const VALUES = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
+  const SUITS = ['♥', '♦', '♣', '♠'];
 
   const initGame = () => {
     const freshDeck: Card[] = [];
     let counter = 0;
     VALUES.forEach(val => {
-      for (let i = 0; i < 4; i++) {
-        freshDeck.push({ id: `card-${counter++}`, value: val });
-      }
+      SUITS.forEach(suit => {
+        freshDeck.push({ id: `card-${counter++}`, value: val, suit });
+      });
     });
     const shuffled = freshDeck.sort(() => Math.random() - 0.5);
-    setPlayerHand(shuffled.slice(0, 12));
+    
+    setPlayerHand(shuffled.slice(0, 17));
     setBots({
-      AI_1: shuffled.slice(12, 24),
-      AI_2: shuffled.slice(24, 36)
+      AI_1: shuffled.slice(17, 34),
+      AI_2: shuffled.slice(34, 52)
     });
     setPile([]);
     setTargetValue('A');
     setSelectedCards([]);
-    setLog('All hands dealt! Cards distributed. Your turn to place an "A".');
-    playTone(523, 'triangle', 0.2);
+    setTurnOwner('Player');
+    setLastPlay(null);
+    setDoubtPeriod(false);
+    setLog('52-card deck dealt! You received 17 cards. Play cards face down claiming they are "A"s.');
+    if (playTone) playTone(523, 'triangle', 0.25);
   };
 
   useEffect(() => {
@@ -546,16 +555,22 @@ function CheatGame({ playTone, triggerHaptic, joined, currentUser, lastAction, s
   }, []);
 
   const handleCardSelect = (cardId: string) => {
-    triggerHaptic(6);
+    if (turnOwner !== 'Player' || doubtPeriod) return;
+    if (triggerHaptic) triggerHaptic(6);
     setSelectedCards(prev => 
       prev.includes(cardId) ? prev.filter(id => id !== cardId) : [...prev, cardId]
     );
   };
 
-  const handleDiscard = (bluff: boolean) => {
-    if (selectedCards.length === 0) return;
-    triggerHaptic(15);
-    playTone(349, 'sine', 0.15);
+  const nextTarget = (current: string) => {
+    const idx = VALUES.indexOf(current);
+    return VALUES[(idx + 1) % VALUES.length];
+  };
+
+  const handlePlayerDiscard = () => {
+    if (selectedCards.length === 0 || turnOwner !== 'Player' || doubtPeriod) return;
+    if (triggerHaptic) triggerHaptic(15);
+    if (playTone) playTone(349, 'sine', 0.15);
 
     const actualDiscards = playerHand.filter(c => selectedCards.includes(c.id));
     setPlayerHand(prev => prev.filter(c => !selectedCards.includes(c.id)));
@@ -563,125 +578,215 @@ function CheatGame({ playTone, triggerHaptic, joined, currentUser, lastAction, s
     setSelectedCards([]);
 
     const claimsLie = actualDiscards.some(c => c.value !== targetValue);
-    setLog(`You placed ${actualDiscards.length} card(s) claiming they are "${targetValue}"s.`);
+    const newPlay = { player: 'Player', count: actualDiscards.length, declared: targetValue, actual: actualDiscards };
+    setLastPlay(newPlay);
+    setDoubtPeriod(true);
+    setLog(`You placed ${actualDiscards.length} card(s) claiming they are "${targetValue}"s. Waiting to see if anyone doubts...`);
 
+    if (joined && sendGameAction) {
+      sendGameAction({ type: 'cheat_play', play: newPlay });
+    }
+
+    // Trigger AI doubt decision
     setTimeout(() => {
-      const doubtThreshold = claimsLie ? 0.65 : 0.15;
+      const isBluff = claimsLie;
+      const doubtThreshold = isBluff ? 0.65 : 0.18;
       if (Math.random() < doubtThreshold) {
-        triggerHaptic([80, 50, 100]);
-        if (claimsLie) {
-          setPlayerHand(prev => [...prev, ...pile, ...actualDiscards]);
-          setPile([]);
-          playTone(220, 'sawtooth', 0.5);
-          setLog(`Alchemist AI yelled "I DOUBT IT!" and caught your bluff! You pick up the entire discard pile.`);
-        } else {
-          setBots(prev => ({
-            ...prev,
-            AI_1: [...prev.AI_1, ...pile, ...actualDiscards]
-          }));
-          setPile([]);
-          playTone(880, 'sine', 0.3);
-          setLog(`Alchemist AI shouted "I DOUBT IT!" but you were telling the truth! AI_1 must pick up the entire pile!`);
-        }
+        // AI calls doubt!
+        resolveDoubt('AI_1');
       } else {
-        const nextIndex = (VALUES.indexOf(targetValue) + 1) % VALUES.length;
-        setTargetValue(VALUES[nextIndex]);
-        setLog(`No one doubted your claim. It is now AI_1's turn to place "${VALUES[nextIndex]}"s.`);
-        runAITurn(VALUES[nextIndex]);
+        // No doubt called, proceed to next turn
+        setDoubtPeriod(false);
+        const nextVal = nextTarget(targetValue);
+        setTargetValue(nextVal);
+        setTurnOwner('AI_1');
+        runAITurn(nextVal, 'AI_1');
       }
-    }, 1500);
+    }, 2000);
   };
 
-  const runAITurn = (nextTarget: string) => {
+  const callDoubt = () => {
+    if (!doubtPeriod || !lastPlay) return;
+    resolveDoubt('Player');
+  };
+
+  const resolveDoubt = (challenger: string) => {
+    if (!lastPlay) return;
+    setDoubtPeriod(false);
+    const isBluff = lastPlay.actual.some(c => c.value !== lastPlay.declared);
+
+    if (isBluff) {
+      // Bluffer takes the whole pile
+      const bluffer = lastPlay.player;
+      setLog(`🔍 DUBIOUS BLUFF EXPOSED! ${challenger} called cheat! ${bluffer} lied and must pick up all ${pile.length} cards from the center pile!`);
+      if (bluffer === 'Player') {
+        setPlayerHand(prev => [...prev, ...pile]);
+      } else {
+        setBots(prev => ({
+          ...prev,
+          [bluffer]: [...prev[bluffer], ...pile]
+        }));
+      }
+      if (triggerHaptic) triggerHaptic([80, 50, 100]);
+      if (playTone) playTone(220, 'sawtooth', 0.5);
+    } else {
+      // Challenger was wrong, challenger takes the whole pile
+      setLog(`🔍 HONEST PLAY PROVEN! ${challenger} falsely accused ${lastPlay.player}! ${challenger} must pick up all ${pile.length} cards!`);
+      if (challenger === 'Player') {
+        setPlayerHand(prev => [...prev, ...pile]);
+      } else {
+        setBots(prev => ({
+          ...prev,
+          [challenger]: [...prev[challenger], ...pile]
+        }));
+      }
+      if (triggerHaptic) triggerHaptic(15);
+      if (playTone) playTone(659, 'sine', 0.25);
+    }
+
+    setPile([]);
+    setLastPlay(null);
+    const nextVal = nextTarget(targetValue);
+    setTargetValue(nextVal);
+
+    // Switch turns
+    const currentIdx = ['Player', 'AI_1', 'AI_2'].indexOf(lastPlay.player);
+    const nextTurn = ['Player', 'AI_1', 'AI_2'][(currentIdx + 1) % 3];
+    setTurnOwner(nextTurn);
+    if (nextTurn !== 'Player') {
+      runAITurn(nextVal, nextTurn);
+    }
+  };
+
+  const runAITurn = (nextVal: string, owner: string) => {
     setTimeout(() => {
-      const hand = botHands.AI_1;
+      const hand = botHands[owner] || [];
       if (hand.length === 0) {
-        setLog(`AI_1 is out of cards and has won!`);
+        setLog(`Game Over! ${owner} successfully discarded all cards and won the match!`);
         return;
       }
-      const matching = hand.filter(c => c.value === nextTarget);
-      let discards: Card[] = [];
 
-      if (matching.length > 0 && Math.random() > 0.3) {
-        discards = [matching[0]];
+      // AI decides to bluff or play truthfully
+      const matching = hand.filter(c => c.value === nextVal);
+      let discards: Card[] = [];
+      const playsLie = matching.length === 0 || Math.random() < 0.25;
+
+      if (!playsLie && matching.length > 0) {
+        discards = matching.slice(0, Math.floor(Math.random() * matching.length) + 1);
       } else {
-        discards = [hand[Math.floor(Math.random() * hand.length)]];
+        const randomCount = Math.floor(Math.random() * 2) + 1;
+        const shuffledHand = [...hand].sort(() => Math.random() - 0.5);
+        discards = shuffledHand.slice(0, Math.min(randomCount, hand.length));
       }
 
       setBots(prev => ({
         ...prev,
-        AI_1: prev.AI_1.filter(c => !discards.map(d => d.id).includes(c.id))
+        [owner]: prev[owner].filter(c => !discards.map(d => d.id).includes(c.id))
       }));
       setPile(prev => [...prev, ...discards]);
 
-      setLog(`AI_1 placed ${discards.length} card(s) claiming they are "${nextTarget}"s.`);
-      playTone(440, 'sine', 0.1);
-    }, 1200);
+      const newPlay = { player: owner, count: discards.length, declared: nextVal, actual: discards };
+      setLastPlay(newPlay);
+      setDoubtPeriod(true);
+      setLog(`${owner} placed ${discards.length} card(s) claiming they are "${nextVal}"s. Accuse them of lying or let them pass...`);
+      if (playTone) playTone(440, 'triangle', 0.12);
+
+      // AI peer doubts with random check
+      setTimeout(() => {
+        const peer = owner === 'AI_1' ? 'AI_2' : 'AI_1';
+        const peerBluffDoubtChance = playsLie ? 0.55 : 0.12;
+        if (Math.random() < peerBluffDoubtChance) {
+          resolveDoubt(peer);
+        } else {
+          setDoubtPeriod(false);
+          const nextTargetVal = nextTarget(nextVal);
+          setTargetValue(nextTargetVal);
+          const nextOwner = owner === 'AI_1' ? 'AI_2' : 'Player';
+          setTurnOwner(nextOwner);
+          if (nextOwner !== 'Player') {
+            runAITurn(nextTargetVal, nextOwner);
+          } else {
+            setLog(`No one doubted ${owner}'s claim. Your turn to place "${nextTargetVal}"s.`);
+          }
+        }
+      }, 2500);
+
+    }, 1500);
   };
 
   return (
-    <div className="flex-grow flex flex-col justify-between">
+    <div className="flex-grow flex flex-col justify-between select-none">
       <div className="flex justify-between items-center pb-2 border-b border-[#44387a]/20 mb-3">
-        <span className="text-[12px] font-bold text-pink-400">🃏 Cheat (I Doubt It)</span>
-        <button onClick={initGame} className="text-[10px] text-pink-400/80 hover:text-white transition">Reset Deck</button>
+        <span className="text-[12px] font-bold text-pink-400">🃏 Cheat / I Doubt It</span>
+        <button onClick={initGame} className="text-[10px] text-pink-400/80 hover:text-white transition cursor-pointer">Shuffle & Deal</button>
       </div>
 
-      <div className="bg-black/30 p-3 rounded-xl min-h-[90px] text-xs leading-relaxed font-mono flex items-center justify-center text-center">
+      <div className="bg-[#120a24]/85 border border-[#44387a]/40 p-3 rounded-xl min-h-[90px] text-xs leading-relaxed font-mono flex items-center justify-center text-center">
         {log}
       </div>
 
-      <div className="grid grid-cols-3 gap-2 my-4 text-center">
-        <div className="bg-[#120a2c]/60 p-2.5 rounded-xl border border-purple-500/10">
-          <span className="text-[9px] uppercase tracking-wider block text-slate-400">Target Card</span>
-          <span className="text-xl font-bold text-pink-400 font-mono">{targetValue}</span>
+      <div className="grid grid-cols-4 gap-2.5 my-3.5 text-center">
+        <div className="bg-black/30 p-2.5 rounded-xl border border-purple-500/10">
+          <span className="text-[8px] uppercase tracking-wider block text-slate-400">Target Value</span>
+          <span className="text-lg font-black text-pink-400 font-mono">{targetValue}</span>
         </div>
-        <div className="bg-[#120a2c]/60 p-2.5 rounded-xl border border-purple-500/10">
-          <span className="text-[9px] uppercase tracking-wider block text-slate-400">Pile Size</span>
-          <span className="text-xl font-bold text-white font-mono">{pile.length}</span>
+        <div className="bg-black/30 p-2.5 rounded-xl border border-purple-500/10">
+          <span className="text-[8px] uppercase tracking-wider block text-slate-400">Center Pile</span>
+          <span className="text-lg font-black text-white font-mono">{pile.length}</span>
         </div>
-        <div className="bg-[#120a2c]/60 p-2.5 rounded-xl border border-purple-500/10">
-          <span className="text-[9px] uppercase tracking-wider block text-slate-400">AI Hands</span>
-          <span className="text-xs font-mono block text-slate-300 mt-1">AI 1: {botHands.AI_1.length} | AI 2: {botHands.AI_2.length}</span>
+        <div className="bg-black/30 p-2.5 rounded-xl border border-purple-500/10">
+          <span className="text-[8px] uppercase tracking-wider block text-slate-400">AI 1 Cards</span>
+          <span className="text-lg font-black text-[#cf4fe6] font-mono">{botHands.AI_1.length}</span>
+        </div>
+        <div className="bg-black/30 p-2.5 rounded-xl border border-purple-500/10">
+          <span className="text-[8px] uppercase tracking-wider block text-slate-400">AI 2 Cards</span>
+          <span className="text-lg font-black text-[#3fd9c7] font-mono">{botHands.AI_2.length}</span>
         </div>
       </div>
 
       <div>
-        <span className="text-[10px] uppercase font-bold tracking-widest block text-slate-400 mb-2">Your Hand (Tap to select)</span>
-        <div className="flex gap-1.5 overflow-x-auto pb-3">
+        <div className="flex justify-between items-center mb-2">
+          <span className="text-[9px] uppercase font-bold tracking-widest text-slate-400">Your Hand ({playerHand.length} cards)</span>
+          {turnOwner === 'Player' && !doubtPeriod && <span className="text-[9.5px] font-bold text-pink-400 animate-pulse uppercase">Your Turn! ⚡</span>}
+        </div>
+        <div className="flex gap-2 overflow-x-auto pb-4 pt-1 select-none scrollbar-thin">
           {playerHand.map((card) => {
             const isSelected = selectedCards.includes(card.id);
+            const isRed = card.suit === '♥' || card.suit === '♦';
             return (
               <button
                 key={card.id}
                 onClick={() => handleCardSelect(card.id)}
-                className={`w-10 h-14 rounded-lg font-mono text-sm font-bold flex flex-col justify-between p-1.5 border transition-all shrink-0 ${
+                className={`w-11 h-16 rounded-xl font-mono text-sm font-black flex flex-col justify-between p-2 border transition-all shrink-0 cursor-pointer ${
                   isSelected 
-                    ? 'bg-pink-500 text-white border-white -translate-y-1.5 shadow-[0_4px_10px_rgba(236,72,153,0.3)]' 
-                    : 'bg-[#1b1236]/80 text-[#faebd7] border-[#44387a]/40'
+                    ? 'bg-gradient-to-br from-pink-500 to-purple-600 text-white border-white -translate-y-2 shadow-[0_5px_15px_rgba(236,72,153,0.4)]' 
+                    : 'bg-[#1b1236]/80 text-[#faebd7] border-[#44387a]/45 hover:border-pink-500/50'
                 }`}
               >
-                <span>{card.value}</span>
-                <span className="text-right text-[10px]">♠</span>
+                <span className="text-left text-xs leading-none">{card.value}</span>
+                <span className={`text-right text-base leading-none self-end ${isSelected ? 'text-white' : isRed ? 'text-red-400' : 'text-slate-300'}`}>{card.suit}</span>
               </button>
             );
           })}
         </div>
 
-        <div className="flex gap-2.5 mt-3 select-none">
-          <button
-            onClick={() => handleDiscard(false)}
-            disabled={selectedCards.length === 0}
-            className="flex-1 py-2.5 rounded-xl bg-pink-600 hover:bg-pink-500 text-white text-xs font-bold uppercase transition disabled:opacity-45 disabled:cursor-not-allowed cursor-pointer"
-          >
-            Declare Truthful 🕊️
-          </button>
-          <button
-            onClick={() => handleDiscard(true)}
-            disabled={selectedCards.length === 0}
-            className="flex-1 py-2.5 rounded-xl bg-[#2e1c3c] border border-pink-500/40 hover:bg-pink-500/20 text-pink-300 text-xs font-bold uppercase transition disabled:opacity-45 disabled:cursor-not-allowed cursor-pointer"
-          >
-            Declare Bluff 🤫
-          </button>
+        <div className="flex gap-2.5 select-none mt-2">
+          {doubtPeriod && turnOwner !== 'Player' ? (
+            <button
+              onClick={callDoubt}
+              className="w-full py-3 rounded-xl bg-gradient-to-r from-red-600 to-pink-600 hover:brightness-110 active:scale-95 text-white text-xs font-black uppercase tracking-widest transition cursor-pointer shadow-[0_0_15px_rgba(239,68,68,0.3)] animate-pulse"
+            >
+              🚨 Call Cheat! (I Doubt It)
+            </button>
+          ) : (
+            <button
+              onClick={handlePlayerDiscard}
+              disabled={selectedCards.length === 0 || turnOwner !== 'Player' || doubtPeriod}
+              className="w-full py-3 rounded-xl bg-pink-600 hover:bg-pink-500 text-white text-xs font-bold uppercase tracking-wider transition disabled:opacity-45 disabled:cursor-not-allowed cursor-pointer"
+            >
+              Place Selected Cards Face Down
+            </button>
+          )}
         </div>
       </div>
     </div>
@@ -691,111 +796,320 @@ function CheatGame({ playTone, triggerHaptic, joined, currentUser, lastAction, s
 // ==========================================
 // 2. SOCIAL DEDUCTION GAME (MAFIA / WEREWOLF)
 // ==========================================
-function MafiaGame({ playTone, triggerHaptic, joined, currentUser, lastAction, sendGameAction }: GameSyncProps) {
-  const [phase, setPhase] = useState<'setup' | 'night' | 'discussion' | 'game_over'>('setup');
-  const [role, setRole] = useState<string>('Villager');
-  const [log, setLog] = useState<string>('Welcome to Labyrinth Werewolf. Set up your cabin game.');
-  const [alibiLog, setAlibiLog] = useState<string>('');
-  const [aiStatuses, setAiStatuses] = useState<Record<string, { alive: boolean; role: string }>>({
-    'Alchemist Bot': { alive: true, role: 'Werewolf' },
-    'Rift Bot': { alive: true, role: 'Villager' },
-    'Sage Bot': { alive: true, role: 'Villager' }
-  });
+function MafiaGame({ playTone, triggerHaptic }: GameSyncProps) {
+  type WPhase = 'setup' | 'role_reveal' | 'night_wolf' | 'night_seer' | 'night_doctor' | 'day_reveal' | 'vote' | 'game_over';
+
+  interface WPlayer {
+    name: string;
+    role: 'Werewolf' | 'Villager' | 'Seer' | 'Doctor';
+    alive: boolean;
+    protected: boolean;
+  }
+
+  const [playerCount, setPlayerCount] = useState(5);
+  const [players, setPlayers] = useState<WPlayer[]>([]);
+  const [phase, setPhase] = useState<WPhase>('setup');
+  const [revealIdx, setRevealIdx] = useState(0);
+  const [log, setLog] = useState('Set number of players and begin the night. The Narrator reads aloud.');
+  const [nightKill, setNightKill] = useState<string | null>(null);
+  const [doctorSave, setDoctorSave] = useState<string | null>(null);
+  const [seerResult, setSeerResult] = useState<string | null>(null);
+  const [votes, setVotes] = useState<Record<string, string>>({});
+  const [eliminatedLast, setEliminatedLast] = useState<string | null>(null);
+  const [winner, setWinner] = useState<string | null>(null);
+  const [showRole, setShowRole] = useState(false);
+
+  const buildRoles = (count: number): WPlayer['role'][] => {
+    const wolves = count <= 5 ? 1 : count <= 7 ? 2 : 3;
+    const roles: WPlayer['role'][] = [];
+    for (let i = 0; i < wolves; i++) roles.push('Werewolf');
+    roles.push('Seer');
+    roles.push('Doctor');
+    while (roles.length < count) roles.push('Villager');
+    return roles.sort(() => Math.random() - 0.5);
+  };
+
+  const DEFAULT_NAMES = ['Alex', 'Blake', 'Casey', 'Dana', 'Evan', 'Faye', 'Gus', 'Hana'];
 
   const startGame = () => {
-    triggerHaptic(20);
-    playTone(587, 'sine', 0.25);
-    const roles = ['Werewolf', 'Villager', 'Seer', 'Villager'];
-    const shuffled = roles.sort(() => Math.random() - 0.5);
-    setRole(shuffled[0] || 'Villager');
-    setPhase('night');
-    setLog(`Night has fallen. Close your eyes. (Device haptic vibrations will alert roles)`);
-    setAlibiLog('');
+    if (triggerHaptic) triggerHaptic(25);
+    if (playTone) playTone(294, 'sine', 0.3);
+    const roles = buildRoles(playerCount);
+    const newPlayers: WPlayer[] = roles.map((role, i) => ({
+      name: DEFAULT_NAMES[i] || `Player ${i + 1}`,
+      role,
+      alive: true,
+      protected: false
+    }));
+    setPlayers(newPlayers);
+    setRevealIdx(0);
+    setNightKill(null);
+    setDoctorSave(null);
+    setSeerResult(null);
+    setVotes({});
+    setEliminatedLast(null);
+    setWinner(null);
+    setShowRole(false);
+    setPhase('role_reveal');
+    setLog(`Hand the device to ${newPlayers[0]?.name}. Tap "Show My Role" (keep it secret!)`);
   };
 
-  const handleNightKill = (target: string) => {
-    triggerHaptic([100, 50, 100]);
-    playTone(200, 'sawtooth', 0.35);
-
-    setAiStatuses(prev => ({
-      ...prev,
-      [target]: { ...prev[target], alive: false }
-    }));
-
-    setPhase('discussion');
-    setLog(`Daybreak. Alibi reports received. Unfortunately, ${target} was found eliminated at the swamp border.`);
-    setAlibiLog(`AI conversations logged: 'I saw strange mist near the swamp. Alchemist Bot was acting weird.'`);
+  const revealNext = () => {
+    if (triggerHaptic) triggerHaptic(12);
+    setShowRole(false);
+    const next = revealIdx + 1;
+    if (next >= players.length) {
+      setPhase('night_wolf');
+      setLog('All roles revealed. NARRATOR: "Everyone close your eyes. Werewolves open your eyes."');
+      if (playTone) playTone(220, 'sawtooth', 0.2);
+    } else {
+      setRevealIdx(next);
+      setLog(`Hand the device to ${players[next]?.name}. Tap "Show My Role".`);
+    }
   };
 
-  const handleVote = (target: string) => {
-    triggerHaptic(15);
-    playTone(440, 'triangle', 0.15);
+  const wolfKill = (target: string) => {
+    if (triggerHaptic) triggerHaptic([80, 50, 80]);
+    if (playTone) playTone(180, 'sawtooth', 0.25);
+    setNightKill(target);
+    setPhase('night_seer');
+    setLog('NARRATOR: "Werewolves, close your eyes. Seer, open your eyes. Point to who you want to check."');
+  };
 
-    setAiStatuses(prev => ({
-      ...prev,
-      [target]: { ...prev[target], alive: false }
+  const seerCheck = (target: string) => {
+    const p = players.find(p => p.name === target);
+    const result = p?.role === 'Werewolf' ? '🐺 WEREWOLF' : '🕊️ VILLAGER';
+    setSeerResult(`${target} is → ${result}`);
+    setPhase('night_doctor');
+    setLog(`SEER sees: "${result}" (shown briefly). NARRATOR: "Seer, close your eyes. Doctor, open your eyes. Point to who to protect."`);
+    if (playTone) playTone(440, 'sine', 0.15);
+  };
+
+  const doctorProtect = (target: string) => {
+    if (triggerHaptic) triggerHaptic(15);
+    setDoctorSave(target);
+    setPhase('day_reveal');
+
+    const killed = nightKill;
+    const saved = target === nightKill;
+    const newPlayers = players.map(p => ({
+      ...p,
+      alive: p.name === killed && !saved ? false : p.alive
     }));
+    setPlayers(newPlayers);
 
-    setPhase('night');
-    setLog(`The village council has banished ${target}. Night has fallen once more.`);
+    const elimMsg = saved
+      ? `✨ ${killed} was targeted but the Doctor saved them! No one was eliminated.`
+      : `☠️ ${killed} was eliminated in the night.`;
+    setEliminatedLast(killed ?? null);
+    setLog(`NARRATOR: "Everyone open your eyes." ${elimMsg} Discuss and vote who to banish.`);
+    if (playTone) playTone(saved ? 659 : 200, 'sine', 0.3);
+
+    const checkWin = checkVictory(newPlayers);
+    if (!checkWin) {
+      setTimeout(() => setPhase('vote'), 2000);
+    }
+  };
+
+  const checkVictory = (ps: WPlayer[]) => {
+    const aliveWolves = ps.filter(p => p.alive && p.role === 'Werewolf').length;
+    const aliveVillagers = ps.filter(p => p.alive && p.role !== 'Werewolf').length;
+    if (aliveWolves === 0) {
+      setWinner('Villagers');
+      setPhase('game_over');
+      setLog('🎉 VILLAGE WINS! All werewolves have been eliminated!');
+      if (triggerHaptic) triggerHaptic([100, 50, 100, 50, 200]);
+      if (playTone) playTone(659, 'sine', 0.5);
+      return true;
+    }
+    if (aliveWolves >= aliveVillagers) {
+      setWinner('Werewolves');
+      setPhase('game_over');
+      setLog('🐺 WEREWOLVES WIN! They now outnumber the village!');
+      if (triggerHaptic) triggerHaptic([200, 100, 200]);
+      if (playTone) playTone(150, 'sawtooth', 0.5);
+      return true;
+    }
+    return false;
+  };
+
+  const castVote = (target: string) => {
+    if (triggerHaptic) triggerHaptic(10);
+    const tally: Record<string, number> = {};
+    const newVotes = { ...votes, [`_auto_${Date.now()}`]: target };
+    
+    // Simulate majority voting — in pass-and-play, each alive player votes once
+    // For simplicity, clicking counts as "the village agrees to banish"
+    const newPlayers = players.map(p => ({
+      ...p,
+      alive: p.name === target ? false : p.alive
+    }));
+    setPlayers(newPlayers);
+    setLog(`⚖️ The village has spoken! ${target} is banished from the village.`);
+    if (playTone) playTone(330, 'triangle', 0.2);
+
+    const checkWin = checkVictory(newPlayers);
+    if (!checkWin) {
+      setTimeout(() => {
+        setNightKill(null);
+        setDoctorSave(null);
+        setSeerResult(null);
+        setPhase('night_wolf');
+        setLog('NARRATOR: "Night falls again. Everyone close your eyes. Werewolves open your eyes."');
+        if (playTone) playTone(220, 'sawtooth', 0.2);
+      }, 2500);
+    }
+  };
+
+  const alive = players.filter(p => p.alive);
+  const aliveNotWolf = players.filter(p => p.alive && p.role !== 'Werewolf');
+
+  const phaseColors: Record<WPhase, string> = {
+    setup: 'from-purple-900 to-slate-900',
+    role_reveal: 'from-indigo-900 to-purple-900',
+    night_wolf: 'from-[#0a0010] to-[#1a0030]',
+    night_seer: 'from-[#001020] to-[#0a0030]',
+    night_doctor: 'from-[#001010] to-[#001030]',
+    day_reveal: 'from-[#1a0a00] to-[#2a1000]',
+    vote: 'from-[#1a0500] to-[#2e0a00]',
+    game_over: 'from-[#0a0500] to-[#1a0a0a]'
   };
 
   return (
-    <div className="flex-grow flex flex-col justify-between">
-      <div className="flex justify-between items-center pb-2 border-b border-[#44387a]/20 mb-3 select-none">
-        <span className="text-[12px] font-bold text-fuchsia-400">🐺 Werewolf / Mafia deduction</span>
-        <span className="text-[9px] font-mono text-fuchsia-400/80">Narrator Mode Active</span>
+    <div className="flex-grow flex flex-col justify-between select-none">
+      <div className="flex justify-between items-center pb-2 border-b border-[#44387a]/20 mb-3">
+        <span className="text-[12px] font-bold text-fuchsia-400">🐺 Werewolf / Mafia</span>
+        {phase !== 'setup' && (
+          <button onClick={() => setPhase('setup')} className="text-[10px] text-fuchsia-400/80 hover:text-white transition cursor-pointer">New Game</button>
+        )}
       </div>
 
-      <div className="bg-black/30 p-3.5 rounded-xl min-h-[90px] text-xs leading-relaxed font-mono text-center flex flex-col justify-center items-center">
-        <p className="font-semibold text-white">{log}</p>
-        {alibiLog && <p className="text-[10px] text-fuchsia-300/80 mt-1">{alibiLog}</p>}
+      <div className={`bg-gradient-to-br ${phaseColors[phase]} border border-fuchsia-500/20 p-3.5 rounded-xl min-h-[80px] text-xs leading-relaxed font-mono text-center flex items-center justify-center mb-3 shadow-inner`}>
+        <p className="text-[#faebd7]">{log}</p>
       </div>
 
-      {phase === 'setup' ? (
-        <div className="text-center py-6 select-none">
-          <p className="text-xs text-slate-400 mb-4 leading-relaxed">This module automatically serves as the Cabin "Dungeon Master" Narrator so everyone in the car or room can participate together!</p>
+      {seerResult && (phase === 'night_doctor') && (
+        <div className="bg-indigo-900/50 border border-indigo-400/30 p-2 rounded-xl text-center text-[10px] font-mono text-indigo-200 mb-3 animate-pulse">
+          🔮 Seer Vision: {seerResult}
+        </div>
+      )}
+
+      {phase === 'setup' && (
+        <div className="flex flex-col items-center gap-4 py-4">
+          <p className="text-xs text-slate-400 text-center max-w-xs leading-relaxed">Narrator reads aloud. Players receive secret roles one at a time. Werewolves eliminate villagers each night — villagers must vote out the wolves by day!</p>
+          <div className="flex items-center gap-4">
+            <span className="text-xs text-slate-400 uppercase tracking-wider">Players:</span>
+            {[3,4,5,6,7,8].map(n => (
+              <button
+                key={n}
+                onClick={() => setPlayerCount(n)}
+                className={`w-8 h-8 rounded-lg text-xs font-bold border transition cursor-pointer ${playerCount === n ? 'bg-fuchsia-600 border-fuchsia-400 text-white' : 'bg-black/30 border-[#44387a]/30 text-slate-400 hover:text-white'}`}
+              >
+                {n}
+              </button>
+            ))}
+          </div>
+          <div className="text-[9px] text-slate-500 font-mono text-center">
+            {playerCount <= 5 ? '1 Wolf, 1 Seer, 1 Doctor' : playerCount <= 7 ? '2 Wolves, 1 Seer, 1 Doctor' : '3 Wolves, 1 Seer, 1 Doctor'}
+          </div>
           <button
             onClick={startGame}
-            className="w-full max-w-xs py-3 bg-fuchsia-600 hover:bg-fuchsia-500 text-white text-xs font-bold uppercase tracking-wider rounded-xl transition shadow-[0_0_15px_rgba(217,70,239,0.25)] cursor-pointer focus:outline-none"
+            className="px-8 py-3 bg-gradient-to-r from-fuchsia-700 to-purple-700 hover:brightness-110 text-white text-xs font-black uppercase tracking-widest rounded-xl transition cursor-pointer shadow-[0_0_20px_rgba(217,70,239,0.2)]"
           >
-            Begin Night Phase 🌌
+            🌑 Begin Night Phase
           </button>
         </div>
-      ) : (
-        <div className="space-y-4 my-3">
-          <div className="bg-[#120a2c]/60 px-6 py-4 rounded-xl border border-purple-500/10 flex justify-between items-center">
-            <span className="text-[10px] text-slate-400 uppercase tracking-wider block">Your Secret Assignment</span>
-            <span className="text-xs font-bold text-fuchsia-400 font-mono tracking-widest uppercase">{role}</span>
-          </div>
+      )}
 
-          <div className="space-y-2.5">
-            <span className="text-[10px] text-slate-400 uppercase tracking-wider font-bold block mb-1">Select target character</span>
-            {Object.keys(aiStatuses).map((name) => {
-              const status = aiStatuses[name];
-              if (!status.alive) return null;
-              return (
-                <div key={name} className="flex justify-between items-center px-4 py-3 rounded-xl bg-[#120a24]/40 border border-[#44387a]/25 hover:border-fuchsia-500/35 transition-all duration-300">
-                  <span className="text-xs font-bold">{name}</span>
-                  {phase === 'night' && role === 'Werewolf' ? (
-                    <button
-                      onClick={() => handleNightKill(name)}
-                      className="px-3.5 py-1.5 bg-transparent border border-red-500/40 text-red-400 hover:bg-red-600 hover:text-white rounded-lg text-[10px] uppercase font-bold tracking-wider transition-all duration-200 cursor-pointer"
-                    >
-                      Eliminate ⚔️
-                    </button>
-                  ) : (
-                    <button
-                      onClick={() => handleVote(name)}
-                      className="px-3.5 py-1.5 bg-transparent border border-fuchsia-500/40 text-fuchsia-400 hover:bg-fuchsia-600 hover:text-white rounded-lg text-[10px] uppercase font-bold tracking-wider transition-all duration-200 cursor-pointer"
-                    >
-                      Banished ⚖️
-                    </button>
-                  )}
-                </div>
-              );
-            })}
+      {phase === 'role_reveal' && players[revealIdx] && (
+        <div className="flex flex-col items-center gap-3 py-2">
+          <p className="text-xs font-bold text-amber-300 uppercase tracking-widest">{players[revealIdx].name}'s Turn</p>
+          {!showRole ? (
+            <button
+              onClick={() => { setShowRole(true); if (triggerHaptic) triggerHaptic(20); }}
+              className="px-6 py-3 bg-indigo-700 hover:bg-indigo-600 text-white text-xs font-bold uppercase tracking-wider rounded-xl transition cursor-pointer"
+            >
+              👁️ Show My Role (Keep Secret)
+            </button>
+          ) : (
+            <div className="bg-[#120a2c] border border-fuchsia-500/40 rounded-2xl p-6 text-center shadow-[0_0_30px_rgba(217,70,239,0.15)]">
+              <div className="text-4xl mb-2">{players[revealIdx].role === 'Werewolf' ? '🐺' : players[revealIdx].role === 'Seer' ? '🔮' : players[revealIdx].role === 'Doctor' ? '💉' : '🏡'}</div>
+              <div className="text-lg font-black text-fuchsia-300 uppercase tracking-widest">{players[revealIdx].role}</div>
+              <p className="text-[9px] text-slate-400 mt-2">
+                {players[revealIdx].role === 'Werewolf' ? 'Eliminate villagers at night. Blend in during day.' :
+                  players[revealIdx].role === 'Seer' ? 'Each night you may check one player\'s true identity.' :
+                  players[revealIdx].role === 'Doctor' ? 'Each night you may protect one player from elimination.' :
+                  'Find and vote out all Werewolves to win!'}
+              </p>
+              <button
+                onClick={revealNext}
+                className="mt-4 px-5 py-2 bg-fuchsia-700 hover:bg-fuchsia-600 text-white text-[10px] font-bold uppercase rounded-xl cursor-pointer"
+              >
+                {revealIdx + 1 < players.length ? `Done — Pass to ${players[revealIdx + 1]?.name}` : 'Start the Game!'}
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {(phase === 'night_wolf' || phase === 'night_seer' || phase === 'night_doctor') && (
+        <div className="space-y-2">
+          <p className="text-[10px] text-fuchsia-300 uppercase font-bold tracking-widest text-center mb-3">
+            {phase === 'night_wolf' ? '🐺 Werewolves — choose a target to eliminate' :
+             phase === 'night_seer' ? '🔮 Seer — choose a player to investigate' :
+             '💉 Doctor — choose a player to protect'}
+          </p>
+          {alive.map(p => (
+            <button
+              key={p.name}
+              onClick={() => {
+                if (phase === 'night_wolf') wolfKill(p.name);
+                else if (phase === 'night_seer') seerCheck(p.name);
+                else doctorProtect(p.name);
+              }}
+              className="w-full px-4 py-3 rounded-xl bg-[#120a24]/60 border border-fuchsia-500/20 hover:border-fuchsia-400/50 hover:bg-fuchsia-900/20 text-sm font-bold text-left transition cursor-pointer"
+            >
+              {p.name}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {phase === 'vote' && (
+        <div className="space-y-2">
+          <p className="text-[10px] text-red-400 uppercase font-bold tracking-widest text-center mb-3">⚖️ Village Vote — banish a suspect</p>
+          {alive.map(p => (
+            <button
+              key={p.name}
+              onClick={() => castVote(p.name)}
+              className="w-full px-4 py-3 rounded-xl bg-[#200a0a]/70 border border-red-500/20 hover:border-red-400/60 hover:bg-red-900/20 text-sm font-bold text-left transition cursor-pointer"
+            >
+              {p.name} <span className="text-[9px] text-slate-500 ml-2">(alive)</span>
+            </button>
+          ))}
+        </div>
+      )}
+
+      {phase === 'game_over' && (
+        <div className="text-center py-4 space-y-3">
+          <div className="text-5xl">{winner === 'Werewolves' ? '🐺' : '🏡'}</div>
+          <div className={`text-lg font-black uppercase tracking-widest ${winner === 'Werewolves' ? 'text-red-400' : 'text-emerald-400'}`}>{winner} Win!</div>
+          <div className="text-[10px] font-mono text-slate-400 space-y-1">
+            {players.map(p => <div key={p.name}>{p.name}: <span className="text-amber-300">{p.role}</span> {p.alive ? '' : '— eliminated'}</div>)}
           </div>
+          <button
+            onClick={() => setPhase('setup')}
+            className="px-6 py-2.5 bg-fuchsia-700 hover:bg-fuchsia-600 text-white text-xs font-bold uppercase tracking-wider rounded-xl cursor-pointer"
+          >
+            Play Again
+          </button>
+        </div>
+      )}
+
+      {phase !== 'setup' && phase !== 'game_over' && (
+        <div className="flex justify-between text-[9px] font-mono text-slate-500 border-t border-[#44387a]/20 pt-2 mt-2">
+          <span>Alive: {alive.length} players</span>
+          <span>Wolves remaining: {players.filter(p => p.alive && p.role === 'Werewolf').length} (hidden)</span>
         </div>
       )}
     </div>
@@ -805,283 +1119,554 @@ function MafiaGame({ playTone, triggerHaptic, joined, currentUser, lastAction, s
 // ==========================================
 // 3. CELEBRITY / FISHBOWL 3-ROUND PARTY GAME
 // ==========================================
-function CelebrityGame({ playTone, triggerHaptic, joined, currentUser, lastAction, sendGameAction }: GameSyncProps) {
-  const [words, setWords] = useState<string[]>(['Dungeon Master', 'Gollum', 'Baby Yoda', 'Hogwarts', 'Espresso']);
-  const [wordInput, setWordInput] = useState<string>('');
-  const [activeWord, setActiveWord] = useState<string>('Ready');
-  const [gameRound, setGameRound] = useState<number>(1);
-  const [teamScore, setTeamScore] = useState<Record<string, number>>({ Team_A: 0, Team_B: 0 });
-  const [turn, setTurn] = useState<string>('Team_A');
-  const [timer, setTimer] = useState<number>(30);
-  const [isRunning, setIsRunning] = useState<boolean>(false);
+function CelebrityGame({ playTone, triggerHaptic }: GameSyncProps) {
+  type FPhase = 'setup' | 'playing' | 'end_of_turn' | 'end_of_round' | 'game_over';
+  const ROUNDS = ['🗣️ Describe It', '1️⃣ One Word', '🎭 Act It Out'];
+  const TURN_DURATION = 45;
+
+  const [masterWordList, setMasterWordList] = useState<string[]>([
+    'Elon Musk', 'Baby Yoda', 'Gandalf', 'Hogwarts', 'Spider-Man',
+    'Cappuccino', 'TikTok', 'Rubik\'s Cube', 'Area 51', 'Tom Hanks'
+  ]);
+  const [wordInput, setWordInput] = useState('');
+  const [remainingWords, setRemainingWords] = useState<string[]>([]);
+  const [activeWord, setActiveWord] = useState<string>('');
+  const [round, setRound] = useState(0); // 0=setup, 1/2/3 = game rounds
+  const [turn, setTurn] = useState<'A' | 'B'>('A');
+  const [scores, setScores] = useState({ A: [0, 0, 0], B: [0, 0, 0] });
+  const [timer, setTimer] = useState(TURN_DURATION);
+  const [phase, setPhase] = useState<FPhase>('setup');
+  const [turnScore, setTurnScore] = useState(0);
+  const [isRunning, setIsRunning] = useState(false);
 
   useEffect(() => {
-    let interval: any = null;
-    if (isRunning && timer > 0) {
-      interval = setInterval(() => {
-        setTimer(t => t - 1);
-        if (timer === 5) {
-          triggerHaptic([50, 50]);
-          playTone(880, 'triangle', 0.1);
-        }
-      }, 1000);
-    } else if (timer === 0) {
+    if (!isRunning) return;
+    if (timer <= 0) {
       setIsRunning(false);
-      triggerHaptic([100, 100, 200]);
-      playTone(220, 'sine', 0.5);
+      if (triggerHaptic) triggerHaptic([200, 100, 200]);
+      if (playTone) playTone(220, 'sawtooth', 0.4);
+      setPhase('end_of_turn');
+      return;
     }
-    return () => clearInterval(interval);
+    const id = setInterval(() => {
+      setTimer(t => {
+        if (t === 6) {
+          if (triggerHaptic) triggerHaptic([40, 40]);
+          if (playTone) playTone(880, 'triangle', 0.08);
+        }
+        return t - 1;
+      });
+    }, 1000);
+    return () => clearInterval(id);
   }, [isRunning, timer]);
 
   const addWord = () => {
-    if (!wordInput.trim()) return;
-    triggerHaptic(8);
-    setWords([...words, wordInput.trim()]);
+    const w = wordInput.trim();
+    if (!w || masterWordList.includes(w)) return;
+    if (triggerHaptic) triggerHaptic(8);
+    setMasterWordList(prev => [...prev, w]);
     setWordInput('');
   };
 
-  const startTurn = () => {
-    triggerHaptic(15);
-    setIsRunning(true);
-    setTimer(30);
-    drawNextWord();
+  const startGame = () => {
+    if (masterWordList.length < 4) return;
+    if (triggerHaptic) triggerHaptic(20);
+    if (playTone) playTone(523, 'sine', 0.2);
+    const bowl = [...masterWordList].sort(() => Math.random() - 0.5);
+    setRemainingWords(bowl);
+    setRound(1);
+    setTurn('A');
+    setScores({ A: [0, 0, 0], B: [0, 0, 0] });
+    setPhase('end_of_turn'); // Start with "pass device to team A" screen
+    setTurnScore(0);
   };
 
-  const drawNextWord = () => {
-    if (words.length === 0) {
+  const startTurn = () => {
+    if (remainingWords.length === 0) {
+      endRound();
       return;
     }
-    const idx = Math.floor(Math.random() * words.length);
-    setActiveWord(words[idx] || 'Empty');
+    if (triggerHaptic) triggerHaptic(15);
+    if (playTone) playTone(440, 'sine', 0.12);
+    const word = remainingWords[Math.floor(Math.random() * remainingWords.length)] || '';
+    setActiveWord(word);
+    setTimer(TURN_DURATION);
+    setTurnScore(0);
+    setIsRunning(true);
+    setPhase('playing');
   };
 
-  const handleCorrect = () => {
-    triggerHaptic(10);
-    playTone(523, 'sine', 0.08);
-    setTeamScore(prev => ({
-      ...prev,
-      [turn]: prev[turn] + 1
-    }));
-    drawNextWord();
+  const gotIt = () => {
+    if (!isRunning) return;
+    if (triggerHaptic) triggerHaptic(10);
+    if (playTone) playTone(587, 'sine', 0.1);
+    const newRemaining = remainingWords.filter(w => w !== activeWord);
+    setRemainingWords(newRemaining);
+    const newTurnScore = turnScore + 1;
+    setTurnScore(newTurnScore);
+
+    if (newRemaining.length === 0) {
+      // Bowl empty — end turn early, then end round
+      setIsRunning(false);
+      setPhase('end_of_turn');
+      commitTurnScore(turn, round - 1, newTurnScore);
+      return;
+    }
+    const nextWord = newRemaining[Math.floor(Math.random() * newRemaining.length)] || '';
+    setActiveWord(nextWord);
   };
+
+  const commitTurnScore = (t: 'A' | 'B', rIdx: number, score: number) => {
+    setScores(prev => {
+      const updated = { ...prev };
+      const arr = [...updated[t]];
+      arr[rIdx] = (arr[rIdx] || 0) + score;
+      updated[t] = arr as [number, number, number];
+      return updated;
+    });
+  };
+
+  const endTurn = () => {
+    // Save score
+    commitTurnScore(turn, round - 1, turnScore);
+    setTurnScore(0);
+
+    if (remainingWords.length === 0) {
+      endRound();
+      return;
+    }
+
+    const nextTurn: 'A' | 'B' = turn === 'A' ? 'B' : 'A';
+    setTurn(nextTurn);
+    setPhase('end_of_turn');
+  };
+
+  const endRound = () => {
+    if (round >= 3) {
+      setPhase('game_over');
+      if (triggerHaptic) triggerHaptic([100, 50, 100, 50, 200]);
+      if (playTone) playTone(659, 'sine', 0.5);
+    } else {
+      setPhase('end_of_round');
+    }
+  };
+
+  const nextRound = () => {
+    if (triggerHaptic) triggerHaptic(15);
+    const newBowl = [...masterWordList].sort(() => Math.random() - 0.5);
+    setRemainingWords(newBowl);
+    setRound(r => r + 1);
+    setTurn('A');
+    setPhase('end_of_turn');
+  };
+
+  const totalA = scores.A.reduce((a, b) => a + b, 0);
+  const totalB = scores.B.reduce((a, b) => a + b, 0);
 
   return (
-    <div className="flex-grow flex flex-col justify-between">
-      <div className="flex justify-between items-center pb-2 border-b border-[#44387a]/20 mb-3 select-none">
-        <span className="text-[12px] font-bold text-amber-400">🎫 Celebrity / Fishbowl Arena</span>
-        <span className="text-[9px] font-mono text-amber-400/80">Round {gameRound}</span>
+    <div className="flex-grow flex flex-col justify-between select-none">
+      <div className="flex justify-between items-center pb-2 border-b border-[#44387a]/20 mb-3">
+        <span className="text-[12px] font-bold text-amber-400">🎫 Fishbowl (Celebrity)</span>
+        <span className="text-[9px] font-mono text-amber-400/80">
+          {round > 0 ? `Round ${round}/3: ${ROUNDS[round - 1]}` : 'Setup'}
+        </span>
       </div>
 
-      <div className="grid grid-cols-2 gap-2 mb-4 text-center select-none font-mono">
-        <div className="bg-[#120a2c]/60 p-2 rounded-xl border border-purple-500/10">
-          <span className="text-[8px] uppercase tracking-wider block text-slate-400">Team A Score</span>
-          <span className="text-base font-bold text-amber-400">{teamScore.Team_A}</span>
-        </div>
-        <div className="bg-[#120a2c]/60 p-2 rounded-xl border border-purple-500/10">
-          <span className="text-[8px] uppercase tracking-wider block text-slate-400">Team B Score</span>
-          <span className="text-base font-bold text-purple-400">{teamScore.Team_B}</span>
-        </div>
-      </div>
-
-      <div className="flex-grow flex flex-col justify-center items-center py-4 bg-black/20 rounded-xl mb-4 text-center">
-        {isRunning ? (
-          <>
-            <span className="text-3xl font-extrabold text-[#faebd7] tracking-wider uppercase mb-1 px-4">{activeWord}</span>
-            <span className="text-sm font-mono text-red-400 font-bold mt-2">⏱️ 00:{timer < 10 ? `0${timer}` : timer}</span>
-          </>
-        ) : (
-          <div className="text-center px-4 max-w-sm">
-            <span className="text-sm font-mono font-bold text-amber-400 uppercase tracking-widest block mb-1">LOBBY PAUSED</span>
-            <p className="text-[11px] text-slate-300 leading-relaxed mb-4">Hand the device to the guesser. Press "Start Turn" to begin the countdown.</p>
-            <button
-              onClick={startTurn}
-              className="px-6 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs uppercase tracking-widest rounded-xl transition cursor-pointer"
-            >
-              Start Turn ▶️
-            </button>
+      {/* Scores */}
+      {round > 0 && (
+        <div className="grid grid-cols-2 gap-2 mb-3 text-center font-mono">
+          <div className={`p-2 rounded-xl border ${turn === 'A' && phase === 'playing' ? 'border-amber-400 bg-amber-500/10' : 'border-purple-500/10 bg-[#120a2c]/50'}`}>
+            <div className="text-[8px] uppercase tracking-wider text-slate-400">Team A</div>
+            <div className="text-xl font-black text-amber-400">{totalA}</div>
           </div>
-        )}
-      </div>
+          <div className={`p-2 rounded-xl border ${turn === 'B' && phase === 'playing' ? 'border-purple-400 bg-purple-500/10' : 'border-purple-500/10 bg-[#120a2c]/50'}`}>
+            <div className="text-[8px] uppercase tracking-wider text-slate-400">Team B</div>
+            <div className="text-xl font-black text-purple-400">{totalB}</div>
+          </div>
+        </div>
+      )}
 
-      {isRunning && (
-        <div className="flex gap-2 mb-3">
+      {phase === 'setup' && (
+        <div className="flex flex-col gap-3">
+          <p className="text-xs text-slate-400 leading-relaxed text-center">Add names/words to the bowl, then press Start. Fishbowl has 3 rounds: Describe → One Word → Act It Out!</p>
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={wordInput}
+              onChange={e => setWordInput(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && addWord()}
+              placeholder="Add a name or word..."
+              className="flex-grow bg-black/40 border border-[#44387a]/50 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-amber-400"
+            />
+            <button onClick={addWord} className="px-4 bg-amber-600/30 border border-amber-500/40 text-amber-400 rounded-xl text-xs font-bold cursor-pointer hover:bg-amber-600/50 transition">+ Add</button>
+          </div>
+          <div className="flex flex-wrap gap-1.5 max-h-[90px] overflow-y-auto">
+            {masterWordList.map((w, i) => (
+              <span key={i} className="px-2 py-1 rounded-lg bg-[#1a1030] border border-amber-500/20 text-[10px] font-mono text-amber-200">
+                {w}
+              </span>
+            ))}
+          </div>
           <button
-            onClick={handleCorrect}
-            className="flex-grow py-2.5 bg-emerald-600/25 border border-emerald-500/30 text-emerald-400 rounded-xl font-bold text-xs uppercase tracking-wide cursor-pointer"
+            onClick={startGame}
+            disabled={masterWordList.length < 4}
+            className="w-full py-3 bg-gradient-to-r from-amber-600 to-orange-600 hover:brightness-110 text-white text-xs font-black uppercase tracking-widest rounded-xl transition cursor-pointer disabled:opacity-40"
           >
-            ✓ Got It!
-          </button>
-          <button
-            onClick={() => { triggerHaptic(5); drawNextWord(); }}
-            className="px-4 py-2.5 bg-black/20 border border-slate-500/30 text-slate-400 rounded-xl font-bold text-xs uppercase tracking-wide cursor-pointer"
-          >
-            Skip
+            🎭 Start Fishbowl! ({masterWordList.length} words)
           </button>
         </div>
       )}
 
-      <div className="flex gap-2">
-        <input
-          type="text"
-          value={wordInput}
-          onChange={(e) => setWordInput(e.target.value)}
-          placeholder="Type word to add..."
-          className="bg-[#120a24]/90 border border-[#44387a]/60 text-white placeholder-slate-600 rounded-xl px-3 py-2 flex-grow text-xs focus:outline-none focus:border-amber-400 font-sans"
-        />
-        <button
-          onClick={addWord}
-          className="px-4 bg-[#2e1d16] hover:bg-[#3d271f] text-amber-400 border border-amber-500/30 rounded-xl font-bold text-xs uppercase cursor-pointer"
-        >
-          + Add
-        </button>
-      </div>
+      {phase === 'playing' && (
+        <div className="flex flex-col items-center gap-4 flex-grow justify-center">
+          <div className="w-full bg-gradient-to-br from-amber-900/40 to-orange-900/30 border border-amber-500/25 rounded-2xl p-6 text-center">
+            <div className="text-[9px] text-amber-400/70 uppercase tracking-widest mb-2 font-mono">{ROUNDS[round - 1]}</div>
+            <div className="text-3xl font-extrabold text-[#faebd7] uppercase tracking-wide">{activeWord}</div>
+            <div className="text-xs text-amber-300 mt-1 font-mono">Team {turn} • +{turnScore} this turn</div>
+          </div>
+          <div className={`text-3xl font-black font-mono ${timer <= 10 ? 'text-red-400 animate-pulse' : 'text-amber-300'}`}>
+            ⏱ {timer}s
+          </div>
+          <div className="flex gap-3 w-full">
+            <button onClick={gotIt} className="flex-grow py-3 bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-black rounded-xl cursor-pointer transition shadow-[0_0_15px_rgba(16,185,129,0.3)]">
+              ✓ Got It!
+            </button>
+            <button
+              onClick={() => {
+                setIsRunning(false);
+                setPhase('end_of_turn');
+                commitTurnScore(turn, round - 1, turnScore);
+              }}
+              className="px-4 py-3 bg-slate-800 text-slate-400 text-xs font-bold rounded-xl cursor-pointer hover:bg-slate-700 transition"
+            >
+              End Turn
+            </button>
+          </div>
+          <div className="text-[9px] text-slate-500 font-mono">{remainingWords.length} words left in bowl</div>
+        </div>
+      )}
+
+      {phase === 'end_of_turn' && (
+        <div className="flex flex-col items-center gap-4 py-6 text-center">
+          <div className="text-4xl">{turn === 'A' ? '🔶' : '🟣'}</div>
+          <p className="text-sm font-bold text-amber-300 uppercase tracking-widest">Team {turn}'s Turn</p>
+          <p className="text-xs text-slate-400">{ROUNDS[round - 1]}</p>
+          <p className="text-[11px] text-slate-400 max-w-xs">
+            {round === 1 ? 'Describe the word using any words (no rhymes/initials).' :
+             round === 2 ? 'You may only say ONE word as a clue.' :
+             'Act it out silently — no words, no sounds!'}
+          </p>
+          <button onClick={startTurn} className="px-8 py-3 bg-amber-600 hover:bg-amber-500 text-white text-xs font-black uppercase tracking-widest rounded-xl cursor-pointer transition">
+            ▶ Start Turn
+          </button>
+          <div className="text-[9px] text-slate-500 font-mono">{remainingWords.length} words remaining</div>
+        </div>
+      )}
+
+      {phase === 'end_of_round' && (
+        <div className="flex flex-col items-center gap-3 py-4 text-center">
+          <div className="text-2xl font-black text-amber-400">Round {round} Complete!</div>
+          <div className="grid grid-cols-2 gap-3 w-full font-mono text-sm">
+            {(['A', 'B'] as const).map(t => (
+              <div key={t} className={`p-3 rounded-xl border ${t === 'A' ? 'border-amber-500/30 bg-amber-900/20' : 'border-purple-500/30 bg-purple-900/20'}`}>
+                <div className={`text-lg font-black ${t === 'A' ? 'text-amber-400' : 'text-purple-400'}`}>Team {t}</div>
+                {scores[t].map((s, i) => (
+                  <div key={i} className="text-[9px] text-slate-400">{ROUNDS[i]?.split(' ').pop()}: {s}</div>
+                ))}
+              </div>
+            ))}
+          </div>
+          <button onClick={nextRound} className="px-8 py-3 bg-gradient-to-r from-amber-600 to-purple-600 text-white text-xs font-black uppercase tracking-widest rounded-xl cursor-pointer">
+            ▶ Round {round + 1}: {ROUNDS[round]}
+          </button>
+        </div>
+      )}
+
+      {phase === 'game_over' && (
+        <div className="flex flex-col items-center gap-3 py-4 text-center">
+          <div className="text-5xl">{totalA > totalB ? '🔶' : totalB > totalA ? '🟣' : '🤝'}</div>
+          <div className="text-xl font-black text-[#faebd7]">
+            {totalA > totalB ? 'Team A Wins!' : totalB > totalA ? 'Team B Wins!' : 'It\'s a Tie!'}
+          </div>
+          <div className="text-2xl font-mono font-black">
+            <span className="text-amber-400">{totalA}</span> — <span className="text-purple-400">{totalB}</span>
+          </div>
+          <button onClick={() => { setRound(0); setPhase('setup'); }} className="px-6 py-2.5 bg-amber-600 text-white text-xs font-bold uppercase rounded-xl cursor-pointer">
+            Play Again
+          </button>
+        </div>
+      )}
     </div>
   );
 }
 
+
 // ==========================================
 // 4. ALCHEMICAL BLACKJACK CARD GAME (21)
 // ==========================================
-function BlackjackGame({ playTone, triggerHaptic, joined, currentUser, lastAction, sendGameAction }: GameSyncProps) {
-  const [playerHand, setPlayerHand] = useState<number[]>([]);
-  const [dealerHand, setDealerHand] = useState<number[]>([]);
-  const [gameStatus, setGameStatus] = useState<'betting' | 'playing' | 'dealer_turn' | 'outcome'>('betting');
-  const [log, setLog] = useState<string>('Press deal to challenge the virtual Alchemist bot!');
+interface BJCard { value: string; suit: string; numVal: number; }
 
-  const drawCard = () => {
-    const cards = [2, 3, 4, 5, 6, 7, 8, 9, 10, 10, 10, 10, 11];
-    return cards[Math.floor(Math.random() * cards.length)] || 10;
+function BlackjackGame({ playTone, triggerHaptic }: GameSyncProps) {
+  const SUITS = ['♠', '♥', '♦', '♣'];
+  const VALUES = ['A','2','3','4','5','6','7','8','9','10','J','Q','K'];
+  const RED_SUITS = ['♥', '♦'];
+
+  const buildDeck = (): BJCard[] => {
+    const deck: BJCard[] = [];
+    for (let d = 0; d < 4; d++) { // 4-deck shoe
+      for (const suit of SUITS) {
+        for (const val of VALUES) {
+          const numVal = val === 'A' ? 11 : ['J','Q','K'].includes(val) ? 10 : parseInt(val);
+          deck.push({ value: val, suit, numVal });
+        }
+      }
+    }
+    return deck.sort(() => Math.random() - 0.5);
+  };
+
+  const [shoe, setShoe] = useState<BJCard[]>(() => buildDeck());
+  const [playerHand, setPlayerHand] = useState<BJCard[]>([]);
+  const [dealerHand, setDealerHand] = useState<BJCard[]>([]);
+  const [splitHand, setSplitHand] = useState<BJCard[]>([]);
+  const [gameStatus, setGameStatus] = useState<'idle' | 'playing' | 'dealer_turn' | 'outcome'>('idle');
+  const [log, setLog] = useState('Welcome to Alchem-21. Press Deal to challenge the Alchemist Bot!');
+  const [wins, setWins] = useState(0);
+  const [losses, setLosses] = useState(0);
+  const [pushes, setPushes] = useState(0);
+  const [doubled, setDoubled] = useState(false);
+  const [hasSplit, setHasSplit] = useState(false);
+  const [activeSplit, setActiveSplit] = useState<'main' | 'split'>('main');
+
+  const shoeRef = useRef<BJCard[]>(shoe);
+  const draw = (): BJCard => {
+    if (shoeRef.current.length < 10) {
+      shoeRef.current = buildDeck();
+    }
+    const card = shoeRef.current.pop()!;
+    setShoe([...shoeRef.current]);
+    return card;
+  };
+
+  const calcScore = (hand: BJCard[]): number => {
+    let sum = hand.reduce((a, c) => a + c.numVal, 0);
+    let aces = hand.filter(c => c.value === 'A').length;
+    while (sum > 21 && aces > 0) { sum -= 10; aces--; }
+    return sum;
   };
 
   const startGame = () => {
-    triggerHaptic(20);
-    playTone(587, 'sine', 0.2);
-    setPlayerHand([drawCard(), drawCard()]);
-    setDealerHand([drawCard(), drawCard()]);
+    if (triggerHaptic) triggerHaptic(20);
+    if (playTone) playTone(440, 'sine', 0.15);
+    const p = [draw(), draw()];
+    const d = [draw(), draw()];
+    setPlayerHand(p);
+    setDealerHand(d);
+    setSplitHand([]);
+    setDoubled(false);
+    setHasSplit(false);
+    setActiveSplit('main');
     setGameStatus('playing');
-    setLog('Make your choice: Stand or receive another potion card?');
+
+    const pScore = calcScore(p);
+    if (pScore === 21) {
+      setLog('⚡ BLACKJACK! Natural 21 — Alchemist Bot must now reveal.');
+      dealerPlay(p, d, false);
+    } else {
+      setLog(`Your score: ${pScore}. Hit, Stand, or Double Down?`);
+    }
   };
 
   const handleHit = () => {
-    triggerHaptic(10);
-    playTone(349, 'triangle', 0.12);
-    const newHand = [...playerHand, drawCard()];
-    setPlayerHand(newHand);
-    
-    const score = getScore(newHand);
+    if (gameStatus !== 'playing') return;
+    if (triggerHaptic) triggerHaptic(10);
+    if (playTone) playTone(349, 'triangle', 0.1);
+    const newCard = draw();
+    const newHand = hasSplit && activeSplit === 'split' ? [...splitHand, newCard] : [...playerHand, newCard];
+    if (hasSplit && activeSplit === 'split') {
+      setSplitHand(newHand);
+    } else {
+      setPlayerHand(newHand);
+    }
+    const score = calcScore(newHand);
     if (score > 21) {
+      if (triggerHaptic) triggerHaptic([150, 80, 150]);
+      if (playTone) playTone(200, 'sawtooth', 0.4);
+      setLog(`💥 Bust at ${score}! Alchemist Bot wins.`);
+      setLosses(l => l + 1);
       setGameStatus('outcome');
-      setLog(`You busted at ${score}! Alchemist Bot wins this challenge.`);
-      playTone(220, 'sawtooth', 0.4);
+    } else {
+      setLog(`Score: ${score}. Hit, Stand, or Double Down?`);
     }
   };
 
   const handleStand = () => {
-    triggerHaptic(15);
+    if (gameStatus !== 'playing') return;
+    if (hasSplit && activeSplit === 'main') {
+      setActiveSplit('split');
+      setLog(`Split hand — now playing Split Hand. Score: ${calcScore(splitHand)}`);
+      return;
+    }
+    if (triggerHaptic) triggerHaptic(15);
+    dealerPlay(playerHand, dealerHand, hasSplit);
+  };
+
+  const handleDouble = () => {
+    if (gameStatus !== 'playing' || playerHand.length !== 2) return;
+    if (triggerHaptic) triggerHaptic(25);
+    if (playTone) playTone(523, 'sine', 0.2);
+    const newCard = draw();
+    const newHand = [...playerHand, newCard];
+    setPlayerHand(newHand);
+    setDoubled(true);
+    const score = calcScore(newHand);
+    if (score > 21) {
+      setLog(`💥 Bust at ${score} on double! (Doubled bet lost)`);
+      setLosses(l => l + 1);
+      setGameStatus('outcome');
+    } else {
+      setLog(`Double down! Drew ${newCard.value}${newCard.suit}. Standing on ${score}...`);
+      dealerPlay(newHand, dealerHand, false);
+    }
+  };
+
+  const handleSplit = () => {
+    if (gameStatus !== 'playing' || playerHand.length !== 2) return;
+    if (playerHand[0]?.numVal !== playerHand[1]?.numVal) return;
+    if (triggerHaptic) triggerHaptic(15);
+    const [c1, c2] = playerHand;
+    setPlayerHand([c1, draw()]);
+    setSplitHand([c2, draw()]);
+    setHasSplit(true);
+    setActiveSplit('main');
+    setLog('Hand split! Play your main hand first, then the split hand.');
+  };
+
+  const dealerPlay = (pHand: BJCard[], dHand: BJCard[], isSplit: boolean) => {
     setGameStatus('dealer_turn');
-    setLog('Alchemist bot is evaluating... Shuffling deck.');
+    setLog('Alchemist Bot reveals hand...');
+    if (triggerHaptic) triggerHaptic(10);
 
     setTimeout(() => {
-      let currentDealer = [...dealerHand];
-      while (getScore(currentDealer) < 17) {
-        currentDealer.push(drawCard());
+      let current = [...dHand];
+      while (calcScore(current) < 17) current.push(draw());
+      setDealerHand(current);
+
+      const pScore = calcScore(pHand);
+      const dScore = calcScore(current);
+      let resultMsg = '';
+      setGameStatus('outcome');
+
+      if (dScore > 21) {
+        resultMsg = `🏆 Alchemist Bot busts at ${dScore}! You win!${doubled ? ' (2x)' : ''}`;
+        setWins(w => w + 1);
+        if (playTone) playTone(659, 'sine', 0.4);
+      } else if (pScore > dScore) {
+        resultMsg = `🏆 Victory! ${pScore} beats ${dScore}!${doubled ? ' (2x payout)' : ''}`;
+        setWins(w => w + 1);
+        if (playTone) playTone(659, 'sine', 0.4);
+      } else if (dScore > pScore) {
+        resultMsg = `💀 Alchemist Bot wins: ${dScore} vs ${pScore}.`;
+        setLosses(l => l + 1);
+        if (playTone) playTone(180, 'sawtooth', 0.5);
+      } else {
+        resultMsg = `🤝 Push! Both tied at ${pScore}.`;
+        setPushes(p => p + 1);
       }
-      setDealerHand(currentDealer);
-      evaluateWinner(playerHand, currentDealer);
-    }, 1200);
+      setLog(resultMsg);
+      if (triggerHaptic) triggerHaptic([50, 30, 80]);
+    }, 1400);
   };
 
-  const getScore = (hand: number[]) => {
-    let sum = hand.reduce((acc, curr) => acc + curr, 0);
-    let aces = hand.filter(c => c === 11).length;
-    while (sum > 21 && aces > 0) {
-      sum -= 10;
-      aces -= 1;
-    }
-    return sum;
+  const renderCard = (card: BJCard, faceDown = false) => {
+    const isRed = RED_SUITS.includes(card.suit);
+    return (
+      <div
+        className={`w-11 h-16 rounded-xl border-2 flex flex-col justify-between p-1.5 font-mono font-black shrink-0 select-none transition-all
+          ${faceDown
+            ? 'bg-gradient-to-br from-blue-900 to-indigo-800 border-blue-500/40'
+            : `bg-gradient-to-b from-slate-50 to-slate-100 border-slate-300 shadow-md`
+          }`}
+      >
+        {faceDown ? (
+          <div className="w-full h-full flex items-center justify-center text-blue-400/60 text-xl">🂠</div>
+        ) : (
+          <>
+            <span className={`text-xs leading-none ${isRed ? 'text-red-600' : 'text-slate-900'}`}>{card.value}</span>
+            <span className={`text-base leading-none self-end ${isRed ? 'text-red-600' : 'text-slate-900'}`}>{card.suit}</span>
+          </>
+        )}
+      </div>
+    );
   };
 
-  const evaluateWinner = (pHand: number[], dHand: number[]) => {
-    const pScore = getScore(pHand);
-    const dScore = getScore(dHand);
-    setGameStatus('outcome');
-
-    if (dScore > 21) {
-      setLog(`Alchemist bot busted at ${dScore}! You win the round! 🏆`);
-      playTone(659, 'sine', 0.35);
-    } else if (pScore > dScore) {
-      setLog(`Victory! Your hand (${pScore}) beats the Alchemist bot (${dScore})! 🏆`);
-      playTone(659, 'sine', 0.35);
-    } else if (dScore > pScore) {
-      setLog(`Defeat! Alchemist bot (${dScore}) out-flipped your hand (${pScore}).`);
-      playTone(220, 'sawtooth', 0.4);
-    } else {
-      setLog(`A standoff! Both hands tied at ${pScore}. Push.`);
-    }
-  };
+  const canSplit = gameStatus === 'playing' && playerHand.length === 2 && playerHand[0]?.numVal === playerHand[1]?.numVal && !hasSplit;
 
   return (
-    <div className="flex-grow flex flex-col justify-between">
-      <div className="flex justify-between items-center pb-2 border-b border-[#44387a]/20 mb-3 select-none">
-        <span className="text-[12px] font-bold text-blue-400">🎩 Alchem-21 (Alchemical Blackjack)</span>
-        <span className="text-[9px] font-mono text-blue-400/80">Dealer stands on 17</span>
+    <div className="flex-grow flex flex-col justify-between select-none">
+      <div className="flex justify-between items-center pb-2 border-b border-[#44387a]/20 mb-3">
+        <span className="text-[12px] font-bold text-blue-400">🎩 Alchem-21 (Blackjack)</span>
+        <div className="flex gap-2 text-[9px] font-mono">
+          <span className="text-emerald-400">W:{wins}</span>
+          <span className="text-red-400">L:{losses}</span>
+          <span className="text-slate-400">P:{pushes}</span>
+        </div>
       </div>
 
-      <div className="bg-black/30 p-3 rounded-xl min-h-[90px] text-xs leading-relaxed font-mono text-center flex items-center justify-center">
+      <div className={`p-3 rounded-xl min-h-[50px] text-xs leading-relaxed font-mono text-center flex items-center justify-center mb-3 border ${gameStatus === 'outcome' && log.includes('🏆') ? 'border-emerald-500/30 bg-emerald-900/20' : gameStatus === 'outcome' ? 'border-red-500/20 bg-red-900/10' : 'border-[#44387a]/20 bg-black/20'}`}>
         {log}
       </div>
 
-      <div className="grid grid-cols-2 gap-4 my-4 font-mono select-none">
-        {/* Dealer Area */}
-        <div className="bg-[#120a2c]/60 p-3 rounded-xl border border-purple-500/10 text-center">
-          <span className="text-[8px] uppercase tracking-wider block text-slate-400 mb-1.5">Alchemist Bot</span>
-          <div className="flex justify-center gap-1">
-            {dealerHand.map((c, idx) => (
-              <span key={idx} className="px-2 py-3 bg-[#24174d] rounded-lg border border-slate-700/30 text-xs font-bold font-mono">
-                {gameStatus === 'playing' && idx === 1 ? '?' : c}
-              </span>
-            ))}
-          </div>
-          {gameStatus === 'outcome' && <span className="text-xs font-black block text-blue-400 mt-2">Score: {getScore(dealerHand)}</span>}
+      {/* Dealer Hand */}
+      <div className="mb-3">
+        <div className="text-[9px] text-slate-400 uppercase tracking-widest font-bold mb-1.5">
+          Alchemist Bot {gameStatus !== 'playing' && dealerHand.length > 0 ? `— ${calcScore(dealerHand)}` : ''}
         </div>
-
-        {/* Player Area */}
-        <div className="bg-[#120a2c]/60 p-3 rounded-xl border border-purple-500/10 text-center">
-          <span className="text-[8px] uppercase tracking-wider block text-slate-400 mb-1.5">Your Potion Cards</span>
-          <div className="flex justify-center gap-1">
-            {playerHand.map((c, idx) => (
-              <span key={idx} className="px-2 py-3 bg-blue-500/10 rounded-lg border border-blue-500/30 text-xs font-bold font-mono text-blue-300">
-                {c}
-              </span>
-            ))}
-          </div>
-          {playerHand.length > 0 && <span className="text-xs font-black block text-blue-400 mt-2">Score: {getScore(playerHand)}</span>}
+        <div className="flex gap-2 flex-wrap">
+          {dealerHand.map((card, i) => (
+            <div key={i}>{renderCard(card, gameStatus === 'playing' && i === 1)}</div>
+          ))}
         </div>
       </div>
 
-      <div className="select-none">
-        {gameStatus === 'betting' || gameStatus === 'outcome' ? (
-          <button
-            onClick={startGame}
-            className="w-full py-3 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold uppercase tracking-widest rounded-xl transition cursor-pointer"
-          >
-            Deal Potion Hand 🃏
-          </button>
-        ) : (
-          <div className="flex gap-2">
-            <button
-              onClick={handleHit}
-              className="flex-1 py-3 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold uppercase tracking-wider rounded-xl transition cursor-pointer"
-            >
-              Hit 🧪
-            </button>
-            <button
-              onClick={handleStand}
-              className="flex-grow py-3 bg-slate-800 hover:bg-slate-700 text-[#faebd7] text-xs font-bold uppercase tracking-wider rounded-xl transition cursor-pointer"
-            >
-              Stand 🛡️
-            </button>
+      {/* Player Hand(s) */}
+      <div className="mb-3">
+        <div className="text-[9px] text-slate-400 uppercase tracking-widest font-bold mb-1.5">
+          Your Hand — {calcScore(playerHand)}
+          {playerHand.length === 2 && calcScore(playerHand) === 21 ? ' ⚡ BLACKJACK!' : ''}
+        </div>
+        <div className="flex gap-2 flex-wrap">
+          {playerHand.map((card, i) => <div key={i}>{renderCard(card)}</div>)}
+        </div>
+        {hasSplit && (
+          <div className="mt-2">
+            <div className={`text-[9px] uppercase tracking-widest font-bold mb-1.5 ${activeSplit === 'split' ? 'text-amber-400' : 'text-slate-500'}`}>
+              Split Hand — {calcScore(splitHand)} {activeSplit === 'split' ? '← Active' : ''}
+            </div>
+            <div className="flex gap-2 flex-wrap">
+              {splitHand.map((card, i) => <div key={i}>{renderCard(card)}</div>)}
+            </div>
           </div>
+        )}
+      </div>
+
+      {/* Action Buttons */}
+      <div className="flex gap-2 flex-wrap">
+        {(gameStatus === 'idle' || gameStatus === 'outcome') && (
+          <button onClick={startGame} className="w-full py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:brightness-110 text-white text-xs font-black uppercase tracking-widest rounded-xl transition cursor-pointer shadow-[0_0_15px_rgba(59,130,246,0.2)]">
+            🃏 Deal New Hand
+          </button>
+        )}
+        {gameStatus === 'playing' && (
+          <>
+            <button onClick={handleHit} className="flex-1 py-3 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold uppercase rounded-xl transition cursor-pointer">Hit</button>
+            <button onClick={handleStand} className="flex-1 py-3 bg-slate-700 hover:bg-slate-600 text-white text-xs font-bold uppercase rounded-xl transition cursor-pointer">Stand</button>
+            {playerHand.length === 2 && (
+              <button onClick={handleDouble} className="px-4 py-3 bg-amber-600/30 border border-amber-500/40 text-amber-400 text-xs font-bold uppercase rounded-xl transition cursor-pointer hover:bg-amber-600/50">2x</button>
+            )}
+            {canSplit && (
+              <button onClick={handleSplit} className="px-4 py-3 bg-purple-600/30 border border-purple-500/40 text-purple-400 text-xs font-bold uppercase rounded-xl transition cursor-pointer hover:bg-purple-600/50">Split</button>
+            )}
+          </>
         )}
       </div>
     </div>
@@ -1419,312 +2004,531 @@ function GridDomainGame({ playTone, triggerHaptic, joined, currentUser, connecte
 }
 
 // ==========================================
-// 7. DICE DUEL PUSH YOUR LUCK DICE GAME
 // ==========================================
-function DiceDuelGame({ playTone, triggerHaptic, joined, currentUser, connectedPlayers, lastAction, sendGameAction }: GameSyncProps) {
-  const [bankedScore, setBankedScore] = useState<number>(0);
-  const [currentTurnScore, setCurrentTurnScore] = useState<number>(0);
-  const [activeDie, setActiveDie] = useState<number>(5);
-  const [isRolling, setIsRolling] = useState<boolean>(false);
-  const [log, setLog] = useState<string>('Shake the device or click "Roll Die" to begin!');
-  
-  const [duelTurn, setDuelTurn] = useState<number>(1);
-  const playerList = connectedPlayers ? connectedPlayers.map(p => p.userId).sort() : [];
-  const myIndex = playerList.indexOf(currentUser || '');
-  const myPlayerNum = myIndex !== -1 ? myIndex + 1 : 1;
-  const opponentName = playerList[myPlayerNum === 1 ? 1 : 0] || 'Opponent';
+// 7. FARKLE DICE GAME (PUSH YOUR LUCK)
+// ==========================================
+function DiceDuelGame({ playTone, triggerHaptic }: GameSyncProps) {
+  const TARGET = 10000;
+  const DICE_COUNT = 6;
 
-  const handleRoll = () => {
-    if (isRolling) return;
-    if (joined && duelTurn !== myPlayerNum) {
-      if (triggerHaptic) triggerHaptic([50, 50]);
-      setLog(`It's not your turn! Wait for ${opponentName}.`);
+  type Die = { value: number; held: boolean; scored: boolean };
+
+  const [dice, setDice] = useState<Die[]>(() => Array(DICE_COUNT).fill(null).map(() => ({ value: 1, held: false, scored: false })));
+  const [turnScore, setTurnScore] = useState(0);
+  const [p1Score, setP1Score] = useState(0);
+  const [p2Score, setP2Score] = useState(0);
+  const [turn, setTurn] = useState<1 | 2>(1);
+  const [gamePhase, setGamePhase] = useState<'idle' | 'rolled' | 'farkle' | 'won'>('idle');
+  const [log, setLog] = useState('Welcome to Farkle! First to 10,000 wins. Roll 6 dice, set aside scorers, then bank or keep going!');
+  const [isRolling, setIsRolling] = useState(false);
+  const [rollsThisTurn, setRollsThisTurn] = useState(0);
+  const [canRollAgain, setCanRollAgain] = useState(false);
+
+  const calcFarkleScore = (vals: number[]): number => {
+    const counts: Record<number, number> = {};
+    for (const v of vals) counts[v] = (counts[v] || 0) + 1;
+
+    let score = 0;
+    // Straight 1-6
+    if (vals.length === 6 && [1,2,3,4,5,6].every(n => counts[n] === 1)) return 1500;
+    // Three pairs
+    const pairs = Object.values(counts).filter(c => c === 2).length;
+    if (vals.length === 6 && pairs === 3) return 1500;
+    // Six of a kind
+    const sixOf = Object.entries(counts).find(([,c]) => c === 6);
+    if (sixOf) return sixOf[0] === '1' ? 8000 : parseInt(sixOf[0]) * 1000;
+    // Five of a kind
+    const fiveOf = Object.entries(counts).find(([,c]) => c === 5);
+    if (fiveOf) return fiveOf[0] === '1' ? 4000 : parseInt(fiveOf[0]) * 500;
+    // Four of a kind
+    const fourOf = Object.entries(counts).find(([,c]) => c === 4);
+    if (fourOf) return fourOf[0] === '1' ? 2000 : parseInt(fourOf[0]) * 200;
+
+    // Three of a kind
+    for (const [face, count] of Object.entries(counts)) {
+      if (count >= 3) {
+        score += face === '1' ? 1000 : parseInt(face) * 100;
+        counts[face as any] -= 3;
+      }
+    }
+    // Single 1s and 5s
+    score += (counts[1] || 0) * 100;
+    score += (counts[5] || 0) * 50;
+    return score;
+  };
+
+  const rollDice = () => {
+    if (isRolling || gamePhase === 'won') return;
+    setIsRolling(true);
+    if (triggerHaptic) triggerHaptic([30, 40, 30]);
+    if (playTone) playTone(260, 'triangle', 0.15);
+
+    const unscored = dice.filter(d => !d.held && !d.scored);
+    const rollCount = unscored.length > 0 ? unscored.length : DICE_COUNT; // hot dice reset
+
+    let frames = 0;
+    const anim = setInterval(() => {
+      setDice(prev => prev.map((d, i) => {
+        if (d.held || d.scored) return d;
+        return { ...d, value: Math.floor(Math.random() * 6) + 1 };
+      }));
+      frames++;
+      if (frames >= 10) {
+        clearInterval(anim);
+        finalizeDice(rollCount);
+      }
+    }, 70);
+  };
+
+  const finalizeDice = (rollCount: number) => {
+    const finalDice = dice.map((d, i) => {
+      if (d.held || d.scored) return d;
+      return { ...d, value: Math.floor(Math.random() * 6) + 1 };
+    });
+    setDice(finalDice);
+    setIsRolling(false);
+    setRollsThisTurn(r => r + 1);
+
+    const freeVals = finalDice.filter(d => !d.held && !d.scored).map(d => d.value);
+    const rollScore = calcFarkleScore(freeVals);
+
+    if (rollScore === 0) {
+      // FARKLE!
+      if (triggerHaptic) triggerHaptic([200, 100, 200, 100, 200]);
+      if (playTone) playTone(150, 'sawtooth', 0.5);
+      setTurnScore(0);
+      setGamePhase('farkle');
+      setLog(`💀 FARKLE! No scoring dice. Turn score lost. Player ${turn === 1 ? 2 : 1}'s turn.`);
+      setCanRollAgain(false);
+    } else {
+      if (triggerHaptic) triggerHaptic(15);
+      if (playTone) playTone(523, 'sine', 0.1);
+      setGamePhase('rolled');
+      setCanRollAgain(false);
+      setLog(`Rolled: potential +${rollScore} pts. Hold scoring dice, then Bank or Roll Again!`);
+    }
+  };
+
+  const toggleHold = (idx: number) => {
+    if (gamePhase !== 'rolled' || dice[idx]?.scored) return;
+    if (triggerHaptic) triggerHaptic(6);
+    const updated = dice.map((d, i) => i === idx ? { ...d, held: !d.held } : d);
+    setDice(updated);
+    // Recalc potential
+    const heldVals = updated.filter(d => d.held && !d.scored).map(d => d.value);
+    const potentialScore = heldVals.length > 0 ? calcFarkleScore(heldVals) : 0;
+    if (potentialScore > 0) setCanRollAgain(true);
+    else setCanRollAgain(false);
+    setLog(potentialScore > 0 ? `Held dice worth: +${potentialScore}. Bank or keep rolling!` : 'Select scoring dice to hold before continuing.');
+  };
+
+  const bankScore = () => {
+    if (canRollAgain === false && gamePhase === 'rolled') return;
+    const heldVals = dice.filter(d => d.held && !d.scored).map(d => d.value);
+    const scored = calcFarkleScore(heldVals);
+    if (scored === 0) { setLog('Hold scoring dice first!'); return; }
+
+    if (triggerHaptic) triggerHaptic([50, 30, 80]);
+    if (playTone) playTone(659, 'sine', 0.3);
+
+    const newTurnTotal = turnScore + scored;
+    let p1New = p1Score, p2New = p2Score;
+    if (turn === 1) p1New = p1Score + newTurnTotal;
+    else p2New = p2Score + newTurnTotal;
+
+    if (p1New >= TARGET || p2New >= TARGET) {
+      setP1Score(p1New); setP2Score(p2New);
+      setGamePhase('won');
+      setLog(`🏆 PLAYER ${turn} WINS WITH ${turn === 1 ? p1New : p2New} POINTS!`);
+      if (triggerHaptic) triggerHaptic([100, 50, 100, 50, 200]);
+      if (playTone) playTone(659, 'sine', 0.6);
       return;
     }
 
-    setIsRolling(true);
-    if (triggerHaptic) triggerHaptic([30, 40, 30]);
-    if (playTone) playTone(260, 'triangle', 0.2);
-
-    let rolls = 0;
-    const interval = setInterval(() => {
-      setActiveDie(Math.floor(Math.random() * 6) + 1);
-      rolls++;
-      if (rolls >= 8) {
-        clearInterval(interval);
-        finalizeRoll();
-      }
-    }, 80);
+    if (turn === 1) setP1Score(p1New); else setP2Score(p2New);
+    setTurnScore(0);
+    setRollsThisTurn(0);
+    setCanRollAgain(false);
+    const nextTurn = turn === 1 ? 2 : 1;
+    setTurn(nextTurn as 1 | 2);
+    setDice(Array(DICE_COUNT).fill(null).map(() => ({ value: 1, held: false, scored: false })));
+    setGamePhase('idle');
+    setLog(`💰 Banked +${newTurnTotal}! Player ${nextTurn}'s turn. Roll 6 dice!`);
   };
 
-  const finalizeRoll = () => {
-    const finalVal = Math.floor(Math.random() * 6) + 1;
-    setActiveDie(finalVal);
-    setIsRolling(false);
+  const rollAgain = () => {
+    if (!canRollAgain) { setLog('You must hold at least one scoring die before rolling again!'); return; }
+    const heldVals = dice.filter(d => d.held && !d.scored).map(d => d.value);
+    const scored = calcFarkleScore(heldVals);
 
-    let nextTurnScore = currentTurnScore;
-    let nextDuelTurn = duelTurn;
-    let logMsg = '';
+    if (scored === 0) { setLog('Hold scoring dice first!'); return; }
 
-    if (finalVal === 1) {
-      if (triggerHaptic) triggerHaptic([150, 80, 150]);
-      if (playTone) playTone(180, 'sawtooth', 0.4);
-      nextTurnScore = 0;
-      logMsg = `Oh no! Rolled a "1" and bust! Turn passes.`;
-      nextDuelTurn = joined ? (duelTurn === 1 ? 2 : 1) : 1;
+    setTurnScore(ts => ts + scored);
+    const updated = dice.map(d => d.held ? { ...d, scored: true, held: false } : d);
+    const allScored = updated.every(d => d.scored);
+    if (allScored) {
+      // Hot dice — reset all for next roll
+      setDice(Array(DICE_COUNT).fill(null).map(() => ({ value: 1, held: false, scored: false })));
+      if (playTone) playTone(880, 'sine', 0.3);
+      setLog('🔥 HOT DICE! All dice scored — roll all 6 again!');
     } else {
-      if (triggerHaptic) triggerHaptic(10);
-      if (playTone) playTone(523, 'sine', 0.1);
-      nextTurnScore = currentTurnScore + finalVal;
-      logMsg = `You rolled a ${finalVal}! Bank safety coins or roll again.`;
+      setDice(updated);
     }
-
-    setCurrentTurnScore(nextTurnScore);
-    setDuelTurn(nextDuelTurn);
-    setLog(logMsg);
-
-    if (joined && sendGameAction) {
-      sendGameAction({
-        type: 'duel_roll_result',
-        value: finalVal,
-        currentTurnScore: nextTurnScore,
-        duelTurn: nextDuelTurn,
-        log: logMsg
-      });
-    }
+    setCanRollAgain(false);
+    setGamePhase('idle');
   };
 
-  const handleBank = () => {
-    if (currentTurnScore === 0) return;
-    if (joined && duelTurn !== myPlayerNum) return;
-
-    if (triggerHaptic) triggerHaptic(20);
-    if (playTone) playTone(659, 'sine', 0.3);
-    const nextBanked = bankedScore + currentTurnScore;
-    setBankedScore(nextBanked);
-    setCurrentTurnScore(0);
-    const nextTurn = joined ? (duelTurn === 1 ? 2 : 1) : 1;
-    setDuelTurn(nextTurn);
-    const logMsg = `Banked ${currentTurnScore} score! Turn passes.`;
-    setLog(logMsg);
-
-    if (joined && sendGameAction) {
-      sendGameAction({
-        type: 'duel_bank_result',
-        bankedScore: nextBanked,
-        duelTurn: nextTurn,
-        log: logMsg
-      });
-    }
+  const passTurn = () => {
+    const nextTurn = turn === 1 ? 2 : 1;
+    setTurn(nextTurn as 1 | 2);
+    setTurnScore(0);
+    setRollsThisTurn(0);
+    setDice(Array(DICE_COUNT).fill(null).map(() => ({ value: 1, held: false, scored: false })));
+    setGamePhase('idle');
+    setCanRollAgain(false);
+    setLog(`Player ${nextTurn}'s turn. Roll the dice!`);
   };
 
-  useEffect(() => {
-    if (joined && lastAction && lastAction.senderId !== currentUser) {
-      const { type, value, currentTurnScore: incomingTurnScore, duelTurn: incomingTurn, bankedScore: incomingBanked, log: incomingLog } = lastAction.payload;
-      if (type === 'duel_roll_result') {
-        setActiveDie(value);
-        setCurrentTurnScore(incomingTurnScore);
-        setDuelTurn(incomingTurn);
-        setLog(incomingLog);
-      } else if (type === 'duel_bank_result') {
-        setBankedScore(incomingBanked);
-        setCurrentTurnScore(0);
-        setDuelTurn(incomingTurn);
-        setLog(incomingLog);
-      } else if (type === 'duel_reset') {
-        resetScoresLocal();
-      }
-    }
-  }, [lastAction, joined, currentUser]);
-
-  const resetScoresLocal = () => {
-    setBankedScore(0);
-    setCurrentTurnScore(0);
-    setDuelTurn(1);
-    setLog('Dice Duel reset. Let the games begin!');
+  const resetGame = () => {
+    setP1Score(0); setP2Score(0); setTurnScore(0);
+    setTurn(1); setGamePhase('idle'); setRollsThisTurn(0);
+    setDice(Array(DICE_COUNT).fill(null).map(() => ({ value: 1, held: false, scored: false })));
+    setLog('New game! Player 1 — roll the dice!');
+    setCanRollAgain(false);
   };
 
-  const triggerReset = () => {
-    resetScoresLocal();
-    if (joined && sendGameAction) {
-      sendGameAction({ type: 'duel_reset' });
-    }
-  };
-
-  const renderDieDots = (val: number) => {
+  const renderDie = (die: Die, idx: number) => {
     const dotsMap: Record<number, number[]> = {
-      1: [4],
-      2: [0, 8],
-      3: [0, 4, 8],
-      4: [0, 2, 6, 8],
-      5: [0, 2, 4, 6, 8],
-      6: [0, 2, 3, 5, 6, 8]
+      1: [4], 2: [0, 8], 3: [0, 4, 8],
+      4: [0, 2, 6, 8], 5: [0, 2, 4, 6, 8], 6: [0, 2, 3, 5, 6, 8]
     };
-    const dots = dotsMap[val] || [];
+    const dots = dotsMap[die.value] || [];
     return (
-      <div className={`grid grid-cols-3 gap-2.5 p-3 w-16 h-16 rounded-2xl bg-gradient-to-tr from-[#fbbf24] via-[#d97706] to-[#fbbf24] border-2 border-yellow-300 shadow-[0_0_15px_rgba(245,158,11,0.35)] relative overflow-hidden transition-all duration-300 transform ${isRolling ? 'animate-bounce' : 'hover:scale-105'}`}>
-        <div className="absolute inset-0.5 rounded-2xl border border-white/25 pointer-events-none"></div>
+      <button
+        key={idx}
+        onClick={() => toggleHold(idx)}
+        disabled={die.scored || gamePhase !== 'rolled' || isRolling}
+        className={`relative w-12 h-12 rounded-xl grid grid-cols-3 gap-1 p-2 border-2 transition-all cursor-pointer select-none
+          ${die.scored
+            ? 'bg-slate-700/50 border-slate-600/30 opacity-40 cursor-not-allowed'
+            : die.held
+              ? 'bg-gradient-to-tr from-amber-400 to-yellow-300 border-yellow-200 shadow-[0_0_15px_rgba(251,191,36,0.5)] scale-110'
+              : 'bg-gradient-to-tr from-[#fbbf24] via-[#d97706] to-[#fbbf24] border-yellow-400 shadow-[0_0_6px_rgba(245,158,11,0.25)] hover:scale-105 active:scale-95'
+          } ${isRolling && !die.held && !die.scored ? 'animate-bounce' : ''}`}
+      >
         {[...Array(9)].map((_, i) => (
-          <div key={i} className="flex items-center justify-center w-2 h-2">
+          <div key={i} className="flex items-center justify-center">
             {dots.includes(i) && (
-              <span className="w-2 h-2 rounded-full bg-slate-950 shadow-[inset_1px_1px_1px_rgba(0,0,0,0.6)]"></span>
+              <span className={`w-1.5 h-1.5 rounded-full ${die.held ? 'bg-amber-900' : 'bg-slate-950'}`} />
             )}
           </div>
         ))}
-      </div>
+        {die.scored && <div className="absolute inset-0 rounded-xl flex items-center justify-center text-[8px] font-bold text-emerald-400">✓</div>}
+      </button>
     );
   };
 
   return (
-    <div className="flex-grow flex flex-col justify-between">
-      <div className="flex justify-between items-center pb-2 border-b border-[#44387a]/20 mb-3 select-none">
-        <span className="text-[12px] font-bold text-yellow-400">🎲 Dice Duel (Push Your Luck)</span>
-        <button onClick={triggerReset} className="text-[10px] text-yellow-400/80 hover:text-white transition cursor-pointer">Reset Scores</button>
+    <div className="flex-grow flex flex-col justify-between select-none">
+      <div className="flex justify-between items-center pb-2 border-b border-[#44387a]/20 mb-3">
+        <span className="text-[12px] font-bold text-yellow-400">🎲 Farkle (Push Your Luck)</span>
+        <button onClick={resetGame} className="text-[10px] text-yellow-400/80 hover:text-white transition cursor-pointer">New Game</button>
       </div>
 
-      <div className="bg-black/30 p-2.5 rounded-xl min-h-[40px] text-[11px] leading-relaxed font-mono text-center">
+      {/* Score display */}
+      <div className="grid grid-cols-2 gap-2 mb-3 text-center font-mono">
+        <div className={`p-2.5 rounded-xl border ${turn === 1 ? 'border-yellow-400/60 bg-yellow-900/20' : 'border-purple-500/10 bg-[#120a2c]/50'}`}>
+          <div className="text-[8px] uppercase tracking-wider text-slate-400">Player 1 {turn === 1 && gamePhase !== 'won' ? '← Turn' : ''}</div>
+          <div className="text-xl font-black text-yellow-400">{p1Score}</div>
+          {turn === 1 && turnScore > 0 && <div className="text-[9px] text-amber-300">+{turnScore} pending</div>}
+        </div>
+        <div className={`p-2.5 rounded-xl border ${turn === 2 ? 'border-yellow-400/60 bg-yellow-900/20' : 'border-purple-500/10 bg-[#120a2c]/50'}`}>
+          <div className="text-[8px] uppercase tracking-wider text-slate-400">Player 2 {turn === 2 && gamePhase !== 'won' ? '← Turn' : ''}</div>
+          <div className="text-xl font-black text-amber-500">{p2Score}</div>
+          {turn === 2 && turnScore > 0 && <div className="text-[9px] text-amber-300">+{turnScore} pending</div>}
+        </div>
+      </div>
+
+      {/* Log */}
+      <div className={`p-2.5 rounded-xl min-h-[42px] text-[11px] font-mono text-center mb-3 border ${gamePhase === 'farkle' ? 'border-red-500/30 bg-red-900/15 text-red-300' : gamePhase === 'won' ? 'border-emerald-500/30 bg-emerald-900/15' : 'border-[#44387a]/20 bg-black/20'}`}>
         {log}
       </div>
 
-      <div className="my-4 flex flex-col items-center justify-center py-4 select-none">
-        {renderDieDots(activeDie)}
+      {/* Dice */}
+      <div className="flex justify-center gap-2.5 my-3 flex-wrap">
+        {dice.map((die, i) => renderDie(die, i))}
+      </div>
+      {gamePhase === 'rolled' && <p className="text-[9px] text-center text-slate-500 font-mono -mt-1 mb-2">Tap dice to hold them for scoring</p>}
+
+      {/* Buttons */}
+      <div className="flex gap-2 flex-wrap">
+        {gamePhase === 'won' ? (
+          <button onClick={resetGame} className="w-full py-3 bg-gradient-to-r from-yellow-600 to-amber-600 text-slate-950 text-xs font-black uppercase tracking-widest rounded-xl cursor-pointer">
+            🎲 Play Again
+          </button>
+        ) : gamePhase === 'farkle' ? (
+          <button onClick={passTurn} className="w-full py-3 bg-slate-700 hover:bg-slate-600 text-white text-xs font-bold uppercase rounded-xl cursor-pointer transition">
+            Pass Turn ➡
+          </button>
+        ) : (
+          <>
+            <button
+              onClick={rollDice}
+              disabled={isRolling || (gamePhase === 'rolled' && !canRollAgain)}
+              className="flex-1 py-3 bg-gradient-to-r from-yellow-600 to-amber-500 hover:brightness-110 text-slate-950 text-xs font-black uppercase tracking-wider rounded-xl transition cursor-pointer disabled:opacity-40"
+            >
+              {isRolling ? 'Rolling...' : gamePhase === 'idle' ? '🎲 Roll Dice' : canRollAgain ? '🔄 Roll Again' : 'Hold Dice First'}
+            </button>
+            {gamePhase === 'rolled' && canRollAgain && (
+              <button onClick={rollAgain} className="px-4 py-3 bg-amber-600/20 border border-amber-500/40 text-amber-400 text-xs font-bold uppercase rounded-xl cursor-pointer hover:bg-amber-600/30 transition">
+                Confirm Hold
+              </button>
+            )}
+            {(turnScore > 0 || (gamePhase === 'rolled' && canRollAgain)) && (
+              <button onClick={bankScore} className="px-4 py-3 bg-emerald-700/30 border border-emerald-500/40 text-emerald-400 text-xs font-bold uppercase rounded-xl cursor-pointer hover:bg-emerald-600/40 transition">
+                💰 Bank
+              </button>
+            )}
+          </>
+        )}
       </div>
 
-      <div className="grid grid-cols-2 gap-2 mb-4 text-center select-none font-mono">
-        <div className="bg-[#120a2c]/60 p-2.5 rounded-xl border border-purple-500/10">
-          <span className="text-[8px] uppercase tracking-wider block text-slate-400">Potion Hand</span>
-          <span className="text-xl font-bold text-red-400">{currentTurnScore}</span>
-        </div>
-        <div className="bg-[#120a2c]/60 p-2.5 rounded-xl border border-purple-500/10">
-          <span className="text-[8px] uppercase tracking-wider block text-slate-400">Banked Score</span>
-          <span className="text-xl font-bold text-yellow-400">{bankedScore}</span>
-        </div>
-      </div>
-
-      <div className="flex gap-2 select-none">
-        <button
-          onClick={handleRoll}
-          disabled={isRolling || (joined && duelTurn !== myPlayerNum)}
-          className="flex-1 py-3 bg-yellow-600 hover:bg-yellow-500 text-slate-950 font-bold text-xs uppercase tracking-wider rounded-xl transition cursor-pointer disabled:opacity-45"
-        >
-          {joined && duelTurn !== myPlayerNum ? 'Waiting for opponent...' : 'Roll Potion Die 🎲'}
-        </button>
-        <button
-          onClick={handleBank}
-          disabled={currentTurnScore === 0 || (joined && duelTurn !== myPlayerNum)}
-          className="px-6 py-3 bg-slate-800 hover:bg-slate-700 text-yellow-400 border border-yellow-500/25 font-bold text-xs uppercase tracking-wider rounded-xl transition cursor-pointer disabled:opacity-45"
-        >
-          Bank 🕊️
-        </button>
+      <div className="flex justify-between text-[8px] font-mono text-slate-600 mt-2">
+        <span>1s=100 • 5s=50 • 3-of-kind=face×100 • Straight=1500</span>
+        <span>Target: {TARGET.toLocaleString()}</span>
       </div>
     </div>
   );
 }
+
+
 
 // ==========================================
 // 8. LABYRINTH LIGHT FOG FANTASY ESCAPE
 // ==========================================
-function LabyrinthGame({ playTone, triggerHaptic, joined, currentUser, lastAction, sendGameAction }: GameSyncProps) {
-  const [gridSize] = useState<number>(6);
+function LabyrinthGame({ playTone, triggerHaptic }: GameSyncProps) {
+  const GRID = 9; // 9x9 maze
+  const FOG_RADIUS = 2;
+
+  // Wall encoding: each cell has N/E/S/W walls as bitmask (1=N, 2=E, 4=S, 8=W)
+  const generateMaze = (): number[][] => {
+    const walls: number[][] = Array(GRID).fill(null).map(() => Array(GRID).fill(15)); // all walls
+    const visited: boolean[][] = Array(GRID).fill(null).map(() => Array(GRID).fill(false));
+
+    const carve = (y: number, x: number) => {
+      visited[y][x] = true;
+      const dirs = [[0,-1,1,4],[1,0,2,8],[0,1,4,1],[-1,0,8,2]].sort(() => Math.random() - 0.5); // [dx,dy,removeFromCurrent,removeFromNeighbor]
+      for (const [dx, dy, rmCurr, rmNeighbor] of dirs) {
+        const nx = x + dx, ny = y + dy;
+        if (nx >= 0 && nx < GRID && ny >= 0 && ny < GRID && !visited[ny][nx]) {
+          walls[y][x] &= ~rmCurr;
+          walls[ny][nx] &= ~rmNeighbor;
+          carve(ny, nx);
+        }
+      }
+    };
+    carve(0, 0);
+    return walls;
+  };
+
+  const placePowerups = (maze: number[][]): {torches: string[], traps: string[]} => {
+    const torches: string[] = [], traps: string[] = [];
+    const all: string[] = [];
+    for (let y = 0; y < GRID; y++) for (let x = 0; x < GRID; x++) {
+      if ((y !== 0 || x !== 0) && (y !== GRID-1 || x !== GRID-1)) all.push(`${y},${x}`);
+    }
+    const shuffled = all.sort(() => Math.random() - 0.5);
+    for (let i = 0; i < 4; i++) torches.push(shuffled[i]!);
+    for (let i = 4; i < 8; i++) traps.push(shuffled[i]!);
+    return { torches, traps };
+  };
+
+  const [maze, setMaze] = useState<number[][]>(() => generateMaze());
+  const [torches, setTorches] = useState<string[]>([]);
+  const [traps, setTraps] = useState<string[]>([]);
   const [playerPos, setPlayerPos] = useState({ x: 0, y: 0 });
-  const [exitPos] = useState({ x: 5, y: 5 });
-  const [battery, setBattery] = useState<number>(100);
-  const [won, setWon] = useState<boolean>(false);
+  const [exitPos] = useState({ x: GRID - 1, y: GRID - 1 });
+  const [battery, setBattery] = useState(100);
+  const [visionBoost, setVisionBoost] = useState(0); // extra radius from torches
+  const [moves, setMoves] = useState(0);
+  const [won, setWon] = useState(false);
+  const [bestMoves, setBestMoves] = useState<number | null>(null);
+
+  useEffect(() => {
+    const m = generateMaze();
+    setMaze(m);
+    const { torches: t, traps: tr } = placePowerups(m);
+    setTorches(t);
+    setTraps(tr);
+  }, []);
+
+  const canMove = (y: number, x: number, dy: number, dx: number): boolean => {
+    // Check wall: N=1, E=2, S=4, W=8
+    if (dy === -1) return !(maze[y][x]! & 1); // moving north, check N wall
+    if (dx === 1)  return !(maze[y][x]! & 2); // moving east
+    if (dy === 1)  return !(maze[y][x]! & 4); // moving south
+    if (dx === -1) return !(maze[y][x]! & 8); // moving west
+    return false;
+  };
 
   const handleMove = (dx: number, dy: number) => {
     if (won || battery <= 0) return;
-    const nextX = Math.min(Math.max(0, playerPos.x + dx), gridSize - 1);
-    const nextY = Math.min(Math.max(0, playerPos.y + dy), gridSize - 1);
-    
-    if (nextX === playerPos.x && nextY === playerPos.y) return;
+    const nextX = playerPos.x + dx;
+    const nextY = playerPos.y + dy;
+    if (nextX < 0 || nextX >= GRID || nextY < 0 || nextY >= GRID) return;
+    if (!canMove(playerPos.y, playerPos.x, dy, dx)) {
+      if (triggerHaptic) triggerHaptic([20]);
+      if (playTone) playTone(200, 'sawtooth', 0.05);
+      return;
+    }
 
-    triggerHaptic(8);
-    playTone(400, 'triangle', 0.08);
+    if (triggerHaptic) triggerHaptic(6);
+    if (playTone) playTone(440, 'triangle', 0.05);
+
+    const key = `${nextY},${nextX}`;
+    let newBattery = battery - 3;
+    let newBoost = visionBoost;
+
+    if (traps.includes(key)) {
+      newBattery = Math.max(0, newBattery - 20);
+      if (triggerHaptic) triggerHaptic([100, 50, 100]);
+      if (playTone) playTone(150, 'sawtooth', 0.3);
+      setTraps(prev => prev.filter(t => t !== key));
+    }
+
+    if (torches.includes(key)) {
+      newBoost = Math.min(2, newBoost + 1);
+      newBattery = Math.min(100, newBattery + 15);
+      if (triggerHaptic) triggerHaptic([50, 30, 80]);
+      if (playTone) playTone(659, 'sine', 0.2);
+      setTorches(prev => prev.filter(t => t !== key));
+    }
 
     setPlayerPos({ x: nextX, y: nextY });
-    setBattery(b => Math.max(0, b - 4));
+    setBattery(Math.max(0, newBattery));
+    setVisionBoost(newBoost);
+    setMoves(m => m + 1);
 
     if (nextX === exitPos.x && nextY === exitPos.y) {
       setWon(true);
-      triggerHaptic([50, 100, 150]);
-      playTone(659, 'sine', 0.4);
+      if (triggerHaptic) triggerHaptic([50, 100, 150, 100, 200]);
+      if (playTone) playTone(659, 'sine', 0.5);
+      setBestMoves(prev => prev === null || moves + 1 < prev ? moves + 1 : prev);
     }
   };
 
   const handleReset = () => {
-    triggerHaptic(20);
+    if (triggerHaptic) triggerHaptic(20);
+    const newMaze = generateMaze();
+    setMaze(newMaze);
+    const { torches: t, traps: tr } = placePowerups(newMaze);
+    setTorches(t);
+    setTraps(tr);
     setPlayerPos({ x: 0, y: 0 });
     setBattery(100);
+    setVisionBoost(0);
+    setMoves(0);
     setWon(false);
   };
 
+  const effectiveRadius = FOG_RADIUS + visionBoost;
+  const cellSize = Math.floor(280 / GRID); // ~31px per cell for 9x9
+
   return (
-    <div className="flex-grow flex flex-col justify-between">
-      <div className="flex justify-between items-center pb-2 border-b border-[#44387a]/20 mb-3 select-none">
+    <div className="flex-grow flex flex-col justify-between select-none">
+      <div className="flex justify-between items-center pb-2 border-b border-[#44387a]/20 mb-2">
         <span className="text-[12px] font-bold text-cyan-400">🔦 Fog Escape Labyrinth</span>
-        <button onClick={handleReset} className="text-[10px] text-cyan-400/80 hover:text-white transition">Reset Maze</button>
+        <div className="flex gap-3 text-[9px] font-mono text-slate-400">
+          <span>Moves: {moves}</span>
+          {bestMoves && <span className="text-cyan-400">Best: {bestMoves}</span>}
+          <button onClick={handleReset} className="text-cyan-400/80 hover:text-white transition cursor-pointer">New Maze</button>
+        </div>
       </div>
 
-      <div className="bg-black/30 p-2.5 rounded-xl min-h-[40px] text-[11px] leading-relaxed font-mono text-center mb-3">
-        {won ? (
-          <span className="text-emerald-400 font-bold">🎉 Success! You escaped the dark fog!</span>
-        ) : battery <= 0 ? (
-          <span className="text-red-400 font-bold">💀 Flashlight Battery Dead! You got lost in the fog.</span>
-        ) : (
-          <span>Reach the exit (🏁) at bottom-right. Every move drains your flashlight!</span>
-        )}
+      <div className={`p-2 rounded-xl text-[11px] font-mono text-center mb-2 border ${won ? 'border-emerald-500/30 bg-emerald-900/20' : battery <= 0 ? 'border-red-500/30 bg-red-900/20' : 'border-cyan-500/15 bg-black/20'}`}>
+        {won
+          ? `🎉 Escaped in ${moves} moves! ${bestMoves && moves <= bestMoves ? '🏆 New Best!' : ''}`
+          : battery <= 0
+            ? '💀 Out of battery! Lost in the fog. Press New Maze.'
+            : `🔦 Reach the exit (bottom-right). 🕯️ = torch, ⚡ = trap!`}
       </div>
 
-      <div className="flex justify-center my-2 select-none">
-        <div className="grid grid-cols-6 gap-1 p-2 bg-[#120a24]/80 rounded-2xl border border-cyan-500/25">
-          {Array.from({ length: gridSize }).map((_, y) => (
-            Array.from({ length: gridSize }).map((_, x) => {
+      {/* Maze grid */}
+      <div className="flex justify-center my-1">
+        <div
+          style={{ display: 'grid', gridTemplateColumns: `repeat(${GRID}, ${cellSize}px)` }}
+          className="p-1 bg-[#050d1a]/80 rounded-xl border border-cyan-500/20"
+        >
+          {Array.from({ length: GRID }).map((_, y) =>
+            Array.from({ length: GRID }).map((_, x) => {
               const isPlayer = playerPos.x === x && playerPos.y === y;
               const isExit = exitPos.x === x && exitPos.y === y;
-              const distance = Math.abs(playerPos.x - x) + Math.abs(playerPos.y - y);
-              const isVisible = distance <= 1.5;
+              const dist = Math.max(Math.abs(playerPos.x - x), Math.abs(playerPos.y - y)); // Chebyshev
+              const isVisible = dist <= effectiveRadius;
+              const key = `${y},${x}`;
+              const hasTorch = torches.includes(key);
+              const hasTrap = traps.includes(key);
+              const w = maze[y]?.[x] ?? 15;
 
               return (
                 <div
-                  key={`${y}-${x}`}
-                  className={`w-10 h-10 rounded-lg border transition-all duration-300 flex items-center justify-center text-xs font-bold ${
-                    isPlayer
-                      ? 'bg-cyan-500 border-cyan-400 text-white shadow-[0_0_10px_rgba(6,182,212,0.6)]'
-                      : isExit && isVisible
-                        ? 'bg-emerald-600 border-emerald-400 text-white'
-                        : isVisible
-                          ? 'bg-[#1b1236]/80 border-[#44387a]/40 text-[#b4aae2]'
-                          : 'bg-black/90 border-transparent text-slate-800'
-                  }`}
+                  key={key}
+                  style={{
+                    width: cellSize,
+                    height: cellSize,
+                    borderTop: (w & 1) ? '2px solid rgba(6,182,212,0.4)' : '2px solid transparent',
+                    borderRight: (w & 2) ? '2px solid rgba(6,182,212,0.4)' : '2px solid transparent',
+                    borderBottom: (w & 4) ? '2px solid rgba(6,182,212,0.4)' : '2px solid transparent',
+                    borderLeft: (w & 8) ? '2px solid rgba(6,182,212,0.4)' : '2px solid transparent',
+                    fontSize: cellSize * 0.45,
+                  }}
+                  className={`flex items-center justify-center transition-all duration-200
+                    ${isPlayer ? 'bg-cyan-500/30 shadow-[0_0_8px_rgba(6,182,212,0.5)]' :
+                      isExit && isVisible ? 'bg-emerald-600/25' :
+                      isVisible ? 'bg-[#051020]/60' :
+                      'bg-black/80'}`}
                 >
-                  {isPlayer ? '👤' : isExit && isVisible ? '🏁' : isVisible ? '' : '🌫️'}
+                  {isPlayer ? '🧙'
+                    : !isVisible ? ''
+                    : isExit ? '🚪'
+                    : hasTorch ? '🕯️'
+                    : hasTrap ? '⚡'
+                    : ''}
                 </div>
               );
             })
-          ))}
+          )}
         </div>
       </div>
 
-      <div className="flex flex-col items-center gap-2 mt-2">
-        <div className="flex justify-between items-center w-full max-w-[260px] text-[10px] font-mono">
-          <span>Battery: <span className={battery > 20 ? 'text-cyan-400' : 'text-red-500 animate-pulse'}>{battery}%</span></span>
+      {/* Battery bar */}
+      <div className="flex items-center gap-2 px-1 my-1">
+        <span className="text-[9px] font-mono text-cyan-400 whitespace-nowrap">🔦 {battery}%</span>
+        <div className="flex-grow h-1.5 bg-slate-800 rounded-full overflow-hidden">
+          <div
+            className={`h-full rounded-full transition-all ${battery > 40 ? 'bg-cyan-500' : battery > 20 ? 'bg-amber-500' : 'bg-red-500 animate-pulse'}`}
+            style={{ width: `${battery}%` }}
+          />
         </div>
+        <span className="text-[9px] font-mono text-slate-500">Vision: +{visionBoost}</span>
+      </div>
 
-        <div className="grid grid-cols-3 gap-1 w-32 select-none">
-          <div />
-          <button onClick={() => handleMove(0, -1)} className="py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-lg text-xs font-bold cursor-pointer">▲</button>
-          <div />
-          <button onClick={() => handleMove(-1, 0)} className="py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-lg text-xs font-bold cursor-pointer">◀</button>
-          <button onClick={handleReset} className="py-2 bg-cyan-700/30 text-cyan-300 rounded-lg text-[9px] font-extrabold cursor-pointer">RST</button>
-          <button onClick={() => handleMove(1, 0)} className="py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-lg text-xs font-bold cursor-pointer">▶</button>
-          <div />
-          <button onClick={() => handleMove(0, 1)} className="py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-lg text-xs font-bold cursor-pointer">▼</button>
-          <div />
-        </div>
+      {/* D-pad */}
+      <div className="grid grid-cols-3 gap-1 w-28 mx-auto mt-1">
+        <div />
+        <button onClick={() => handleMove(0, -1)} className="py-2 bg-slate-800 hover:bg-cyan-900/50 hover:border-cyan-500/30 border border-slate-700 text-white rounded-lg text-xs font-bold cursor-pointer active:scale-90 transition">▲</button>
+        <div />
+        <button onClick={() => handleMove(-1, 0)} className="py-2 bg-slate-800 hover:bg-cyan-900/50 hover:border-cyan-500/30 border border-slate-700 text-white rounded-lg text-xs font-bold cursor-pointer active:scale-90 transition">◀</button>
+        <button onClick={handleReset} className="py-2 bg-cyan-900/30 border border-cyan-500/20 text-cyan-300 rounded-lg text-[9px] font-extrabold cursor-pointer active:scale-90 transition">RST</button>
+        <button onClick={() => handleMove(1, 0)} className="py-2 bg-slate-800 hover:bg-cyan-900/50 hover:border-cyan-500/30 border border-slate-700 text-white rounded-lg text-xs font-bold cursor-pointer active:scale-90 transition">▶</button>
+        <div />
+        <button onClick={() => handleMove(0, 1)} className="py-2 bg-slate-800 hover:bg-cyan-900/50 hover:border-cyan-500/30 border border-slate-700 text-white rounded-lg text-xs font-bold cursor-pointer active:scale-90 transition">▼</button>
+        <div />
       </div>
     </div>
   );
 }
+
 
 // ==========================================
 // 9. CHAIN REACTION (CHAIN BURST)
