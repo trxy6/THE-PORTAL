@@ -166,11 +166,15 @@ export default function TenGamesArena() {
 // ==========================================
 // 1. CHEAT / I DOUBT IT DECEPTION CARD GAME
 // ==========================================
+interface Card {
+  id: string;
+  value: string;
+}
+
 function CheatGame({ playTone, triggerHaptic }: { playTone: any, triggerHaptic: any }) {
-  const [deck, setDeck] = useState<string[]>([]);
-  const [playerHand, setPlayerHand] = useState<string[]>([]);
-  const [botHands, setBots] = useState<Record<string, string[]>>({ AI_1: [], AI_2: [] });
-  const [pile, setPile] = useState<string[]>([]);
+  const [playerHand, setPlayerHand] = useState<Card[]>([]);
+  const [botHands, setBots] = useState<Record<string, Card[]>>({ AI_1: [], AI_2: [] });
+  const [pile, setPile] = useState<Card[]>([]);
   const [targetValue, setTargetValue] = useState<string>('A');
   const [log, setLog] = useState<string>('The round has started! Discard cards matching the target value.');
   const [selectedCards, setSelectedCards] = useState<string[]>([]);
@@ -178,9 +182,12 @@ function CheatGame({ playTone, triggerHaptic }: { playTone: any, triggerHaptic: 
   const VALUES = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
 
   const initGame = () => {
-    const freshDeck: string[] = [];
+    const freshDeck: Card[] = [];
+    let counter = 0;
     VALUES.forEach(val => {
-      freshDeck.push(val, val, val, val);
+      for (let i = 0; i < 4; i++) {
+        freshDeck.push({ id: `card-${counter++}`, value: val });
+      }
     });
     const shuffled = freshDeck.sort(() => Math.random() - 0.5);
     setPlayerHand(shuffled.slice(0, 12));
@@ -199,10 +206,10 @@ function CheatGame({ playTone, triggerHaptic }: { playTone: any, triggerHaptic: 
     initGame();
   }, []);
 
-  const handleCardSelect = (card: string) => {
+  const handleCardSelect = (cardId: string) => {
     triggerHaptic(6);
     setSelectedCards(prev => 
-      prev.includes(card) ? prev.filter(c => c !== card) : [...prev, card]
+      prev.includes(cardId) ? prev.filter(id => id !== cardId) : [...prev, cardId]
     );
   };
 
@@ -211,12 +218,12 @@ function CheatGame({ playTone, triggerHaptic }: { playTone: any, triggerHaptic: 
     triggerHaptic(15);
     playTone(349, 'sine', 0.15);
 
-    const actualDiscards = [...selectedCards];
-    setPlayerHand(prev => prev.filter(c => !actualDiscards.includes(c)));
+    const actualDiscards = playerHand.filter(c => selectedCards.includes(c.id));
+    setPlayerHand(prev => prev.filter(c => !selectedCards.includes(c.id)));
     setPile(prev => [...prev, ...actualDiscards]);
     setSelectedCards([]);
 
-    const claimsLie = actualDiscards.some(c => c !== targetValue);
+    const claimsLie = actualDiscards.some(c => c.value !== targetValue);
     setLog(`You placed ${actualDiscards.length} card(s) claiming they are "${targetValue}"s.`);
 
     setTimeout(() => {
@@ -253,8 +260,8 @@ function CheatGame({ playTone, triggerHaptic }: { playTone: any, triggerHaptic: 
         setLog(`AI_1 is out of cards and has won!`);
         return;
       }
-      const matching = hand.filter(c => c === nextTarget);
-      let discards: string[] = [];
+      const matching = hand.filter(c => c.value === nextTarget);
+      let discards: Card[] = [];
 
       if (matching.length > 0 && Math.random() > 0.3) {
         discards = [matching[0]];
@@ -264,7 +271,7 @@ function CheatGame({ playTone, triggerHaptic }: { playTone: any, triggerHaptic: 
 
       setBots(prev => ({
         ...prev,
-        AI_1: prev.AI_1.filter(c => !discards.includes(c))
+        AI_1: prev.AI_1.filter(c => !discards.map(d => d.id).includes(c.id))
       }));
       setPile(prev => [...prev, ...discards]);
 
@@ -302,19 +309,19 @@ function CheatGame({ playTone, triggerHaptic }: { playTone: any, triggerHaptic: 
       <div>
         <span className="text-[10px] uppercase font-bold tracking-widest block text-slate-400 mb-2">Your Hand (Tap to select)</span>
         <div className="flex gap-1.5 overflow-x-auto pb-3">
-          {playerHand.map((card, idx) => {
-            const isSelected = selectedCards.includes(card);
+          {playerHand.map((card) => {
+            const isSelected = selectedCards.includes(card.id);
             return (
               <button
-                key={idx}
-                onClick={() => handleCardSelect(card)}
+                key={card.id}
+                onClick={() => handleCardSelect(card.id)}
                 className={`w-10 h-14 rounded-lg font-mono text-sm font-bold flex flex-col justify-between p-1.5 border transition-all shrink-0 ${
                   isSelected 
                     ? 'bg-pink-500 text-white border-white -translate-y-1.5 shadow-[0_4px_10px_rgba(236,72,153,0.3)]' 
                     : 'bg-[#1b1236]/80 text-[#faebd7] border-[#44387a]/40'
                 }`}
               >
-                <span>{card}</span>
+                <span>{card.value}</span>
                 <span className="text-right text-[10px]">♠</span>
               </button>
             );
@@ -874,6 +881,7 @@ function GridDomainGame({ playTone, triggerHaptic }: { playTone: any, triggerHap
   const [grid, setGrid] = useState<number[]>([]);
   const [turn, setTurn] = useState<number>(1);
   const [log, setLog] = useState<string>('Click adjacent grid areas to lock in your domain.');
+  const [gameOver, setGameOver] = useState<boolean>(false);
 
   const size = 5;
 
@@ -882,15 +890,69 @@ function GridDomainGame({ playTone, triggerHaptic }: { playTone: any, triggerHap
     playTone(440, 'triangle', 0.2);
     setGrid(Array(size * size).fill(0));
     setTurn(1);
-    setLog('Blue Player 1, claim your initial corner tile!');
+    setGameOver(false);
+    setLog('Blue Player 1, claim your first tile anywhere!');
   };
 
   useEffect(() => {
     resetBoard();
   }, []);
 
+  const getAdjacentIndices = (idx: number) => {
+    const r = Math.floor(idx / size);
+    const c = idx % size;
+    const adj = [];
+    if (r > 0) adj.push(idx - size);
+    if (r < size - 1) adj.push(idx + size);
+    if (c > 0) adj.push(idx - 1);
+    if (c < size - 1) adj.push(idx + 1);
+    return adj;
+  };
+
+  const hasClaimedTiles = (g: number[], player: number) => {
+    return g.some(cell => cell === player);
+  };
+
+  const isValidMove = (idx: number, player: number, currentGrid: number[]) => {
+    if (currentGrid[idx] !== 0) return false;
+    if (!hasClaimedTiles(currentGrid, player)) return true;
+    
+    const adj = getAdjacentIndices(idx);
+    return adj.some(aIdx => currentGrid[aIdx] === player);
+  };
+
+  const checkVictory = (currentGrid: number[]) => {
+    const emptyCount = currentGrid.filter(cell => cell === 0).length;
+    const hasValidMoveP1 = currentGrid.some((_, i) => isValidMove(i, 1, currentGrid));
+    const hasValidMoveP2 = currentGrid.some((_, i) => isValidMove(i, 2, currentGrid));
+
+    if (emptyCount === 0 || (!hasValidMoveP1 && !hasValidMoveP2)) {
+      const p1Count = currentGrid.filter(cell => cell === 1).length;
+      const p2Count = currentGrid.filter(cell => cell === 2).length;
+      
+      setGameOver(true);
+      if (p1Count > p2Count) {
+        setLog(`Game Over! Player 1 wins: ${p1Count} to ${p2Count}! 🏆`);
+        playTone(659, 'sine', 0.4);
+      } else if (p2Count > p1Count) {
+        setLog(`Game Over! Alchemist Bot wins: ${p2Count} to ${p1Count}!`);
+        playTone(220, 'sawtooth', 0.4);
+      } else {
+        setLog(`Game Over! A tie match: ${p1Count} to ${p2Count}!`);
+      }
+      return true;
+    }
+    return false;
+  };
+
   const handleTileClick = (idx: number) => {
-    if (grid[idx] !== 0) return;
+    if (gameOver || grid[idx] !== 0) return;
+    if (!isValidMove(idx, turn, grid)) {
+      triggerHaptic([50, 50]);
+      setLog('Invalid move! Tiles must be placed adjacent to your existing domain.');
+      return;
+    }
+
     triggerHaptic(10);
     playTone(turn === 1 ? 523 : 349, 'sine', 0.12);
 
@@ -898,24 +960,29 @@ function GridDomainGame({ playTone, triggerHaptic }: { playTone: any, triggerHap
     nextGrid[idx] = turn;
     setGrid(nextGrid);
 
-    const nextTurn = turn === 1 ? 2 : 1;
-    setTurn(nextTurn);
-    setLog(`${nextTurn === 1 ? 'Blue Player 1' : 'Red Alchemist'} select your territory grid.`);
+    if (checkVictory(nextGrid)) return;
 
-    if (nextTurn === 2) {
-      setTimeout(() => {
-        const emptyIndices = nextGrid.map((val, i) => val === 0 ? i : -1).filter(v => v !== -1);
-        if (emptyIndices.length > 0) {
-          const aiChoice = emptyIndices[Math.floor(Math.random() * emptyIndices.length)] as number;
-          nextGrid[aiChoice] = 2;
-          setGrid(nextGrid);
-          setTurn(1);
-          setLog('Blue Player 1, click your next domain node!');
-          triggerHaptic(12);
-          playTone(349, 'sine', 0.12);
-        }
-      }, 1000);
-    }
+    setTurn(2);
+    setLog(`Alchemist AI is calculating territory...`);
+
+    setTimeout(() => {
+      const validMoves = nextGrid
+        .map((_, i) => isValidMove(i, 2, nextGrid) ? i : -1)
+        .filter(v => v !== -1);
+
+      if (validMoves.length > 0) {
+        const aiChoice = validMoves[Math.floor(Math.random() * validMoves.length)];
+        nextGrid[aiChoice] = 2;
+        setGrid(nextGrid);
+        triggerHaptic(12);
+        playTone(349, 'sine', 0.12);
+
+        if (checkVictory(nextGrid)) return;
+      }
+
+      setTurn(1);
+      setLog('Blue Player 1, click an adjacent tile to claim domain!');
+    }, 1000);
   };
 
   return (
@@ -1173,181 +1240,214 @@ function LabyrinthGame({ playTone, triggerHaptic }: { playTone: any, triggerHapt
 // ==========================================
 // 9. CHAIN REACTION (CHAIN BURST)
 // ==========================================
+interface ReactBall {
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  radius: number;
+  color: string;
+  exploded: boolean;
+  explosionRadius: number;
+  explosionDuration: number;
+}
+
 function ChainReactionGame({ playTone, triggerHaptic }: { playTone: any, triggerHaptic: any }) {
-  const [board, setBoard] = useState<Array<{ count: number; owner: number }>>(
-    Array(25).fill(null).map(() => ({ count: 0, owner: 0 }))
-  );
-  const [turn, setTurn] = useState<number>(1);
-  const [log, setLog] = useState<string>('Tap cells to place your orbs. Overload a cell to trigger a Chain Burst!');
-  const [isExploding, setIsExploding] = useState<boolean>(false);
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const [gameState, setGameState] = useState<'idle' | 'playing' | 'won' | 'lost'>('idle');
+  const [explodedCount, setExplodedCount] = useState<number>(0);
+  const [clicksCount, setClicksCount] = useState<number>(0);
+  const [log, setLog] = useState<string>('Click once to drop an explosion core. Trigger chain pops!');
+  
+  const BALLS_COUNT = 25;
+  const TARGET_POPS = 12;
+  const MAX_EXPLOSION_RADIUS = 32;
 
-  const size = 5;
+  // We keep a mutable ref for animation frames to avoid React state lag during requestAnimationFrame
+  const ballsRef = useRef<ReactBall[]>([]);
 
-  const resetBoard = () => {
+  const initGame = () => {
     triggerHaptic(20);
     playTone(523, 'sine', 0.15);
-    setBoard(Array(25).fill(null).map(() => ({ count: 0, owner: 0 })));
-    setTurn(1);
-    setLog('Blue Player 1, start the reaction by placing your first orb!');
+    setGameState('playing');
+    setExplodedCount(0);
+    setClicksCount(0);
+    setLog(`Pop at least ${TARGET_POPS} balls to win the level!`);
+
+    const freshBalls: ReactBall[] = [];
+    const colors = ['#f43f5e', '#cf4fe6', '#3fd9c7', '#3b82f6', '#eab308', '#10b981'];
+
+    for (let i = 0; i < BALLS_COUNT; i++) {
+      freshBalls.push({
+        x: 30 + Math.random() * 320,
+        y: 30 + Math.random() * 160,
+        vx: (Math.random() - 0.5) * 3 || 1.5,
+        vy: (Math.random() - 0.5) * 3 || 1.5,
+        radius: 6,
+        color: colors[i % colors.length],
+        exploded: false,
+        explosionRadius: 0,
+        explosionDuration: 0
+      });
+    }
+    ballsRef.current = freshBalls;
   };
 
-  const getNeighbors = (idx: number) => {
-    const r = Math.floor(idx / size);
-    const c = idx % size;
-    const neighbors = [];
-    if (r > 0) neighbors.push(idx - size);
-    if (r < size - 1) neighbors.push(idx + size);
-    if (c > 0) neighbors.push(idx - 1);
-    if (c < size - 1) neighbors.push(idx + 1);
-    return neighbors;
-  };
+  useEffect(() => {
+    if (gameState !== 'playing') return;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
 
-  const getCriticalMass = (idx: number) => {
-    const r = Math.floor(idx / size);
-    const c = idx % size;
-    let limit = 4;
-    if ((r === 0 || r === size - 1) && (c === 0 || c === size - 1)) {
-      limit = 2;
-    } else if (r === 0 || r === size - 1 || c === 0 || c === size - 1) {
-      limit = 3;
-    }
-    return limit;
-  };
+    let animId: number;
 
-  const handleTileClick = async (idx: number) => {
-    if (isExploding) return;
-    const cell = board[idx];
-    if (cell.owner !== 0 && cell.owner !== turn) {
-      return;
-    }
+    const updateFrame = () => {
+      ctx.fillStyle = '#0f0926';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    triggerHaptic(10);
-    playTone(turn === 1 ? 523 : 349, 'triangle', 0.1);
+      let activeExplosion = false;
+      const currentBalls = ballsRef.current;
 
-    setIsExploding(true);
-    let nextBoard = board.map((c, i) => i === idx ? { count: c.count + 1, owner: turn } : { ...c });
-    setBoard(nextBoard);
+      currentBalls.forEach((ball) => {
+        if (!ball.exploded) {
+          ball.x += ball.vx;
+          ball.y += ball.vy;
 
-    nextBoard = await runCascade(nextBoard, turn);
-    setBoard(nextBoard);
-    setIsExploding(false);
+          if (ball.x - ball.radius < 0 || ball.x + ball.radius > canvas.width) ball.vx *= -1;
+          if (ball.y - ball.radius < 0 || ball.y + ball.radius > canvas.height) ball.vy *= -1;
 
-    const p1Count = nextBoard.filter(c => c.owner === 1).length;
-    const p2Count = nextBoard.filter(c => c.owner === 2).length;
-    const totalPlaced = nextBoard.reduce((acc, c) => acc + c.count, 0);
+          currentBalls.forEach((other) => {
+            if (other.exploded && other.explosionDuration < 120) {
+              const dx = ball.x - other.x;
+              const dy = ball.y - other.y;
+              const distance = Math.sqrt(dx * dx + dy * dy);
+              if (distance < ball.radius + other.explosionRadius) {
+                ball.exploded = true;
+                ball.explosionRadius = 4;
+                ball.explosionDuration = 0;
+                triggerHaptic(8);
+                playTone(400 + Math.random() * 600, 'sine', 0.08);
+              }
+            }
+          });
 
-    if (totalPlaced > 2) {
-      if (p1Count === 0) {
-        setLog('Red Alchemist wins the chain burst duel! 🏆');
-        playTone(349, 'sawtooth', 0.4);
-        return;
-      } else if (p2Count === 0) {
-        setLog('Blue Player 1 wins the chain burst duel! 🏆');
-        playTone(523, 'sine', 0.4);
-        return;
-      }
-    }
-
-    const nextTurn = turn === 1 ? 2 : 1;
-    setTurn(nextTurn);
-    setLog(`${nextTurn === 1 ? 'Blue Player 1' : 'Red Alchemist'}'s turn to place.`);
-
-    if (nextTurn === 2) {
-      setTimeout(async () => {
-        const eligible = nextBoard.map((c, i) => (c.owner === 0 || c.owner === 2) ? i : -1).filter(v => v !== -1);
-        if (eligible.length > 0) {
-          const aiChoice = eligible[Math.floor(Math.random() * eligible.length)];
-          triggerHaptic(10);
-          playTone(349, 'triangle', 0.1);
-          let aiBoard = nextBoard.map((c, i) => i === aiChoice ? { count: c.count + 1, owner: 2 } : { ...c });
-          setBoard(aiBoard);
-          aiBoard = await runCascade(aiBoard, 2);
-          setBoard(aiBoard);
-          setTurn(1);
-          setLog('Blue Player 1, place your next orb!');
-        }
-      }, 1200);
-    }
-  };
-
-  const runCascade = async (currBoard: Array<{ count: number; owner: number }>, activePlayer: number) => {
-    let boardState = currBoard.map(c => ({ ...c }));
-    let unstable = true;
-    let iterations = 0;
-
-    while (unstable && iterations < 15) {
-      unstable = false;
-      const unstableIndices = [];
-      for (let i = 0; i < boardState.length; i++) {
-        if (boardState[i].count >= getCriticalMass(i)) {
-          unstableIndices.push(i);
-        }
-      }
-
-      if (unstableIndices.length > 0) {
-        unstable = true;
-        iterations++;
-        triggerHaptic(15);
-        playTone(300 + iterations * 50, 'sawtooth', 0.08);
-
-        unstableIndices.forEach(idx => {
-          const neighbors = getNeighbors(idx);
-          const limit = getCriticalMass(idx);
-          boardState[idx].count -= limit;
-          if (boardState[idx].count === 0) {
-            boardState[idx].owner = 0;
+          ctx.beginPath();
+          ctx.arc(ball.x, ball.y, ball.radius, 0, 2 * Math.PI);
+          ctx.fillStyle = ball.color;
+          ctx.fill();
+        } else {
+          ball.explosionDuration += 1;
+          if (ball.explosionDuration < 40) {
+            ball.explosionRadius += (MAX_EXPLOSION_RADIUS - ball.explosionRadius) * 0.1;
+          } else if (ball.explosionDuration < 100) {
+            // Stationary peak
+          } else if (ball.explosionDuration < 120) {
+            ball.explosionRadius -= ball.explosionRadius * 0.2;
           }
 
-          neighbors.forEach(nIdx => {
-            boardState[nIdx].count += 1;
-            boardState[nIdx].owner = activePlayer;
-          });
-        });
+          if (ball.explosionDuration < 120) {
+            activeExplosion = true;
 
-        setBoard([...boardState]);
-        await new Promise(resolve => setTimeout(resolve, 250));
+            ctx.beginPath();
+            ctx.arc(ball.x, ball.y, ball.explosionRadius, 0, 2 * Math.PI);
+            ctx.fillStyle = `${ball.color}40`;
+            ctx.strokeStyle = ball.color;
+            ctx.lineWidth = 1.5;
+            ctx.fill();
+            ctx.stroke();
+          }
+        }
+      });
+
+      const totalExploded = currentBalls.filter(b => b.exploded).length;
+      setExplodedCount(totalExploded);
+
+      if (clicksCount > 0 && !activeExplosion) {
+        if (totalExploded >= TARGET_POPS) {
+          setGameState('won');
+          setLog(`Victory! Pop score: ${totalExploded}/${BALLS_COUNT}! 🏆`);
+          playTone(659, 'sine', 0.4);
+        } else {
+          setGameState('lost');
+          setLog(`Defeat. Pop score: ${totalExploded}/${BALLS_COUNT}. Needed ${TARGET_POPS}.`);
+          playTone(220, 'sawtooth', 0.45);
+        }
+        return;
       }
-    }
-    return boardState;
+
+      animId = requestAnimationFrame(updateFrame);
+    };
+
+    animId = requestAnimationFrame(updateFrame);
+    return () => cancelAnimationFrame(animId);
+  }, [gameState, clicksCount]);
+
+  const handleCanvasClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    if (gameState !== 'playing' || clicksCount > 0) return;
+
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+
+    triggerHaptic(15);
+    playTone(349, 'triangle', 0.15);
+
+    setClicksCount(1);
+    ballsRef.current.push({
+      x,
+      y,
+      vx: 0,
+      vy: 0,
+      radius: 0,
+      color: '#ffffff',
+      exploded: true,
+      explosionRadius: 4,
+      explosionDuration: 0
+    });
   };
 
   return (
     <div className="flex-grow flex flex-col justify-between">
       <div className="flex justify-between items-center pb-2 border-b border-[#44387a]/20 mb-3 select-none">
-        <span className="text-[12px] font-bold text-indigo-400">💥 Chain Burst Duel</span>
-        <button onClick={resetBoard} className="text-[10px] text-indigo-400/80 hover:text-white transition">Reset</button>
+        <span className="text-[12px] font-bold text-indigo-400">💥 Chain Burst (Reflex React)</span>
+        <button onClick={initGame} className="text-[10px] text-indigo-400/80 hover:text-white transition">Reset Game</button>
       </div>
 
       <div className="bg-black/30 p-2.5 rounded-xl min-h-[40px] text-[11px] leading-relaxed font-mono text-center mb-3">
         {log}
       </div>
 
-      <div className="flex justify-center my-2 select-none">
-        <div className="grid grid-cols-5 gap-1.5 p-2 bg-[#120a24]/80 rounded-2xl border border-indigo-500/25">
-          {board.map((cell, idx) => {
-            const limit = getCriticalMass(idx);
-            return (
-              <button
-                key={idx}
-                onClick={() => handleTileClick(idx)}
-                className={`w-12 h-12 rounded-xl border transition-all duration-300 flex flex-col items-center justify-center cursor-pointer focus:outline-none ${
-                  cell.owner === 1
-                    ? 'bg-blue-600 border-blue-400 shadow-[0_0_10px_rgba(59,130,246,0.5)]'
-                    : cell.owner === 2
-                      ? 'bg-red-600 border-red-400 shadow-[0_0_10px_rgba(239,68,68,0.5)]'
-                      : 'bg-[#1b1236]/80 border-[#44387a]/40 hover:border-[#cf4fe6]/50'
-                }`}
-              >
-                {cell.count > 0 && (
-                  <span className="text-white text-xs font-black animate-pulse">
-                    {Array(cell.count).fill('●').join('')}
-                  </span>
-                )}
-                <span className="text-[7px] opacity-40 mt-0.5">{limit}</span>
-              </button>
-            );
-          })}
-        </div>
+      <div className="flex-grow flex justify-center items-center select-none relative mb-3">
+        {(gameState === 'idle' || gameState === 'won' || gameState === 'lost') && (
+          <div className="absolute inset-0 bg-[#0f0926]/90 rounded-2xl flex flex-col items-center justify-center p-4 border border-indigo-500/25 z-10">
+            <span className="text-sm font-mono text-[#faebd7] font-bold mb-3">
+              {gameState === 'won' ? 'LEVEL COMPLETED' : gameState === 'lost' ? 'ROUND FAIL' : 'CHAIN REACTION'}
+            </span>
+            <button
+              onClick={initGame}
+              className="px-6 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold uppercase transition cursor-pointer"
+            >
+              Start Game ▶️
+            </button>
+          </div>
+        )}
+
+        <canvas
+          ref={canvasRef}
+          width={380}
+          height={220}
+          onClick={handleCanvasClick}
+          className="bg-[#0f0926] rounded-2xl border border-indigo-500/15 cursor-crosshair w-full max-w-[380px] h-[220px]"
+        />
+      </div>
+
+      <div className="flex justify-between text-[10px] font-mono text-slate-400 px-1 select-none">
+        <span>Target Pops: {TARGET_POPS}</span>
+        <span className="text-indigo-400 font-bold">Pops Score: {explodedCount}</span>
       </div>
     </div>
   );
