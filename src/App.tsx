@@ -8149,10 +8149,10 @@ Since I run entirely on-device, I cannot fetch live websites or use external ser
         {/* ROLL PANEL */}
         <div className="panel" id="panel-roll">
           <div className="sub-navigation">
-            <button className="sub-nav-btn" data-sub-panel="roll" onClick={() => { if ((window as any).switchToPanel) (window as any).switchToPanel('roll'); }}>🎮 Co-op Games</button>
-            <button className="sub-nav-btn" data-sub-panel="sheet" onClick={() => { if ((window as any).switchToPanel) (window as any).switchToPanel('sheet'); }}>📜 Sheet</button>
-            <button className="sub-nav-btn" data-sub-panel="recipes" onClick={() => { if ((window as any).switchToPanel) (window as any).switchToPanel('recipes'); }}>🍳 Cook</button>
-            <button className="sub-nav-btn" data-sub-panel="game" onClick={() => { if ((window as any).switchToPanel) (window as any).switchToPanel('game'); }}>🎯 Mini-Games</button>
+            <button className="sub-nav-btn" data-sub-panel="sheet" onClick={() => { if ((window as any).switchToPanel) (window as any).switchToPanel('sheet'); }}>📜 Hero Sheet</button>
+            <button className="sub-nav-btn" data-sub-panel="roll" onClick={() => { if ((window as any).switchToPanel) (window as any).switchToPanel('roll'); }}>🎲 Dice Basin</button>
+            <button className="sub-nav-btn" data-sub-panel="recipes" onClick={() => { if ((window as any).switchToPanel) (window as any).switchToPanel('recipes'); }}>🍳 Camp Cook</button>
+            <button className="sub-nav-btn" data-sub-panel="game" onClick={() => { if ((window as any).switchToPanel) (window as any).switchToPanel('game'); }}>🎮 Games Chamber</button>
           </div>
           <div className="flex flex-col gap-6">
             {/* Holographic Dice Vision Button */}
@@ -8170,28 +8170,6 @@ Since I run entirely on-device, I cannot fetch live websites or use external ser
             </div>
 
             <DiceTrayCanvas />
-            
-            {/* Game Selector Segmented Tabs */}
-            <div className="segmented flex p-1 bg-[#120826]/80 border border-[#3fd9c7]/15 rounded-xl w-full">
-              <button
-                onClick={() => { setGameTab('war'); haptic(10); }}
-                className={`flex-grow py-2 text-[10px] font-extrabold tracking-widest uppercase transition-all rounded-lg ${gameTab === 'war' ? 'active bg-[#3fd9c7]/20 text-[#3fd9c7] border border-[#3fd9c7]/30' : 'text-[#b4aae2]/50'}`}
-              >
-                ⚔️ D20 War
-              </button>
-              <button
-                onClick={() => { setGameTab('cosmic'); haptic(10); }}
-                className={`flex-grow py-2 text-[10px] font-extrabold tracking-widest uppercase transition-all rounded-lg ${gameTab === 'cosmic' ? 'active bg-[#3fd9c7]/20 text-[#3fd9c7] border border-[#3fd9c7]/30' : 'text-[#b4aae2]/50'}`}
-              >
-                🔮 Cosmic Words
-              </button>
-            </div>
-
-            {gameTab === 'war' ? (
-              <D20War currentUser={currentUser} />
-            ) : (
-              <CosmicWords currentUser={currentUser} />
-            )}
           </div>
         </div>
 
@@ -8237,10 +8215,10 @@ Since I run entirely on-device, I cannot fetch live websites or use external ser
         {/* SHEET PANEL */}
         <div className="panel" id="panel-sheet">
           <div className="sub-navigation">
-            <button className="sub-nav-btn" data-sub-panel="roll" onClick={() => { if ((window as any).switchToPanel) (window as any).switchToPanel('roll'); }}>🎮 Co-op Games</button>
-            <button className="sub-nav-btn" data-sub-panel="sheet" onClick={() => { if ((window as any).switchToPanel) (window as any).switchToPanel('sheet'); }}>📜 Sheet</button>
-            <button className="sub-nav-btn" data-sub-panel="recipes" onClick={() => { if ((window as any).switchToPanel) (window as any).switchToPanel('recipes'); }}>🍳 Cook</button>
-            <button className="sub-nav-btn" data-sub-panel="game" onClick={() => { if ((window as any).switchToPanel) (window as any).switchToPanel('game'); }}>🎯 Mini-Games</button>
+            <button className="sub-nav-btn" data-sub-panel="sheet" onClick={() => { if ((window as any).switchToPanel) (window as any).switchToPanel('sheet'); }}>📜 Hero Sheet</button>
+            <button className="sub-nav-btn" data-sub-panel="roll" onClick={() => { if ((window as any).switchToPanel) (window as any).switchToPanel('roll'); }}>🎲 Dice Basin</button>
+            <button className="sub-nav-btn" data-sub-panel="recipes" onClick={() => { if ((window as any).switchToPanel) (window as any).switchToPanel('recipes'); }}>🍳 Camp Cook</button>
+            <button className="sub-nav-btn" data-sub-panel="game" onClick={() => { if ((window as any).switchToPanel) (window as any).switchToPanel('game'); }}>🎮 Games Chamber</button>
           </div>
           <section className="card">
             <div className="flex justify-between items-center pb-2.5 border-b border-[#2e2454]/60 mb-4 select-none">
@@ -9950,131 +9928,23 @@ Since I run entirely on-device, I cannot fetch live websites or use external ser
         {/* GAME PANEL */}
         <div className="panel" id="panel-game">
           <div className="sub-navigation">
-            <button className="sub-nav-btn" data-sub-panel="roll" onClick={() => { if ((window as any).switchToPanel) (window as any).switchToPanel('roll'); }}>🎮 Co-op Games</button>
-            <button className="sub-nav-btn" data-sub-panel="sheet" onClick={() => { if ((window as any).switchToPanel) (window as any).switchToPanel('sheet'); }}>📜 Sheet</button>
-            <button className="sub-nav-btn" data-sub-panel="recipes" onClick={() => { if ((window as any).switchToPanel) (window as any).switchToPanel('recipes'); }}>🍳 Cook</button>
-            <button className="sub-nav-btn" data-sub-panel="game" onClick={() => { if ((window as any).switchToPanel) (window as any).switchToPanel('game'); }}>🎯 Mini-Games</button>
+            <button className="sub-nav-btn" data-sub-panel="sheet" onClick={() => { if ((window as any).switchToPanel) (window as any).switchToPanel('sheet'); }}>📜 Hero Sheet</button>
+            <button className="sub-nav-btn" data-sub-panel="roll" onClick={() => { if ((window as any).switchToPanel) (window as any).switchToPanel('roll'); }}>🎲 Dice Basin</button>
+            <button className="sub-nav-btn" data-sub-panel="recipes" onClick={() => { if ((window as any).switchToPanel) (window as any).switchToPanel('recipes'); }}>🍳 Camp Cook</button>
+            <button className="sub-nav-btn" data-sub-panel="game" onClick={() => { if ((window as any).switchToPanel) (window as any).switchToPanel('game'); }}>🎮 Games Chamber</button>
           </div>
-          <section className="card animate-fade-in">
-            <div className="calc-tabs flex border-b border-[#2e2454]/60 pb-2 mb-4">
-              <div className="calc-tab active cursor-pointer text-xs uppercase font-extrabold tracking-wider mr-4" data-game-tab="hilow" id="tab-game-hilow">
-                Hi-Lo
-              </div>
-              <div className="calc-tab cursor-pointer text-xs uppercase font-extrabold tracking-wider mr-4" data-game-tab="score" id="tab-game-score">
-                Scorepad
-              </div>
-              <div className="calc-tab cursor-pointer text-xs uppercase font-extrabold tracking-wider mr-4" data-game-tab="spin" id="tab-game-spin">
-                Astrolabe
-              </div>
-              <div className="calc-tab cursor-pointer text-xs uppercase font-extrabold tracking-wider" data-game-tab="arcade" id="tab-game-arcade">
-                Cabin Arcade
-              </div>
-            </div>
-
-            {/* SUB-GAME 1: HIGHER OR LOWER */}
-            <div className="game-sub-view flex flex-col" id="game-view-hilow">
-              <p className="section-label">Higher or Lower Dice Game</p>
-              <div className="game-stage py-3">
-                <div className="game-current mono text-4xl font-extrabold text-amber-400 text-center" id="gameCurrent">
-                  --
-                </div>
-                <div className="game-sub text-[#b4aae2]/70 text-[10.5px] mt-1 text-center" id="gameSub">
-                  guess if the next roll is higher or lower
-                </div>
-              </div>
-              <div className="game-buttons flex gap-3 mt-2">
-                <button className="game-btn lower flex-grow py-2 bg-red-600/20 hover:bg-red-600/35 border border-red-500/30 rounded-xl text-xs font-bold uppercase cursor-pointer" id="gameLowerBtn">
-                  ▼ Lower
-                </button>
-                <button className="game-btn higher flex-grow py-2 bg-emerald-600/20 hover:bg-emerald-600/35 border border-emerald-500/30 rounded-xl text-xs font-bold uppercase cursor-pointer" id="gameHigherBtn">
-                  ▲ Higher
-                </button>
-              </div>
-              <div className="game-stats flex justify-around mt-4 pt-3 border-t border-[#2e2454]/40">
-                <div className="tip-result-box text-center">
-                  <div className="val mono text-lg font-black text-slate-100" id="gameStreak">
-                    0
-                  </div>
-                  <div className="lbl text-[9px] uppercase tracking-wider text-slate-400">streak</div>
-                </div>
-                <div className="tip-result-box text-center">
-                  <div className="val mono text-lg font-black text-slate-100" id="gameBest">
-                    0
-                  </div>
-                  <div className="lbl text-[9px] uppercase tracking-wider text-slate-400">best</div>
-                </div>
-              </div>
-            </div>
-
-            {/* SUB-GAME 2: MULTI-PLAYER BOARD GAME SCORE KEEPER */}
-            <div className="game-sub-view flex-col hidden" id="game-view-score">
-              <div className="flex justify-between items-center pb-2 border-b border-purple-500/20 mb-3 select-none">
-                <span className="text-xs font-bold text-slate-300 uppercase tracking-widest">Board Game Scorekeeper</span>
-                <button id="scoreClearBtn" className="text-[10px] text-[#ae95eb]/70 hover:text-white uppercase font-bold bg-transparent border-none cursor-pointer">Reset All</button>
-              </div>
-              <p className="text-[10px] text-[#b4aae2]/70 mb-3">
-                Keep points for up to 4 players during board game nights. Adjust scores instantly!
-              </p>
-              <div className="flex flex-col gap-2.5 max-h-[160px] overflow-y-auto pr-1" id="scorekeeperRows">
-                {/* Dynamically created players */}
-              </div>
-              <div className="flex gap-2 mt-4">
-                <input type="text" id="scoreNewPlayerName" placeholder="Player name..." className="flex-grow bg-[#1a1138]/40 border border-[#3d2766]/50 rounded-lg px-2 text-xs text-white focus:outline-none" />
-                <button id="scoreAddPlayerBtn" className="px-4 py-1.5 bg-purple-600/80 hover:bg-purple-600 font-bold text-xs text-white rounded-lg uppercase tracking-wide cursor-pointer">+</button>
-              </div>
-            </div>
-
-            {/* SUB-GAME 3: ASTROLABE GROUP SPINNER */}
-            <div className="game-sub-view flex-col hidden" id="game-view-spin">
-              <p className="section-label">Astrolabe Decisive Spinner</p>
-              <p className="text-[10.5px] text-[#b4aae2]/70 mb-3 leading-snug">
-                Enter choices (eg: restaurants, names, next movie) and revolve the celestial tracker to choose one!
-              </p>
-              <div className="flex flex-col gap-3">
-                <textarea 
-                  id="spinOptionsInput" 
-                  rows={2} 
-                  defaultValue="Pizza, Burgers, Sushi, Tacos, Salad" 
-                  className="w-full bg-[#1a1138]/60 border border-[#44387a]/40 rounded-xl p-2.5 text-xs text-[#b4aae2] placeholder-slate-600 focus:outline-none focus:border-[#cf4fe6] font-sans"
-                />
-                
-                {/* Rotating Astrolabe Core */}
-                <div className="flex flex-col items-center justify-center py-2 select-none">
-                  <div className="relative w-28 h-28 flex items-center justify-center shrink-0">
-                    <svg id="astrolabeSpinRing" className="absolute w-full h-full text-purple-500/40" viewBox="0 0 100 100">
-                      <circle cx="50" cy="50" r="46" fill="none" stroke="currentColor" strokeWidth="0.8" strokeDasharray="3 3" />
-                      <circle cx="50" cy="50" r="42" fill="none" stroke="#cf4fe6" strokeWidth="1" />
-                      <circle cx="50" cy="50" r="34" fill="none" stroke="#3fd9c7" strokeWidth="0.8" strokeDasharray="2 4" />
-                      <polygon points="50,8 46,15 54,15" fill="#13efb0" />
-                    </svg>
-                    
-                    <div className="text-center z-10 max-w-[65px] select-none pointer-events-none">
-                      <p id="astrolabeSelectedWord" className="text-xs font-black text-amber-300 uppercase tracking-tight break-words leading-none">READY</p>
-                    </div>
-                  </div>
-                </div>
-
-                <button id="astrolabeSpinBtn" className="w-full py-2 bg-gradient-to-r from-pink-500 to-purple-600 hover:brightness-110 active:scale-95 text-white rounded-xl text-xs font-bold tracking-widest uppercase transition-all duration-200 cursor-pointer">
-                  💫 REVOLVE ASTROLABE
-                </button>
-              </div>
-            </div>
-
-            {/* SUB-GAME 4: CABIN ARCADE (10 GAMES) */}
-            <div className="game-sub-view flex-col hidden" id="game-view-arcade">
-              <TenGamesArena />
-            </div>
-
+          <section className="card animate-fade-in p-0 border-none bg-transparent shadow-none backdrop-blur-none">
+            <TenGamesArena currentUser={currentUser} />
           </section>
         </div>
 
         {/* RECIPES & COOKING PORTAL PANEL */}
         <div className="panel" id="panel-recipes">
           <div className="sub-navigation">
-            <button className="sub-nav-btn" data-sub-panel="roll" onClick={() => { if ((window as any).switchToPanel) (window as any).switchToPanel('roll'); }}>🎮 Co-op Games</button>
-            <button className="sub-nav-btn" data-sub-panel="sheet" onClick={() => { if ((window as any).switchToPanel) (window as any).switchToPanel('sheet'); }}>📜 Sheet</button>
-            <button className="sub-nav-btn" data-sub-panel="recipes" onClick={() => { if ((window as any).switchToPanel) (window as any).switchToPanel('recipes'); }}>🍳 Cook</button>
-            <button className="sub-nav-btn" data-sub-panel="game" onClick={() => { if ((window as any).switchToPanel) (window as any).switchToPanel('game'); }}>🎯 Mini-Games</button>
+            <button className="sub-nav-btn" data-sub-panel="sheet" onClick={() => { if ((window as any).switchToPanel) (window as any).switchToPanel('sheet'); }}>📜 Hero Sheet</button>
+            <button className="sub-nav-btn" data-sub-panel="roll" onClick={() => { if ((window as any).switchToPanel) (window as any).switchToPanel('roll'); }}>🎲 Dice Basin</button>
+            <button className="sub-nav-btn" data-sub-panel="recipes" onClick={() => { if ((window as any).switchToPanel) (window as any).switchToPanel('recipes'); }}>🍳 Camp Cook</button>
+            <button className="sub-nav-btn" data-sub-panel="game" onClick={() => { if ((window as any).switchToPanel) (window as any).switchToPanel('game'); }}>🎮 Games Chamber</button>
           </div>
           
           {/* Header section with theme colors */}

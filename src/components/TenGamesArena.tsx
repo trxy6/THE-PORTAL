@@ -4,12 +4,15 @@ import {
   HelpCircle, Eye, EyeOff, Check, X, ArrowRight, Hourglass, 
   Dice5, Search, Zap, Volume2, VolumeX, Swords, Users, Crown 
 } from 'lucide-react';
+import D20War from './D20War';
+import CosmicWords from './CosmicWords';
 
 // Game Types
 type GameID = 
   | 'cheat' | 'mafia' | 'celebrity' | 'blackjack' 
   | 'categories' | 'grid_domain' | 'dice_duel' 
-  | 'labyrinth' | 'chain_reaction' | 'blink';
+  | 'labyrinth' | 'chain_reaction' | 'blink'
+  | 'war' | 'cosmic' | 'hilow' | 'scorepad' | 'astrolabe';
 
 interface Player {
   id: string;
@@ -18,8 +21,13 @@ interface Player {
   score: number;
 }
 
-export default function TenGamesArena() {
-  const [activeGame, setActiveGame] = useState<GameID>('cheat');
+interface TenGamesArenaProps {
+  currentUser?: string | null;
+}
+
+export default function TenGamesArena({ currentUser = 'Traveler' }: TenGamesArenaProps) {
+  const [activeGame, setActiveGame] = useState<GameID>('war'); // Default to D20 War
+  const [filterCategory, setFilterCategory] = useState<'all' | 'chance' | 'social' | 'board'>('all');
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [hapticsEnabled, setHapticsEnabled] = useState(true);
   const [players, setPlayers] = useState<Player[]>([
@@ -93,20 +101,54 @@ export default function TenGamesArena() {
         </div>
       </div>
 
-      {/* Game Selector Menu Grid */}
-      <div className="grid grid-cols-2 sm:grid-cols-5 gap-4 mb-6 select-none font-mono text-[10px] font-bold">
+      {/* Category Tabs */}
+      <div className="flex gap-2 mb-5 flex-wrap font-mono text-[9px] uppercase tracking-wider select-none">
         {[
-          { id: 'cheat', label: '🃏 Cheat / Doubt' },
-          { id: 'mafia', label: '🐺 Werewolf' },
-          { id: 'celebrity', label: '🎫 Fishbowl' },
-          { id: 'blackjack', label: '🎩 Alchem-21' },
-          { id: 'categories', label: '✏️ Categories' },
-          { id: 'grid_domain', label: '🟩 Grid Domain' },
-          { id: 'dice_duel', label: '🎲 Dice Duel' },
-          { id: 'labyrinth', label: '🔦 Fog Escape' },
-          { id: 'chain_reaction', label: '💥 Chain Burst' },
-          { id: 'blink', label: '⚡ Blink Tap' }
-        ].map((g) => (
+          { id: 'all', label: '⚡ ALL GAMES' },
+          { id: 'chance', label: '🎲 CHANCE & DICE' },
+          { id: 'social', label: '🔮 SOCIAL & WORDS' },
+          { id: 'board', label: '🟩 BOARD & TOOLS' }
+        ].map(cat => (
+          <button
+            key={cat.id}
+            onClick={() => setFilterCategory(cat.id as any)}
+            className={`px-3 py-1.5 rounded-lg border transition-all duration-200 cursor-pointer ${
+              filterCategory === cat.id 
+                ? 'border-[#3fd9c7] bg-[#3fd9c7]/15 text-[#3fd9c7] shadow-[0_0_8px_rgba(63,217,199,0.15)] font-bold'
+                : 'border-[#44387a]/20 bg-[#120826]/40 text-[#b4aae2]/65 hover:text-white hover:border-[#3fd9c7]/30'
+            }`}
+          >
+            {cat.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Game Selector Menu Grid */}
+      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3.5 mb-6 select-none font-mono text-[10px] font-bold">
+        {[
+          // Chance & Dice category
+          { id: 'war', label: '⚔️ D20 War', category: 'chance', desc: 'Real-time online multiplayer D20 roll battles' },
+          { id: 'hilow', label: '🎲 Hi-Lo', category: 'chance', desc: 'Predict if the next roll of the polyhedral D20 will be higher or lower' },
+          { id: 'dice_duel', label: '🎲 Dice Duel', category: 'chance', desc: 'Push-your-luck golden potion dice collection duel' },
+          { id: 'blackjack', label: '🎩 Alchem-21', category: 'chance', desc: 'Offline card blackjack game vs Alchemist AI' },
+          { id: 'blink', label: '⚡ Blink Tap', category: 'chance', desc: 'Reaction timer tapping game' },
+
+          // Social & Words category
+          { id: 'mafia', label: '🐺 Werewolf', category: 'social', desc: 'Narrator-driven role assignment party game' },
+          { id: 'cheat', label: '🃏 Cheat / Doubt', category: 'social', desc: 'Card shedding game of bluffing vs bots' },
+          { id: 'celebrity', label: '🎫 Fishbowl', category: 'social', desc: 'Word guessing party game in rounds' },
+          { id: 'categories', label: '✏️ Categories', category: 'social', desc: 'Word category naming battle against time' },
+          { id: 'cosmic', label: '🔮 Cosmic Words', category: 'social', desc: 'Multiplayer word clue and anagram guessing' },
+
+          // Board & Tools category
+          { id: 'grid_domain', label: '🟩 Grid Domain', category: 'board', desc: 'Territory capture tactical strategy game' },
+          { id: 'labyrinth', label: '🔦 Fog Escape', category: 'board', desc: 'Fog of war grid escape labyrinth' },
+          { id: 'chain_reaction', label: '💥 Chain Burst', category: 'board', desc: 'Physics-based ball bouncing match' },
+          { id: 'astrolabe', label: '💫 Astrolabe', category: 'board', desc: 'Random group choice spinner' },
+          { id: 'scorepad', label: '📝 Scorepad', category: 'board', desc: 'Board game scores and tracker tool' }
+        ]
+        .filter(g => filterCategory === 'all' || g.category === filterCategory)
+        .map((g) => (
           <button
             key={g.id}
             onClick={() => {
@@ -114,13 +156,14 @@ export default function TenGamesArena() {
               triggerHaptic(10);
               playTone(300 + (Math.random() * 200), 'sine', 0.08);
             }}
-            className={`py-3 px-2 border rounded-xl transition-all duration-300 transform hover:-translate-y-0.5 hover:shadow-[0_4px_12px_rgba(207,79,230,0.15)] ${
+            className={`py-3 px-2 border rounded-xl transition-all duration-300 transform hover:-translate-y-0.5 hover:shadow-[0_4px_12px_rgba(207,79,230,0.15)] text-center flex flex-col justify-center items-center gap-1 min-h-[58px] ${
               activeGame === g.id 
                 ? 'bg-gradient-to-tr from-[#1b1035] to-[#0c051a] border-[#cf4fe6] shadow-[0_0_12px_rgba(207,79,230,0.3)] text-white scale-[1.02]' 
                 : 'border-[#44387a]/25 bg-black/20 text-[#b4aae2]/70 hover:text-white hover:border-[#cf4fe6]/45'
             }`}
+            title={g.desc}
           >
-            {g.label}
+            <span className="text-[10.5px] leading-tight">{g.label}</span>
           </button>
         ))}
       </div>
@@ -140,7 +183,7 @@ export default function TenGamesArena() {
         {/* GAME 4: ALCHEMICAL BLACKJACK */}
         {activeGame === 'blackjack' && <BlackjackGame playTone={playTone} triggerHaptic={triggerHaptic} />}
 
-        {/* GAME 5: COSMIC CATEGORIES */}
+        {/* GAME 5: CATEGORIES */}
         {activeGame === 'categories' && <CategoriesGame playTone={playTone} triggerHaptic={triggerHaptic} />}
 
         {/* GAME 6: GRID DOMAIN */}
@@ -149,14 +192,29 @@ export default function TenGamesArena() {
         {/* GAME 7: DICE DUEL */}
         {activeGame === 'dice_duel' && <DiceDuelGame playTone={playTone} triggerHaptic={triggerHaptic} />}
 
-        {/* GAME 8: LABYRINTH LIGHT */}
+        {/* GAME 8: FOG ESCAPE */}
         {activeGame === 'labyrinth' && <LabyrinthGame playTone={playTone} triggerHaptic={triggerHaptic} />}
 
-        {/* GAME 9: CHAIN REACTION */}
+        {/* GAME 9: CHAIN BURST */}
         {activeGame === 'chain_reaction' && <ChainReactionGame playTone={playTone} triggerHaptic={triggerHaptic} />}
 
-        {/* GAME 10: BLINK REFLEX TAP */}
+        {/* GAME 10: BLINK TAP */}
         {activeGame === 'blink' && <BlinkGame playTone={playTone} triggerHaptic={triggerHaptic} />}
+
+        {/* GAME 11: D20 WAR */}
+        {activeGame === 'war' && <D20War currentUser={currentUser} />}
+
+        {/* GAME 12: COSMIC WORDS */}
+        {activeGame === 'cosmic' && <CosmicWords currentUser={currentUser} />}
+
+        {/* GAME 13: HI-LO */}
+        {activeGame === 'hilow' && <HiLoGame playTone={playTone} triggerHaptic={triggerHaptic} />}
+
+        {/* GAME 14: SCOREPAD */}
+        {activeGame === 'scorepad' && <ScorepadGame triggerHaptic={triggerHaptic} />}
+
+        {/* GAME 15: ASTROLABE */}
+        {activeGame === 'astrolabe' && <AstrolabeGame playTone={playTone} triggerHaptic={triggerHaptic} />}
 
       </div>
     </div>
@@ -1084,6 +1142,30 @@ function DiceDuelGame({ playTone, triggerHaptic }: { playTone: any, triggerHapti
     setLog(`Successfully banked ${currentTurnScore} score into safety coins! Challenge continues.`);
   };
 
+  const renderDieDots = (val: number) => {
+    const dotsMap: Record<number, number[]> = {
+      1: [4],
+      2: [0, 8],
+      3: [0, 4, 8],
+      4: [0, 2, 6, 8],
+      5: [0, 2, 4, 6, 8],
+      6: [0, 2, 3, 5, 6, 8]
+    };
+    const dots = dotsMap[val] || [];
+    return (
+      <div className={`grid grid-cols-3 gap-2.5 p-3 w-16 h-16 rounded-2xl bg-gradient-to-tr from-[#fbbf24] via-[#d97706] to-[#fbbf24] border-2 border-yellow-300 shadow-[0_0_15px_rgba(245,158,11,0.35)] relative overflow-hidden transition-all duration-300 transform ${isRolling ? 'animate-bounce' : 'hover:scale-105'}`}>
+        <div className="absolute inset-0.5 rounded-2xl border border-white/25 pointer-events-none"></div>
+        {[...Array(9)].map((_, i) => (
+          <div key={i} className="flex items-center justify-center w-2 h-2">
+            {dots.includes(i) && (
+              <span className="w-2 h-2 rounded-full bg-slate-950 shadow-[inset_1px_1px_1px_rgba(0,0,0,0.6)]"></span>
+            )}
+          </div>
+        ))}
+      </div>
+    );
+  };
+
   return (
     <div className="flex-grow flex flex-col justify-between">
       <div className="flex justify-between items-center pb-2 border-b border-[#44387a]/20 mb-3 select-none">
@@ -1096,9 +1178,7 @@ function DiceDuelGame({ playTone, triggerHaptic }: { playTone: any, triggerHapti
       </div>
 
       <div className="my-4 flex flex-col items-center justify-center py-4 select-none">
-        <div className={`w-16 h-16 rounded-2xl bg-gradient-to-tr from-[#2e1d16] to-[#0e071c] border-2 border-yellow-500/40 flex items-center justify-center shadow-[0_0_15px_rgba(245,158,11,0.22)] ${isRolling ? 'animate-bounce' : ''}`}>
-          <span className="text-3xl font-bold font-mono text-yellow-300">{activeDie}</span>
-        </div>
+        {renderDieDots(activeDie)}
       </div>
 
       <div className="grid grid-cols-2 gap-2 mb-4 text-center select-none font-mono">
@@ -1552,6 +1632,279 @@ function BlinkGame({ playTone, triggerHaptic }: { playTone: any, triggerHaptic: 
             Start Reflex Test ▶️
           </button>
         )}
+      </div>
+    </div>
+  );
+}
+
+// ==========================================
+// 11. HI-LO D20 DECISION GAME
+// ==========================================
+function HiLoGame({ playTone, triggerHaptic }: { playTone: any, triggerHaptic: any }) {
+  const [currentNum, setCurrentNum] = useState<number>(() => Math.floor(Math.random() * 20) + 1);
+  const [streak, setStreak] = useState<number>(0);
+  const [bestStreak, setBestStreak] = useState<number>(() => Number(localStorage.getItem('game_best') || '0'));
+  const [isRolling, setIsRolling] = useState<boolean>(false);
+  const [log, setLog] = useState<string>('Guess if the next roll will be higher or lower than the current D20!');
+
+  const handleGuess = (direction: 'higher' | 'lower') => {
+    if (isRolling) return;
+    setIsRolling(true);
+    triggerHaptic([30, 30]);
+    playTone(320, 'triangle', 0.15);
+
+    let rolls = 0;
+    const interval = setInterval(() => {
+      setCurrentNum(Math.floor(Math.random() * 20) + 1);
+      rolls++;
+      if (rolls >= 10) {
+        clearInterval(interval);
+        const finalNum = Math.floor(Math.random() * 20) + 1;
+        setCurrentNum(finalNum);
+        setIsRolling(false);
+
+        const isCorrect = direction === 'higher' ? finalNum >= currentNum : finalNum <= currentNum;
+        if (isCorrect) {
+          const nextStreak = streak + 1;
+          setStreak(nextStreak);
+          if (nextStreak > bestStreak) {
+            setBestStreak(nextStreak);
+            localStorage.setItem('game_best', String(nextStreak));
+          }
+          setLog(`Rolled ${finalNum}! Correct – keep the streak going!`);
+          triggerHaptic(15);
+          playTone(587, 'sine', 0.15);
+        } else {
+          setStreak(0);
+          setLog(`Rolled ${finalNum}! Streak broken. Try again!`);
+          triggerHaptic([120, 80, 120]);
+          playTone(220, 'sawtooth', 0.35);
+        }
+      }
+    }, 70);
+  };
+
+  return (
+    <div className="flex-grow flex flex-col justify-between select-none">
+      <div className="flex justify-between items-center pb-2 border-b border-[#44387a]/20 mb-3">
+        <span className="text-[12px] font-bold text-amber-400">🎲 Hi-Lo D20 Guessing</span>
+        <button onClick={() => { setStreak(0); setLog('Guess if the next roll will be higher or lower!'); }} className="text-[10px] text-amber-400/80 hover:text-white transition">Reset Streak</button>
+      </div>
+
+      <div className="bg-black/30 p-2.5 rounded-xl min-h-[40px] text-[11px] leading-relaxed font-mono text-center mb-4">
+        {log}
+      </div>
+
+      <div className="flex flex-col items-center justify-center py-4 relative">
+        <div className={`relative w-24 h-24 flex items-center justify-center transition-transform duration-300 ${isRolling ? 'animate-spin' : 'hover:scale-105'}`}>
+          <svg className="w-full h-full text-amber-400/85 filter drop-shadow-[0_0_10px_rgba(251,191,36,0.25)]" viewBox="0 0 100 100" fill="currentColor">
+            <polygon points="50,5 95,28 95,72 50,95 5,72 5,28" fill="none" stroke="currentColor" strokeWidth="2.5" />
+            <polygon points="5,28 95,28 50,50 5,28" fill="rgba(251,191,36,0.03)" stroke="currentColor" strokeWidth="1.2" />
+            <polygon points="5,72 95,72 50,50 5,72" fill="rgba(251,191,36,0.03)" stroke="currentColor" strokeWidth="1.2" />
+            <polygon points="50,5 50,50 95,28 50,5" fill="rgba(251,191,36,0.03)" stroke="currentColor" strokeWidth="1.2" />
+            <polygon points="50,95 50,50 95,72 50,95" fill="rgba(251,191,36,0.03)" stroke="currentColor" strokeWidth="1.2" />
+            <polygon points="5,28 50,50 5,72 5,28" fill="rgba(251,191,36,0.03)" stroke="currentColor" strokeWidth="1.2" />
+            <polygon points="95,28 50,50 95,72 95,28" fill="rgba(251,191,36,0.03)" stroke="currentColor" strokeWidth="1.2" />
+          </svg>
+          <span className="absolute text-2xl font-black font-mono text-amber-200 mt-0.5">{currentNum}</span>
+        </div>
+      </div>
+
+      <div className="flex gap-4 mt-2">
+        <button
+          onClick={() => handleGuess('lower')}
+          className="flex-grow py-2.5 bg-red-600/20 hover:bg-red-600/35 border border-red-500/30 rounded-xl text-xs font-bold uppercase tracking-wider transition-all duration-200 cursor-pointer"
+        >
+          ▼ Lower
+        </button>
+        <button
+          onClick={() => handleGuess('higher')}
+          className="flex-grow py-2.5 bg-emerald-600/20 hover:bg-emerald-600/35 border border-emerald-500/30 rounded-xl text-xs font-bold uppercase tracking-wider transition-all duration-200 cursor-pointer"
+        >
+          ▲ Higher
+        </button>
+      </div>
+
+      <div className="flex justify-around mt-4 pt-3 border-t border-[#44387a]/25 text-center">
+        <div>
+          <div className="text-lg font-black text-slate-100 font-mono">{streak}</div>
+          <div className="text-[9px] uppercase tracking-wider text-slate-400">Current Streak</div>
+        </div>
+        <div>
+          <div className="text-lg font-black text-amber-400 font-mono">{bestStreak}</div>
+          <div className="text-[9px] uppercase tracking-wider text-slate-400">Best Streak</div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ==========================================
+// 12. BOARD GAME SCOREPAD TRACKER
+// ==========================================
+function ScorepadGame({ triggerHaptic }: { triggerHaptic: any }) {
+  const [players, setPlayers] = useState<{ name: string; score: number }[]>(() => {
+    try {
+      const stored = localStorage.getItem('boardgame_scores');
+      if (stored) return JSON.parse(stored);
+    } catch {}
+    return [
+      { name: 'Player 1', score: 0 },
+      { name: 'Player 2', score: 0 }
+    ];
+  });
+  const [newName, setNewName] = useState('');
+
+  const save = (list: typeof players) => {
+    setPlayers(list);
+    localStorage.setItem('boardgame_scores', JSON.stringify(list));
+  };
+
+  const adjScore = (idx: number, delta: number) => {
+    const list = [...players];
+    if (list[idx]) {
+      list[idx].score += delta;
+      save(list);
+      triggerHaptic(10);
+    }
+  };
+
+  const delPlayer = (idx: number) => {
+    const list = players.filter((_, i) => i !== idx);
+    save(list);
+    triggerHaptic(15);
+  };
+
+  const addPlayer = () => {
+    const name = newName.trim();
+    if (!name) return;
+    if (players.length >= 8) return;
+    const list = [...players, { name, score: 0 }];
+    save(list);
+    setNewName('');
+    triggerHaptic(12);
+  };
+
+  const resetScores = () => {
+    const list = players.map(p => ({ ...p, score: 0 }));
+    save(list);
+    triggerHaptic(50);
+  };
+
+  return (
+    <div className="flex-grow flex flex-col justify-between select-none">
+      <div className="flex justify-between items-center pb-2 border-b border-[#44387a]/20 mb-3">
+        <span className="text-[12px] font-bold text-teal-400">📝 Scorepad Tracker</span>
+        <button onClick={resetScores} className="text-[10px] text-teal-400/80 hover:text-white transition">Reset Scores</button>
+      </div>
+
+      <div className="flex-grow flex flex-col gap-2.5 max-h-[220px] overflow-y-auto pr-1">
+        {players.map((p, idx) => (
+          <div key={idx} className="flex items-center justify-between p-3 rounded-xl bg-[#140a2b]/60 border border-[#44387a]/30">
+            <div className="flex items-center gap-3">
+              <span className="text-xs font-bold text-teal-300 uppercase">{p.name}</span>
+              <span className="text-xs font-mono font-black text-amber-400 bg-black/35 px-2 py-0.5 rounded-md min-w-[28px] text-center">{p.score}</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <button onClick={() => adjScore(idx, -1)} className="w-7 h-7 rounded-lg bg-red-600/10 border border-red-500/20 hover:bg-red-500/25 text-red-400 font-bold text-xs cursor-pointer focus:outline-none transition">-1</button>
+              <button onClick={() => adjScore(idx, 1)} className="w-7 h-7 rounded-lg bg-emerald-600/10 border border-emerald-500/20 hover:bg-emerald-500/25 text-emerald-400 font-bold text-xs cursor-pointer focus:outline-none transition">+1</button>
+              <button onClick={() => adjScore(idx, 5)} className="w-9 h-7 rounded-lg bg-[#44387a]/20 border border-[#44387a]/40 hover:bg-[#44387a]/35 text-purple-300 font-bold text-[10px] cursor-pointer focus:outline-none transition">+5</button>
+              <button onClick={() => delPlayer(idx)} className="w-6 h-7 text-slate-500 hover:text-red-400 font-bold text-sm cursor-pointer focus:outline-none transition">×</button>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div className="flex gap-2.5 mt-3 pt-3 border-t border-[#44387a]/20">
+        <input
+          type="text"
+          value={newName}
+          onChange={(e) => setNewName(e.target.value)}
+          placeholder="New player..."
+          className="flex-grow bg-black/40 border border-[#44387a]/40 rounded-xl px-3 py-2 text-xs font-mono text-[#faebd7] placeholder-[#b4aae2]/40 focus:outline-none focus:border-teal-500 transition"
+        />
+        <button
+          onClick={addPlayer}
+          className="px-4 py-2 bg-teal-600 hover:bg-teal-500 text-white rounded-xl text-xs font-bold uppercase tracking-wider transition"
+        >
+          Add
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ==========================================
+// 13. ASTROLABE GROUP SPINNER
+// ==========================================
+function AstrolabeGame({ playTone, triggerHaptic }: { playTone: any, triggerHaptic: any }) {
+  const [choices, setChoices] = useState<string>('Yes, No, Doubt, Reroll, Portal Warp, Wild Magic');
+  const [selected, setSelected] = useState<string>('READY');
+  const [isSpinning, setIsSpinning] = useState<boolean>(false);
+
+  const handleSpin = () => {
+    if (isSpinning) return;
+    triggerHaptic([10, 40, 80]);
+    const options = choices.split(',').map(o => o.trim()).filter(Boolean);
+    if (options.length === 0) return;
+
+    setIsSpinning(true);
+    setSelected('...');
+    playTone(260, 'sine', 0.1);
+
+    let counter = 0;
+    const interval = setInterval(() => {
+      const tempWord = options[Math.floor(Math.random() * options.length)];
+      setSelected(tempWord || '');
+    }, 120);
+
+    setTimeout(() => {
+      clearInterval(interval);
+      const finalWord = options[Math.floor(Math.random() * options.length)];
+      setSelected(finalWord?.toUpperCase() || 'READY');
+      setIsSpinning(false);
+      triggerHaptic([100, 200]);
+      playTone(523, 'sine', 0.25);
+    }, 2000);
+  };
+
+  return (
+    <div className="flex-grow flex flex-col justify-between select-none">
+      <div className="flex justify-between items-center pb-2 border-b border-[#44387a]/20 mb-3">
+        <span className="text-[12px] font-bold text-purple-400">🔮 Astrolabe Decision Spinner</span>
+        <button onClick={() => setSelected('READY')} className="text-[10px] text-purple-400/80 hover:text-white transition">Reset</button>
+      </div>
+
+      <div className="flex justify-center items-center my-2 relative">
+        <div className="relative w-36 h-36 flex items-center justify-center">
+          <svg className={`absolute w-full h-full text-purple-500/20 ${isSpinning ? 'animate-spin' : ''}`} style={{ animationDuration: isSpinning ? '0.6s' : '15s' }} viewBox="0 0 100 100">
+            <circle cx="50" cy="50" r="48" fill="none" stroke="currentColor" strokeWidth="1" />
+            <circle cx="50" cy="50" r="46" fill="none" stroke="currentColor" strokeWidth="0.8" strokeDasharray="3 3" />
+            <circle cx="50" cy="50" r="42" fill="none" stroke="#cf4fe6" strokeWidth="1" />
+            <circle cx="50" cy="50" r="34" fill="none" stroke="#3fd9c7" strokeWidth="0.8" strokeDasharray="2 4" />
+            <polygon points="50,8 46,15 54,15" fill="#13efb0" />
+          </svg>
+          <div className="text-center z-10 max-w-[90px] px-2 break-words">
+            <p className="text-[10px] font-black text-amber-300 uppercase tracking-tight break-words leading-tight">{selected}</p>
+          </div>
+        </div>
+      </div>
+
+      <div className="flex flex-col gap-2.5 mt-3 pt-3 border-t border-[#44387a]/20">
+        <textarea
+          rows={2}
+          value={choices}
+          onChange={(e) => setChoices(e.target.value)}
+          placeholder="Comma-separated choices..."
+          className="w-full bg-black/40 border border-[#44387a]/40 rounded-xl px-3 py-2 text-[11px] font-mono text-[#faebd7] placeholder-[#b4aae2]/40 focus:outline-none focus:border-purple-500 transition resize-none"
+        />
+        <button
+          onClick={handleSpin}
+          disabled={isSpinning}
+          className="w-full py-2.5 bg-gradient-to-r from-pink-500 to-purple-600 hover:brightness-110 active:scale-95 text-white rounded-xl text-xs font-bold tracking-widest uppercase transition duration-200 cursor-pointer"
+        >
+          💫 Revolve Astrolabe
+        </button>
       </div>
     </div>
   );
