@@ -797,7 +797,7 @@ function CheatGame({ playTone, triggerHaptic, joined, currentUser, lastAction, s
 // 2. SOCIAL DEDUCTION GAME (MAFIA / WEREWOLF)
 // ==========================================
 function MafiaGame({ playTone, triggerHaptic }: GameSyncProps) {
-  type WPhase = 'setup' | 'role_reveal' | 'night_wolf' | 'night_seer' | 'night_doctor' | 'day_reveal' | 'vote' | 'game_over';
+  type WPhase = 'setup' | 'role_reveal' | 'night_intro' | 'night_wolf' | 'night_seer' | 'night_doctor' | 'day_reveal' | 'day_vote' | 'game_over';
 
   interface WPlayer {
     name: string;
@@ -806,18 +806,122 @@ function MafiaGame({ playTone, triggerHaptic }: GameSyncProps) {
     protected: boolean;
   }
 
+  interface ChatMessage {
+    id: string;
+    sender: 'Narrator' | 'System' | 'Action';
+    text: string;
+  }
+
   const [playerCount, setPlayerCount] = useState(5);
+  const [playerNames, setPlayerNames] = useState<string[]>(['Alex', 'Blake', 'Casey', 'Dana', 'Evan', 'Faye', 'Gus', 'Hana']);
   const [players, setPlayers] = useState<WPlayer[]>([]);
   const [phase, setPhase] = useState<WPhase>('setup');
   const [revealIdx, setRevealIdx] = useState(0);
-  const [log, setLog] = useState('Set number of players and begin the night. The Narrator reads aloud.');
+  const [showRole, setShowRole] = useState(false);
+
+  // Narrator Chat Log State
+  const [chatLog, setChatLog] = useState<ChatMessage[]>([]);
+  const [voiceEnabled, setVoiceEnabled] = useState(false);
+  const [ambientEnabled, setAmbientEnabled] = useState(false);
+
+  // Night State
   const [nightKill, setNightKill] = useState<string | null>(null);
   const [doctorSave, setDoctorSave] = useState<string | null>(null);
   const [seerResult, setSeerResult] = useState<string | null>(null);
-  const [votes, setVotes] = useState<Record<string, string>>({});
+  const [voteTally, setVoteTally] = useState<Record<string, number>>({});
   const [eliminatedLast, setEliminatedLast] = useState<string | null>(null);
   const [winner, setWinner] = useState<string | null>(null);
-  const [showRole, setShowRole] = useState(false);
+
+  // Web Audio Synth Drones
+  const audioCtxRef = useRef<AudioContext | null>(null);
+  const droneOscRef = useRef<OscillatorNode | null>(null);
+  const droneGainRef = useRef<GainNode | null>(null);
+  const chatEndRef = useRef<HTMLDivElement | null>(null);
+
+  const startAmbientDrone = () => {
+    if (!ambientEnabled || typeof window === 'undefined') return;
+    try {
+      const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+      if (!AudioContextClass) return;
+
+      if (!audioCtxRef.current) {
+        audioCtxRef.current = new AudioContextClass();
+      }
+      const ctx = audioCtxRef.current;
+      if (ctx.state === 'suspended') {
+        ctx.resume();
+      }
+
+      stopAmbientDrone();
+
+      const osc = ctx.createOscillator();
+      const filter = ctx.createBiquadFilter();
+      const gain = ctx.createGain();
+
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(55, ctx.currentTime); // Low A hum
+
+      filter.type = 'lowpass';
+      filter.frequency.setValueAtTime(110, ctx.currentTime); // Dark filtered hum
+
+      gain.gain.setValueAtTime(0, ctx.currentTime);
+      gain.gain.linearRampToValueAtTime(0.08, ctx.currentTime + 1.5); // Slow fade-in
+
+      osc.connect(filter);
+      filter.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start();
+
+      droneOscRef.current = osc;
+      droneGainRef.current = gain;
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const stopAmbientDrone = () => {
+    try {
+      if (droneOscRef.current) {
+        droneOscRef.current.stop();
+        droneOscRef.current.disconnect();
+        droneOscRef.current = null;
+      }
+      if (droneGainRef.current) {
+        droneGainRef.current.disconnect();
+        droneGainRef.current = null;
+      }
+    } catch (e) {}
+  };
+
+  const speak = (text: string) => {
+    if (!voiceEnabled || typeof window === 'undefined' || !window.speechSynthesis) return;
+    try {
+      window.speechSynthesis.cancel();
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.pitch = 0.7; // Spooky deep tone
+      utterance.rate = 0.85; // Measured pace
+      window.speechSynthesis.speak(utterance);
+    } catch (e) {}
+  };
+
+  const pushMessage = (sender: 'Narrator' | 'System' | 'Action', text: string) => {
+    setChatLog(prev => [...prev, { id: `${Date.now()}-${Math.random()}`, sender, text }]);
+    if (sender === 'Narrator') {
+      speak(text);
+    }
+  };
+
+  // Auto-scroll chat log
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [chatLog]);
+
+  // Clean up sound drone on unmount
+  useEffect(() => {
+    return () => {
+      stopAmbientDrone();
+    };
+  }, []);
 
   const buildRoles = (count: number): WPlayer['role'][] => {
     const wolves = count <= 5 ? 1 : count <= 7 ? 2 : 3;
@@ -829,29 +933,34 @@ function MafiaGame({ playTone, triggerHaptic }: GameSyncProps) {
     return roles.sort(() => Math.random() - 0.5);
   };
 
-  const DEFAULT_NAMES = ['Alex', 'Blake', 'Casey', 'Dana', 'Evan', 'Faye', 'Gus', 'Hana'];
-
   const startGame = () => {
-    if (triggerHaptic) triggerHaptic(25);
-    if (playTone) playTone(294, 'sine', 0.3);
+    if (triggerHaptic) triggerHaptic(30);
+    if (playTone) playTone(220, 'sawtooth', 0.4);
+
     const roles = buildRoles(playerCount);
-    const newPlayers: WPlayer[] = roles.map((role, i) => ({
-      name: DEFAULT_NAMES[i] || `Player ${i + 1}`,
-      role,
+    const newPlayers: WPlayer[] = Array.from({ length: playerCount }).map((_, i) => ({
+      name: playerNames[i]?.trim() || `Player ${i + 1}`,
+      role: roles[i]!,
       alive: true,
       protected: false
     }));
+
     setPlayers(newPlayers);
     setRevealIdx(0);
     setNightKill(null);
     setDoctorSave(null);
     setSeerResult(null);
-    setVotes({});
+    setVoteTally({});
     setEliminatedLast(null);
     setWinner(null);
     setShowRole(false);
+    setChatLog([]);
     setPhase('role_reveal');
-    setLog(`Hand the device to ${newPlayers[0]?.name}. Tap "Show My Role" (keep it secret!)`);
+
+    setTimeout(() => {
+      pushMessage('System', '🔮 Alchemical Narrator Bot initialized.');
+      pushMessage('Narrator', `Let's reveal your secret alignment. Hand the device to ${newPlayers[0]?.name}.`);
+    }, 100);
   };
 
   const revealNext = () => {
@@ -859,257 +968,498 @@ function MafiaGame({ playTone, triggerHaptic }: GameSyncProps) {
     setShowRole(false);
     const next = revealIdx + 1;
     if (next >= players.length) {
-      setPhase('night_wolf');
-      setLog('All roles revealed. NARRATOR: "Everyone close your eyes. Werewolves open your eyes."');
-      if (playTone) playTone(220, 'sawtooth', 0.2);
+      setPhase('night_intro');
+      startAmbientDrone();
+      pushMessage('System', '🌑 All alignments revealed. Transitioning to Night Phase.');
+      pushMessage('Narrator', 'Night falls upon the cabin. Everyone, close your eyes. No peeking.');
     } else {
       setRevealIdx(next);
-      setLog(`Hand the device to ${players[next]?.name}. Tap "Show My Role".`);
+      pushMessage('Narrator', `Pass the device to ${players[next]?.name}.`);
     }
+  };
+
+  const proceedToNightActions = () => {
+    setPhase('night_wolf');
+    if (playTone) playTone(110, 'sine', 0.5);
+    pushMessage('Narrator', 'Werewolves, wake up. Open your eyes. Select a victim to eliminate.');
   };
 
   const wolfKill = (target: string) => {
     if (triggerHaptic) triggerHaptic([80, 50, 80]);
-    if (playTone) playTone(180, 'sawtooth', 0.25);
+    if (playTone) playTone(160, 'sawtooth', 0.3);
     setNightKill(target);
-    setPhase('night_seer');
-    setLog('NARRATOR: "Werewolves, close your eyes. Seer, open your eyes. Point to who you want to check."');
+
+    // Check if Seer is alive
+    const seerAlive = players.some(p => p.alive && p.role === 'Seer');
+    if (seerAlive) {
+      setPhase('night_seer');
+      pushMessage('Narrator', 'Werewolves, close your eyes. Seer, wake up. Open your eyes. Choose someone to investigate.');
+    } else {
+      // Skip Seer
+      const doctorAlive = players.some(p => p.alive && p.role === 'Doctor');
+      if (doctorAlive) {
+        setPhase('night_doctor');
+        pushMessage('Narrator', 'Seer is not present or eliminated. Doctor, wake up. Open your eyes. Choose someone to protect.');
+      } else {
+        resolveNight(target, null);
+      }
+    }
   };
 
   const seerCheck = (target: string) => {
     const p = players.find(p => p.name === target);
-    const result = p?.role === 'Werewolf' ? '🐺 WEREWOLF' : '🕊️ VILLAGER';
-    setSeerResult(`${target} is → ${result}`);
-    setPhase('night_doctor');
-    setLog(`SEER sees: "${result}" (shown briefly). NARRATOR: "Seer, close your eyes. Doctor, open your eyes. Point to who to protect."`);
-    if (playTone) playTone(440, 'sine', 0.15);
+    const isWolf = p?.role === 'Werewolf';
+    setSeerResult(`${target} is → ${isWolf ? '🐺 WEREWOLF' : '🕊️ VILLAGER'}`);
+
+    if (triggerHaptic) triggerHaptic(20);
+    if (playTone) playTone(330, 'sine', 0.2);
+
+    const doctorAlive = players.some(p => p.alive && p.role === 'Doctor');
+    if (doctorAlive) {
+      setPhase('night_doctor');
+      pushMessage('Narrator', 'Seer, close your eyes. Doctor, wake up. Open your eyes. Choose someone to protect.');
+    } else {
+      resolveNight(nightKill!, null);
+    }
   };
 
   const doctorProtect = (target: string) => {
     if (triggerHaptic) triggerHaptic(15);
+    if (playTone) playTone(440, 'sine', 0.25);
     setDoctorSave(target);
+    resolveNight(nightKill!, target);
+  };
+
+  const resolveNight = (kill: string, save: string | null) => {
+    stopAmbientDrone();
     setPhase('day_reveal');
 
-    const killed = nightKill;
-    const saved = target === nightKill;
+    const saved = kill === save;
     const newPlayers = players.map(p => ({
       ...p,
-      alive: p.name === killed && !saved ? false : p.alive
+      alive: p.name === kill && !saved ? false : p.alive
     }));
     setPlayers(newPlayers);
 
-    const elimMsg = saved
-      ? `✨ ${killed} was targeted but the Doctor saved them! No one was eliminated.`
-      : `☠️ ${killed} was eliminated in the night.`;
-    setEliminatedLast(killed ?? null);
-    setLog(`NARRATOR: "Everyone open your eyes." ${elimMsg} Discuss and vote who to banish.`);
-    if (playTone) playTone(saved ? 659 : 200, 'sine', 0.3);
+    const storyMessage = saved
+      ? `✨ Morning rises. The Werewolves targeted ${kill}, but the Doctor successfully saved them! Nobody died.`
+      : `☠️ Morning rises. A cold body is discovered near the fireplace. ${kill} has been eliminated.`;
 
-    const checkWin = checkVictory(newPlayers);
-    if (!checkWin) {
-      setTimeout(() => setPhase('vote'), 2000);
+    setEliminatedLast(saved ? null : kill);
+    pushMessage('Narrator', storyMessage);
+
+    const isOver = checkVictory(newPlayers);
+    if (!isOver) {
+      setVoteTally({});
+    }
+  };
+
+  const handleVote = (voter: string, candidate: string) => {
+    if (triggerHaptic) triggerHaptic(10);
+    setVoteTally(prev => ({
+      ...prev,
+      [voter]: prev[voter] === candidate ? '' : candidate // toggle vote
+    }));
+  };
+
+  const banishCandidate = (candidate: string) => {
+    if (triggerHaptic) triggerHaptic([100, 50, 100]);
+    if (playTone) playTone(200, 'sawtooth', 0.4);
+
+    const newPlayers = players.map(p => ({
+      ...p,
+      alive: p.name === candidate ? false : p.alive
+    }));
+    setPlayers(newPlayers);
+
+    pushMessage('Narrator', `⚖️ The village holds a trial. By majority consensus, ${candidate} is banished from the cabin.`);
+
+    const isOver = checkVictory(newPlayers);
+    if (!isOver) {
+      setPhase('night_intro');
+      startAmbientDrone();
+      setTimeout(() => {
+        pushMessage('Narrator', 'Night falls once again. Everyone, close your eyes. The shadows lengthen.');
+      }, 2000);
     }
   };
 
   const checkVictory = (ps: WPlayer[]) => {
     const aliveWolves = ps.filter(p => p.alive && p.role === 'Werewolf').length;
     const aliveVillagers = ps.filter(p => p.alive && p.role !== 'Werewolf').length;
+
     if (aliveWolves === 0) {
       setWinner('Villagers');
       setPhase('game_over');
-      setLog('🎉 VILLAGE WINS! All werewolves have been eliminated!');
-      if (triggerHaptic) triggerHaptic([100, 50, 100, 50, 200]);
-      if (playTone) playTone(659, 'sine', 0.5);
+      pushMessage('Narrator', '🎉 VILLAGE WINS! All Werewolves have been successfully banished!');
+      if (playTone) playTone(523, 'sine', 0.5);
       return true;
     }
     if (aliveWolves >= aliveVillagers) {
       setWinner('Werewolves');
       setPhase('game_over');
-      setLog('🐺 WEREWOLVES WIN! They now outnumber the village!');
-      if (triggerHaptic) triggerHaptic([200, 100, 200]);
-      if (playTone) playTone(150, 'sawtooth', 0.5);
+      pushMessage('Narrator', '🐺 WEREWOLVES WIN! The beasts have overrun the cabin!');
+      if (playTone) playTone(130, 'sawtooth', 0.6);
       return true;
     }
     return false;
   };
 
-  const castVote = (target: string) => {
-    if (triggerHaptic) triggerHaptic(10);
-    const tally: Record<string, number> = {};
-    const newVotes = { ...votes, [`_auto_${Date.now()}`]: target };
-    
-    // Simulate majority voting — in pass-and-play, each alive player votes once
-    // For simplicity, clicking counts as "the village agrees to banish"
-    const newPlayers = players.map(p => ({
-      ...p,
-      alive: p.name === target ? false : p.alive
-    }));
-    setPlayers(newPlayers);
-    setLog(`⚖️ The village has spoken! ${target} is banished from the village.`);
-    if (playTone) playTone(330, 'triangle', 0.2);
-
-    const checkWin = checkVictory(newPlayers);
-    if (!checkWin) {
-      setTimeout(() => {
-        setNightKill(null);
-        setDoctorSave(null);
-        setSeerResult(null);
-        setPhase('night_wolf');
-        setLog('NARRATOR: "Night falls again. Everyone close your eyes. Werewolves open your eyes."');
-        if (playTone) playTone(220, 'sawtooth', 0.2);
-      }, 2500);
-    }
+  const handleNameChange = (idx: number, name: string) => {
+    const nextNames = [...playerNames];
+    nextNames[idx] = name;
+    setPlayerNames(nextNames);
   };
 
   const alive = players.filter(p => p.alive);
-  const aliveNotWolf = players.filter(p => p.alive && p.role !== 'Werewolf');
-
-  const phaseColors: Record<WPhase, string> = {
-    setup: 'from-purple-900 to-slate-900',
-    role_reveal: 'from-indigo-900 to-purple-900',
-    night_wolf: 'from-[#0a0010] to-[#1a0030]',
-    night_seer: 'from-[#001020] to-[#0a0030]',
-    night_doctor: 'from-[#001010] to-[#001030]',
-    day_reveal: 'from-[#1a0a00] to-[#2a1000]',
-    vote: 'from-[#1a0500] to-[#2e0a00]',
-    game_over: 'from-[#0a0500] to-[#1a0a0a]'
-  };
 
   return (
-    <div className="flex-grow flex flex-col justify-between select-none">
+    <div className="flex-grow flex flex-col justify-between select-none max-h-[500px]">
+      {/* Header */}
       <div className="flex justify-between items-center pb-2 border-b border-[#44387a]/20 mb-3">
-        <span className="text-[12px] font-bold text-fuchsia-400">🐺 Werewolf / Mafia</span>
+        <span className="text-[12px] font-bold text-fuchsia-400">🐺 Werewolf Narrator Bot</span>
         {phase !== 'setup' && (
-          <button onClick={() => setPhase('setup')} className="text-[10px] text-fuchsia-400/80 hover:text-white transition cursor-pointer">New Game</button>
+          <button
+            onClick={() => {
+              stopAmbientDrone();
+              setPhase('setup');
+            }}
+            className="text-[10px] text-fuchsia-400/80 hover:text-white transition cursor-pointer"
+          >
+            ← Leave Game
+          </button>
         )}
       </div>
 
-      <div className={`bg-gradient-to-br ${phaseColors[phase]} border border-fuchsia-500/20 p-3.5 rounded-xl min-h-[80px] text-xs leading-relaxed font-mono text-center flex items-center justify-center mb-3 shadow-inner`}>
-        <p className="text-[#faebd7]">{log}</p>
-      </div>
-
-      {seerResult && (phase === 'night_doctor') && (
-        <div className="bg-indigo-900/50 border border-indigo-400/30 p-2 rounded-xl text-center text-[10px] font-mono text-indigo-200 mb-3 animate-pulse">
-          🔮 Seer Vision: {seerResult}
-        </div>
-      )}
-
+      {/* Setup Screen */}
       {phase === 'setup' && (
-        <div className="flex flex-col items-center gap-4 py-4">
-          <p className="text-xs text-slate-400 text-center max-w-xs leading-relaxed">Narrator reads aloud. Players receive secret roles one at a time. Werewolves eliminate villagers each night — villagers must vote out the wolves by day!</p>
-          <div className="flex items-center gap-4">
-            <span className="text-xs text-slate-400 uppercase tracking-wider">Players:</span>
-            {[3,4,5,6,7,8].map(n => (
+        <div className="flex-grow flex flex-col justify-between overflow-y-auto pr-1">
+          <div className="space-y-4">
+            <p className="text-[11px] text-slate-400 leading-relaxed text-center">
+              An offline Narrator Bot guides the game with ambient music, voice output, and interactive terminal story logs.
+            </p>
+
+            {/* Players count selector */}
+            <div className="flex justify-between items-center bg-black/20 p-2.5 rounded-xl border border-fuchsia-500/15">
+              <span className="text-[11px] text-slate-300 font-bold font-mono">PLAYER TOTAL:</span>
+              <div className="flex gap-1.5">
+                {[4, 5, 6, 7, 8].map(n => (
+                  <button
+                    key={n}
+                    onClick={() => setPlayerCount(n)}
+                    className={`w-7 h-7 rounded-lg text-xs font-bold font-mono border transition cursor-pointer ${
+                      playerCount === n ? 'bg-fuchsia-600 border-fuchsia-400 text-white' : 'bg-black/40 border-[#44387a]/30 text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    {n}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Audio Toggles */}
+            <div className="grid grid-cols-2 gap-2">
               <button
-                key={n}
-                onClick={() => setPlayerCount(n)}
-                className={`w-8 h-8 rounded-lg text-xs font-bold border transition cursor-pointer ${playerCount === n ? 'bg-fuchsia-600 border-fuchsia-400 text-white' : 'bg-black/30 border-[#44387a]/30 text-slate-400 hover:text-white'}`}
+                onClick={() => setVoiceEnabled(v => !v)}
+                className={`py-2 rounded-xl text-[10px] font-bold font-mono border transition flex items-center justify-center gap-1.5 cursor-pointer ${
+                  voiceEnabled
+                    ? 'bg-fuchsia-950/40 border-fuchsia-500/50 text-fuchsia-300 shadow-[0_0_10px_rgba(217,70,239,0.15)]'
+                    : 'bg-black/30 border-slate-800 text-slate-500 hover:text-slate-400'
+                }`}
               >
-                {n}
+                <span>{voiceEnabled ? '🔊 VOICE: ON' : '🔇 VOICE: OFF'}</span>
               </button>
-            ))}
+
+              <button
+                onClick={() => setAmbientEnabled(a => !a)}
+                className={`py-2 rounded-xl text-[10px] font-bold font-mono border transition flex items-center justify-center gap-1.5 cursor-pointer ${
+                  ambientEnabled
+                    ? 'bg-purple-950/40 border-purple-500/50 text-purple-300 shadow-[0_0_10px_rgba(168,85,247,0.15)]'
+                    : 'bg-black/30 border-slate-800 text-slate-500 hover:text-slate-400'
+                }`}
+              >
+                <span>{ambientEnabled ? '🎵 MUSIC: ON' : '🔇 MUSIC: OFF'}</span>
+              </button>
+            </div>
+
+            {/* Customize Names */}
+            <div className="space-y-1.5">
+              <span className="text-[10px] text-slate-400 uppercase font-mono font-bold tracking-wider block">Names:</span>
+              <div className="grid grid-cols-2 gap-2 max-h-[140px] overflow-y-auto pr-1">
+                {Array.from({ length: playerCount }).map((_, idx) => (
+                  <input
+                    key={idx}
+                    type="text"
+                    value={playerNames[idx] || ''}
+                    onChange={e => handleNameChange(idx, e.target.value)}
+                    placeholder={`Player ${idx + 1}`}
+                    className="bg-black/40 border border-[#44387a]/30 text-white rounded-lg p-2 text-xs font-mono focus:outline-none focus:border-fuchsia-400"
+                  />
+                ))}
+              </div>
+            </div>
           </div>
-          <div className="text-[9px] text-slate-500 font-mono text-center">
-            {playerCount <= 5 ? '1 Wolf, 1 Seer, 1 Doctor' : playerCount <= 7 ? '2 Wolves, 1 Seer, 1 Doctor' : '3 Wolves, 1 Seer, 1 Doctor'}
-          </div>
+
           <button
             onClick={startGame}
-            className="px-8 py-3 bg-gradient-to-r from-fuchsia-700 to-purple-700 hover:brightness-110 text-white text-xs font-black uppercase tracking-widest rounded-xl transition cursor-pointer shadow-[0_0_20px_rgba(217,70,239,0.2)]"
+            className="w-full mt-4 py-3 bg-gradient-to-r from-fuchsia-700 to-purple-600 hover:brightness-110 text-white text-xs font-black uppercase tracking-wider rounded-xl cursor-pointer transition shadow-[0_0_15px_rgba(217,70,239,0.3)]"
           >
-            🌑 Begin Night Phase
+            🌑 Summon alignments
           </button>
         </div>
       )}
 
-      {phase === 'role_reveal' && players[revealIdx] && (
-        <div className="flex flex-col items-center gap-3 py-2">
-          <p className="text-xs font-bold text-amber-300 uppercase tracking-widest">{players[revealIdx].name}'s Turn</p>
-          {!showRole ? (
-            <button
-              onClick={() => { setShowRole(true); if (triggerHaptic) triggerHaptic(20); }}
-              className="px-6 py-3 bg-indigo-700 hover:bg-indigo-600 text-white text-xs font-bold uppercase tracking-wider rounded-xl transition cursor-pointer"
-            >
-              👁️ Show My Role (Keep Secret)
-            </button>
-          ) : (
-            <div className="bg-[#120a2c] border border-fuchsia-500/40 rounded-2xl p-6 text-center shadow-[0_0_30px_rgba(217,70,239,0.15)]">
-              <div className="text-4xl mb-2">{players[revealIdx].role === 'Werewolf' ? '🐺' : players[revealIdx].role === 'Seer' ? '🔮' : players[revealIdx].role === 'Doctor' ? '💉' : '🏡'}</div>
-              <div className="text-lg font-black text-fuchsia-300 uppercase tracking-widest">{players[revealIdx].role}</div>
-              <p className="text-[9px] text-slate-400 mt-2">
-                {players[revealIdx].role === 'Werewolf' ? 'Eliminate villagers at night. Blend in during day.' :
-                  players[revealIdx].role === 'Seer' ? 'Each night you may check one player\'s true identity.' :
-                  players[revealIdx].role === 'Doctor' ? 'Each night you may protect one player from elimination.' :
-                  'Find and vote out all Werewolves to win!'}
-              </p>
-              <button
-                onClick={revealNext}
-                className="mt-4 px-5 py-2 bg-fuchsia-700 hover:bg-fuchsia-600 text-white text-[10px] font-bold uppercase rounded-xl cursor-pointer"
+      {/* Game Terminal / Chat Screen */}
+      {phase !== 'setup' && (
+        <div className="flex-grow flex flex-col justify-between overflow-hidden">
+          {/* Narrator Interactive Chat Log */}
+          <div className="flex-grow bg-[#090314]/90 border border-fuchsia-950/50 rounded-xl p-3 overflow-y-auto max-h-[220px] mb-3 space-y-2.5 shadow-inner">
+            {chatLog.map(msg => (
+              <div
+                key={msg.id}
+                className={`flex flex-col text-[11px] font-mono leading-relaxed ${
+                  msg.sender === 'Narrator'
+                    ? 'text-fuchsia-200 border-l-2 border-fuchsia-500/60 pl-2'
+                    : msg.sender === 'System'
+                      ? 'text-cyan-400/80 bg-cyan-950/10 px-2 py-0.5 rounded border border-cyan-950/20'
+                      : 'text-amber-400'
+                }`}
               >
-                {revealIdx + 1 < players.length ? `Done — Pass to ${players[revealIdx + 1]?.name}` : 'Start the Game!'}
+                <span className="text-[8px] uppercase tracking-wider text-slate-500 font-bold mb-0.5">
+                  {msg.sender === 'Narrator' ? '🔊 Narrator Bot' : msg.sender === 'System' ? '👾 System' : '📜 Action log'}
+                </span>
+                <p>{msg.text}</p>
+              </div>
+            ))}
+            <div ref={chatEndRef} />
+          </div>
+
+          {/* Contextual Action Areas */}
+
+          {/* 1. Role Reveal Screen */}
+          {phase === 'role_reveal' && players[revealIdx] && (
+            <div className="bg-black/30 border border-[#44387a]/20 rounded-xl p-3.5 flex flex-col items-center gap-3">
+              <span className="text-xs font-bold text-amber-400 uppercase tracking-widest font-mono">
+                🕵️ Pass to {players[revealIdx].name}
+              </span>
+              {!showRole ? (
+                <button
+                  onClick={() => {
+                    setShowRole(true);
+                    if (triggerHaptic) triggerHaptic(20);
+                  }}
+                  className="px-6 py-2.5 bg-indigo-700/80 hover:bg-indigo-600 text-white text-xs font-bold uppercase rounded-xl transition cursor-pointer"
+                >
+                  👁️ Check alignment
+                </button>
+              ) : (
+                <div className="text-center w-full">
+                  <div className="flex items-center justify-center gap-2 mb-2">
+                    <span className="text-3xl">
+                      {players[revealIdx].role === 'Werewolf' ? '🐺' : players[revealIdx].role === 'Seer' ? '🔮' : players[revealIdx].role === 'Doctor' ? '💉' : '🏡'}
+                    </span>
+                    <span className="text-lg font-black text-fuchsia-300 uppercase font-mono">{players[revealIdx].role}</span>
+                  </div>
+                  <p className="text-[10px] text-slate-400 max-w-xs mx-auto leading-relaxed">
+                    {players[revealIdx].role === 'Werewolf' && 'Work secretly with other wolves to target villagers each night.'}
+                    {players[revealIdx].role === 'Seer' && 'Each night investigate one player to reveal if they are a werewolf.'}
+                    {players[revealIdx].role === 'Doctor' && 'Each night select one player to protect from werewolf elimination.'}
+                    {players[revealIdx].role === 'Villager' && 'Participate in daytime group discussion to banish the hidden beasts.'}
+                  </p>
+                  <button
+                    onClick={revealNext}
+                    className="mt-3 px-5 py-2 bg-fuchsia-700 hover:bg-fuchsia-600 text-white text-[10px] font-bold uppercase rounded-xl cursor-pointer"
+                  >
+                    {revealIdx + 1 < players.length ? `Pass to ${players[revealIdx + 1]?.name}` : 'Begin nightfall 🌑'}
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* 2. Night Intro Screen */}
+          {phase === 'night_intro' && (
+            <div className="bg-black/30 border border-purple-500/20 rounded-xl p-4 text-center">
+              <p className="text-xs text-slate-400 mb-3 font-mono">The cabin grows silent. Close all eyes.</p>
+              <button
+                onClick={proceedToNightActions}
+                className="px-8 py-2.5 bg-purple-700 hover:bg-purple-600 text-white text-xs font-bold uppercase rounded-xl cursor-pointer transition shadow-[0_0_15px_rgba(168,85,247,0.3)] animate-pulse"
+              >
+                Proceed to Werewolf Turn
               </button>
             </div>
           )}
-        </div>
-      )}
 
-      {(phase === 'night_wolf' || phase === 'night_seer' || phase === 'night_doctor') && (
-        <div className="space-y-2">
-          <p className="text-[10px] text-fuchsia-300 uppercase font-bold tracking-widest text-center mb-3">
-            {phase === 'night_wolf' ? '🐺 Werewolves — choose a target to eliminate' :
-             phase === 'night_seer' ? '🔮 Seer — choose a player to investigate' :
-             '💉 Doctor — choose a player to protect'}
-          </p>
-          {alive.map(p => (
-            <button
-              key={p.name}
-              onClick={() => {
-                if (phase === 'night_wolf') wolfKill(p.name);
-                else if (phase === 'night_seer') seerCheck(p.name);
-                else doctorProtect(p.name);
-              }}
-              className="w-full px-4 py-3 rounded-xl bg-[#120a24]/60 border border-fuchsia-500/20 hover:border-fuchsia-400/50 hover:bg-fuchsia-900/20 text-sm font-bold text-left transition cursor-pointer"
-            >
-              {p.name}
-            </button>
-          ))}
-        </div>
-      )}
+          {/* 3. Werewolf Night Vote */}
+          {phase === 'night_wolf' && (
+            <div className="space-y-2">
+              <span className="text-[9px] font-bold text-fuchsia-300 uppercase tracking-widest block text-center mb-1">
+                🐺 Pass device to Werewolves. Choose targets:
+              </span>
+              <div className="grid grid-cols-2 gap-2">
+                {players.filter(p => p.alive).map(p => (
+                  <button
+                    key={p.name}
+                    onClick={() => wolfKill(p.name)}
+                    className="py-2.5 rounded-xl bg-red-950/20 border border-red-500/20 hover:border-red-400 hover:bg-red-900/30 text-xs font-bold text-slate-200 cursor-pointer font-mono transition"
+                  >
+                    Eliminate {p.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
 
-      {phase === 'vote' && (
-        <div className="space-y-2">
-          <p className="text-[10px] text-red-400 uppercase font-bold tracking-widest text-center mb-3">⚖️ Village Vote — banish a suspect</p>
-          {alive.map(p => (
-            <button
-              key={p.name}
-              onClick={() => castVote(p.name)}
-              className="w-full px-4 py-3 rounded-xl bg-[#200a0a]/70 border border-red-500/20 hover:border-red-400/60 hover:bg-red-900/20 text-sm font-bold text-left transition cursor-pointer"
-            >
-              {p.name} <span className="text-[9px] text-slate-500 ml-2">(alive)</span>
-            </button>
-          ))}
-        </div>
-      )}
+          {/* 4. Seer Investigation */}
+          {phase === 'night_seer' && (
+            <div className="space-y-2">
+              <span className="text-[9px] font-bold text-cyan-300 uppercase tracking-widest block text-center mb-1">
+                🔮 Pass to Seer. Inspect a suspect:
+              </span>
+              {seerResult ? (
+                <div className="bg-cyan-950/30 border border-cyan-500/30 rounded-xl p-3 text-center">
+                  <p className="text-xs font-bold text-cyan-300 font-mono mb-2">{seerResult}</p>
+                  <button
+                    onClick={() => seerCheck(players.find(p => p.alive && p.role === 'Seer')?.name || '')}
+                    className="px-6 py-2 bg-cyan-700 text-white text-[10px] font-bold uppercase rounded-xl cursor-pointer"
+                  >
+                    Confirm & Proceed
+                  </button>
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 gap-2">
+                  {players.filter(p => p.alive && p.role !== 'Seer').map(p => (
+                    <button
+                      key={p.name}
+                      onClick={() => seerCheck(p.name)}
+                      className="py-2.5 rounded-xl bg-cyan-950/20 border border-cyan-500/20 hover:border-cyan-400 hover:bg-cyan-900/30 text-xs font-bold text-slate-200 cursor-pointer font-mono transition"
+                    >
+                      Inspect {p.name}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
 
-      {phase === 'game_over' && (
-        <div className="text-center py-4 space-y-3">
-          <div className="text-5xl">{winner === 'Werewolves' ? '🐺' : '🏡'}</div>
-          <div className={`text-lg font-black uppercase tracking-widest ${winner === 'Werewolves' ? 'text-red-400' : 'text-emerald-400'}`}>{winner} Win!</div>
-          <div className="text-[10px] font-mono text-slate-400 space-y-1">
-            {players.map(p => <div key={p.name}>{p.name}: <span className="text-amber-300">{p.role}</span> {p.alive ? '' : '— eliminated'}</div>)}
-          </div>
-          <button
-            onClick={() => setPhase('setup')}
-            className="px-6 py-2.5 bg-fuchsia-700 hover:bg-fuchsia-600 text-white text-xs font-bold uppercase tracking-wider rounded-xl cursor-pointer"
-          >
-            Play Again
-          </button>
-        </div>
-      )}
+          {/* 5. Doctor Protection */}
+          {phase === 'night_doctor' && (
+            <div className="space-y-2">
+              <span className="text-[9px] font-bold text-emerald-300 uppercase tracking-widest block text-center mb-1">
+                💉 Pass to Doctor. Protect one player:
+              </span>
+              <div className="grid grid-cols-2 gap-2">
+                {players.filter(p => p.alive).map(p => (
+                  <button
+                    key={p.name}
+                    onClick={() => doctorProtect(p.name)}
+                    className="py-2.5 rounded-xl bg-emerald-950/20 border border-emerald-500/20 hover:border-emerald-400 hover:bg-emerald-900/30 text-xs font-bold text-slate-200 cursor-pointer font-mono transition"
+                  >
+                    Protect {p.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
 
-      {phase !== 'setup' && phase !== 'game_over' && (
-        <div className="flex justify-between text-[9px] font-mono text-slate-500 border-t border-[#44387a]/20 pt-2 mt-2">
-          <span>Alive: {alive.length} players</span>
-          <span>Wolves remaining: {players.filter(p => p.alive && p.role === 'Werewolf').length} (hidden)</span>
+          {/* 6. Day Reveal */}
+          {phase === 'day_reveal' && (
+            <div className="bg-black/30 border border-amber-500/20 rounded-xl p-3 text-center">
+              <p className="text-xs text-slate-400 mb-2.5 font-mono">Gather the survivors. Open all eyes.</p>
+              <button
+                onClick={() => setPhase('day_vote')}
+                className="px-6 py-2 bg-amber-600 hover:bg-amber-500 text-slate-900 text-xs font-bold uppercase rounded-xl cursor-pointer"
+              >
+                Proceed to trial vote ⚖️
+              </button>
+            </div>
+          )}
+
+          {/* 7. Day Vote and Accusations */}
+          {phase === 'day_vote' && (
+            <div className="space-y-3 overflow-y-auto max-h-[160px] pr-1">
+              <span className="text-[9px] font-bold text-amber-400 uppercase tracking-widest block text-center">
+                ⚖️ Village trial. Cast votes or banish:
+              </span>
+              <div className="space-y-1.5">
+                {players.filter(p => p.alive).map(p => {
+                  const votesForMe = Object.values(voteTally).filter(v => v === p.name).length;
+                  return (
+                    <div key={p.name} className="flex items-center justify-between bg-black/20 p-2 rounded-xl border border-slate-800">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-bold text-slate-300 font-mono">{p.name}</span>
+                        {votesForMe > 0 && (
+                          <span className="text-[10px] font-bold text-red-400 bg-red-950/40 border border-red-500/20 px-2 py-0.5 rounded-full font-mono">
+                            🗳️ {votesForMe}
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex gap-1.5">
+                        {/* Voter selectors */}
+                        <div className="flex gap-1">
+                          {players.filter(v => v.alive).map(voter => {
+                            const isVotingMe = voteTally[voter.name] === p.name;
+                            return (
+                              <button
+                                key={voter.name}
+                                onClick={() => handleVote(voter.name, p.name)}
+                                className={`w-5 h-5 rounded text-[8px] font-mono font-bold flex items-center justify-center border transition cursor-pointer ${
+                                  isVotingMe
+                                    ? 'bg-red-600 border-red-400 text-white'
+                                    : 'bg-black/30 border-slate-800 text-slate-500 hover:text-slate-400'
+                                }`}
+                                title={`${voter.name}'s vote`}
+                              >
+                                {voter.name.slice(0, 1)}
+                              </button>
+                            );
+                          })}
+                        </div>
+                        <button
+                          onClick={() => banishCandidate(p.name)}
+                          className="px-2 py-1 bg-red-900/30 border border-red-500/30 hover:bg-red-900/60 text-[9px] font-bold uppercase rounded text-red-400 cursor-pointer transition"
+                        >
+                          Banish ⚖️
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* 8. Game Over Screen */}
+          {phase === 'game_over' && (
+            <div className="text-center py-3 space-y-3">
+              <div className="text-5xl">{winner === 'Werewolves' ? '🐺' : '🏡'}</div>
+              <div className={`text-sm font-black uppercase tracking-widest font-mono ${winner === 'Werewolves' ? 'text-red-400' : 'text-emerald-400'}`}>
+                {winner} victory!
+              </div>
+              <div className="text-[9px] font-mono text-slate-400 space-y-0.5 max-h-[85px] overflow-y-auto bg-black/20 p-2 rounded-xl border border-slate-800">
+                {players.map(p => (
+                  <div key={p.name} className="flex justify-between">
+                    <span>{p.name}</span>
+                    <span className="text-amber-300 uppercase">{p.role} {p.alive ? '(survived)' : '(died)'}</span>
+                  </div>
+                ))}
+              </div>
+              <button
+                onClick={() => setPhase('setup')}
+                className="w-full py-2.5 bg-fuchsia-700 hover:bg-fuchsia-600 text-white text-xs font-bold uppercase rounded-xl cursor-pointer"
+              >
+                Begin new simulation 🔄
+              </button>
+            </div>
+          )}
+
+          {/* Stats Bar */}
+          {phase !== 'game_over' && (
+            <div className="flex justify-between text-[9px] font-mono text-slate-500 border-t border-[#44387a]/25 pt-2 mt-2">
+              <span>ALIVE: {alive.length} SURVIVORS</span>
+              <span>WOLVES: {players.filter(p => p.alive && p.role === 'Werewolf').length} HIDDEN</span>
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -1676,127 +2026,263 @@ function BlackjackGame({ playTone, triggerHaptic }: GameSyncProps) {
 // ==========================================
 // 5. COSMIC CATEGORIES (SCATTERGORIES BLITZ)
 // ==========================================
-function CategoriesGame({ playTone, triggerHaptic, joined, currentUser, lastAction, sendGameAction }: GameSyncProps) {
-  const [activeLetter, setActiveLetter] = useState<string>('R');
-  const [timer, setTimer] = useState<number>(45);
-  const [gameActive, setGameActive] = useState<boolean>(false);
-  const [inputs, setInputs] = useState<Record<string, string>>({});
-  const [results, setResults] = useState<string[]>([]);
+function CategoriesGame({ playTone, triggerHaptic }: GameSyncProps) {
+  type CatPhase = 'setup' | 'playing_A' | 'playing_B' | 'scoring' | 'results';
 
-  const CATEGORIES = [
-    'A mystical creature',
-    'A dungeon defense tool',
-    'A wizard spell suffix',
-    'Cabin trip staple item',
-    'A hot beverage flavor'
+  const ALL_CATEGORIES = [
+    'Famous Person', 'Animal', 'Food or Drink', 'Movie or TV Show',
+    'Thing you find in a kitchen', 'Country or City', 'Sports or Game',
+    'Song or Band', 'Brand or Company', 'Occupation / Job',
+    'Thing at a party', 'Thing in nature'
   ];
 
-  const startRound = () => {
-    triggerHaptic(20);
-    playTone(523, 'sine', 0.25);
-    const letters = 'ABCDEFGHJKLMNOPRSTWY';
-    setActiveLetter(letters[Math.floor(Math.random() * letters.length)] || 'R');
-    setTimer(45);
-    setGameActive(true);
-    setInputs({});
-    setResults([]);
+  const LETTERS = 'BCDFGHJKLMNPRSTWY';
+  const ROUND_DURATION = 90;
+
+  const pickCategories = () => {
+    const shuffled = [...ALL_CATEGORIES].sort(() => Math.random() - 0.5);
+    return shuffled.slice(0, 6);
   };
+
+  const [letter, setLetter] = useState('S');
+  const [categories, setCategories] = useState<string[]>(() => pickCategories());
+  const [phase, setPhase] = useState<CatPhase>('setup');
+  const [answersA, setAnswersA] = useState<Record<string, string>>({});
+  const [answersB, setAnswersB] = useState<Record<string, string>>({});
+  const [inputs, setInputs] = useState<Record<string, string>>({});
+  const [timer, setTimer] = useState(ROUND_DURATION);
+  const [round, setRound] = useState(1);
+  const [scoresA, setScoresA] = useState<number[]>([0, 0, 0]);
+  const [scoresB, setScoresB] = useState<number[]>([0, 0, 0]);
+  const [maxRounds] = useState(3);
 
   useEffect(() => {
-    let interval: any = null;
-    if (gameActive && timer > 0) {
-      interval = setInterval(() => {
-        setTimer(t => t - 1);
-        if (timer === 10) {
-          triggerHaptic([60, 60]);
-          playTone(880, 'triangle', 0.1);
-        }
-      }, 1000);
-    } else if (timer === 0 && gameActive) {
-      setGameActive(false);
-      triggerHaptic([100, 100, 200]);
-      playTone(220, 'sine', 0.5);
-      calculateScore();
+    if (phase !== 'playing_A' && phase !== 'playing_B') return;
+    if (timer <= 0) {
+      if (triggerHaptic) triggerHaptic([200, 100, 200]);
+      if (playTone) playTone(220, 'sawtooth', 0.4);
+      endTurn();
+      return;
     }
-    return () => clearInterval(interval);
-  }, [gameActive, timer]);
+    const id = setInterval(() => {
+      setTimer(t => {
+        if (t === 11) {
+          if (triggerHaptic) triggerHaptic([40, 40]);
+          if (playTone) playTone(880, 'triangle', 0.08);
+        }
+        return t - 1;
+      });
+    }, 1000);
+    return () => clearInterval(id);
+  }, [phase, timer]);
 
-  const calculateScore = () => {
-    const scoreLog: string[] = [];
-    CATEGORIES.forEach(cat => {
-      const userVal = inputs[cat] || '';
-      if (!userVal.toLowerCase().startsWith(activeLetter.toLowerCase())) {
-        scoreLog.push(`❌ "${cat}": Input did not start with '${activeLetter}' (0pts)`);
-      } else {
-        scoreLog.push(`✓ "${cat}": Correct! (10pts)`);
-      }
-    });
-    setResults(scoreLog);
+  const startRound = () => {
+    if (triggerHaptic) triggerHaptic(20);
+    if (playTone) playTone(523, 'sine', 0.2);
+    const newLetter = LETTERS[Math.floor(Math.random() * LETTERS.length)] || 'S';
+    const newCats = pickCategories();
+    setLetter(newLetter);
+    setCategories(newCats);
+    setAnswersA({});
+    setAnswersB({});
+    setInputs({});
+    setTimer(ROUND_DURATION);
+    setPhase('playing_A');
   };
 
+  const endTurn = () => {
+    if (phase === 'playing_A') {
+      setAnswersA({ ...inputs });
+      setInputs({});
+      setTimer(ROUND_DURATION);
+      setPhase('playing_B');
+    } else if (phase === 'playing_B') {
+      const bAnswers = { ...inputs };
+      setAnswersB(bAnswers);
+      // Score this round
+      scoreRound(answersA, bAnswers);
+      setPhase('scoring');
+    }
+  };
+
+  const scoreRound = (aAns: Record<string, string>, bAns: Record<string, string>) => {
+    let aTotal = 0, bTotal = 0;
+    for (const cat of categories) {
+      const aVal = (aAns[cat] || '').trim().toLowerCase();
+      const bVal = (bAns[cat] || '').trim().toLowerCase();
+      const aValid = aVal.startsWith(letter.toLowerCase()) && aVal.length > 1;
+      const bValid = bVal.startsWith(letter.toLowerCase()) && bVal.length > 1;
+      const unique = aVal !== bVal;
+
+      if (aValid) aTotal += (unique ? 2 : 1);
+      if (bValid) bTotal += (unique ? 2 : 1);
+    }
+    const rIdx = round - 1;
+    setScoresA(prev => { const n = [...prev]; n[rIdx] = aTotal; return n; });
+    setScoresB(prev => { const n = [...prev]; n[rIdx] = bTotal; return n; });
+  };
+
+  const nextRound = () => {
+    if (round >= maxRounds) {
+      setPhase('results');
+    } else {
+      setRound(r => r + 1);
+      setPhase('setup');
+    }
+  };
+
+  const restart = () => {
+    setRound(1);
+    setScoresA([0, 0, 0]);
+    setScoresB([0, 0, 0]);
+    setPhase('setup');
+    setAnswersA({}); setAnswersB({}); setInputs({});
+  };
+
+  const totalA = scoresA.reduce((a, b) => a + b, 0);
+  const totalB = scoresB.reduce((a, b) => a + b, 0);
+
+  const isPlaying = phase === 'playing_A' || phase === 'playing_B';
+  const currentTeam = phase === 'playing_A' ? 'A' : 'B';
+
   return (
-    <div className="flex-grow flex flex-col justify-between">
-      <div className="flex justify-between items-center pb-2 border-b border-[#44387a]/20 mb-3 select-none">
-        <span className="text-[12px] font-bold text-teal-400">✏️ Cosmic Categories (Scattergories)</span>
-        <span className="text-[9px] font-mono text-teal-400/80">45s Blitz Challenge</span>
-      </div>
-
-      <div className="grid grid-cols-2 gap-2 mb-4 text-center select-none font-mono">
-        <div className="bg-[#120a2c]/60 p-2 rounded-xl border border-purple-500/10">
-          <span className="text-[8px] uppercase tracking-wider block text-slate-400">Roll Letter</span>
-          <span className="text-xl font-bold text-teal-400">{activeLetter}</span>
-        </div>
-        <div className="bg-[#120a2c]/60 p-2 rounded-xl border border-purple-500/10">
-          <span className="text-[8px] uppercase tracking-wider block text-slate-400">Timer Count</span>
-          <span className="text-xl font-bold text-red-400">{timer}s</span>
+    <div className="flex-grow flex flex-col justify-between select-none">
+      <div className="flex justify-between items-center pb-2 border-b border-[#44387a]/20 mb-2">
+        <span className="text-[12px] font-bold text-teal-400">✏️ Cosmic Categories</span>
+        <div className="flex gap-2 text-[9px] font-mono">
+          <span className="text-teal-300">Rd {round}/{maxRounds}</span>
+          <button onClick={restart} className="text-teal-400/70 hover:text-white cursor-pointer transition">Restart</button>
         </div>
       </div>
 
-      {!gameActive && results.length === 0 ? (
-        <div className="text-center py-6 select-none">
-          <p className="text-xs text-slate-400 mb-4">Roll a letter and type words matching each alchemical classification before time runs out!</p>
+      {/* Score bar */}
+      <div className="grid grid-cols-2 gap-2 mb-2 text-center font-mono">
+        <div className={`p-1.5 rounded-xl border ${phase === 'playing_A' ? 'border-teal-400/50 bg-teal-900/20' : 'border-[#44387a]/20 bg-black/20'}`}>
+          <div className="text-[8px] text-slate-400 uppercase">Team A</div>
+          <div className="text-lg font-black text-teal-400">{totalA}</div>
+        </div>
+        <div className={`p-1.5 rounded-xl border ${phase === 'playing_B' ? 'border-cyan-400/50 bg-cyan-900/20' : 'border-[#44387a]/20 bg-black/20'}`}>
+          <div className="text-[8px] text-slate-400 uppercase">Team B</div>
+          <div className="text-lg font-black text-cyan-400">{totalB}</div>
+        </div>
+      </div>
+
+      {phase === 'setup' && (
+        <div className="flex flex-col items-center gap-4 py-4 text-center">
+          <p className="text-xs text-slate-400 leading-relaxed max-w-xs">
+            Team A answers all 6 categories first (90 sec), then passes device to Team B. Unique answers score 2pts — matching answers score 1pt each!
+          </p>
+          <p className="text-[10px] text-teal-300 font-mono">Round {round} of {maxRounds}</p>
           <button
             onClick={startRound}
-            className="w-full max-w-xs py-2.5 bg-teal-600 hover:bg-teal-500 text-white text-xs font-bold uppercase tracking-widest rounded-xl transition cursor-pointer"
+            className="px-8 py-3 bg-gradient-to-r from-teal-600 to-cyan-600 hover:brightness-110 text-white text-xs font-black uppercase tracking-widest rounded-xl cursor-pointer transition shadow-[0_0_20px_rgba(20,184,166,0.2)]"
           >
-            Roll Active Letter 🎲
+            🎲 Roll Letter & Start
           </button>
-        </div>
-      ) : (
-        <div className="space-y-3 flex-grow overflow-y-auto max-h-[220px] pr-1 my-2">
-          {CATEGORIES.map((cat, idx) => (
-            <div key={idx} className="p-2.5 rounded-xl bg-black/20 border border-[#44387a]/20">
-              <span className="text-[10px] text-slate-400 font-bold block mb-1.5">{cat}</span>
-              {gameActive ? (
-                <input
-                  type="text"
-                  placeholder={`Starting with '${activeLetter}'...`}
-                  value={inputs[cat] || ''}
-                  onChange={(e) => setInputs({ ...inputs, [cat]: e.target.value })}
-                  className="w-full bg-black/45 border border-[#44387a]/40 text-white rounded-lg p-2 text-xs focus:outline-none focus:border-teal-400"
-                />
-              ) : (
-                <p className="text-xs font-bold text-[#faebd7] font-mono">{inputs[cat] || <span className="text-slate-600 italic">No Answer</span>}</p>
-              )}
-            </div>
-          ))}
         </div>
       )}
 
-      {results.length > 0 && !gameActive && (
-        <div className="bg-[#120a2c]/80 p-3 rounded-xl border border-teal-500/20 mb-3 space-y-1 font-mono text-[10px]">
-          {results.map((res, i) => <p key={i} className="text-left text-slate-300">{res}</p>)}
+      {isPlaying && (
+        <>
+          <div className="flex items-center gap-3 mb-2 justify-between">
+            <div className="flex items-center gap-2">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-teal-500 to-cyan-600 flex items-center justify-center text-xl font-black text-white shadow-[0_0_15px_rgba(20,184,166,0.4)]">
+                {letter}
+              </div>
+              <div>
+                <div className="text-[9px] text-slate-400 uppercase">Team {currentTeam}'s Turn</div>
+                <div className={`text-sm font-black font-mono ${timer <= 15 ? 'text-red-400 animate-pulse' : 'text-teal-300'}`}>{timer}s</div>
+              </div>
+            </div>
+            <button
+              onClick={endTurn}
+              className="px-4 py-2 bg-teal-700/40 border border-teal-500/40 text-teal-300 text-xs font-bold uppercase rounded-xl cursor-pointer hover:bg-teal-700/60 transition"
+            >
+              Done ✓
+            </button>
+          </div>
+
+          <div className="space-y-2 overflow-y-auto max-h-[240px] pr-1">
+            {categories.map((cat, i) => (
+              <div key={i} className="flex items-center gap-2 bg-black/20 border border-[#44387a]/20 rounded-xl px-2 py-1.5">
+                <span className="text-[9px] text-slate-400 font-bold w-28 shrink-0 leading-tight">{cat}</span>
+                <input
+                  type="text"
+                  value={inputs[cat] || ''}
+                  onChange={e => setInputs(prev => ({ ...prev, [cat]: e.target.value }))}
+                  placeholder={`Starts with "${letter}"...`}
+                  className="flex-grow bg-transparent text-xs text-white placeholder-slate-600 focus:outline-none border-b border-[#44387a]/30 focus:border-teal-400 transition py-0.5"
+                />
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+
+      {phase === 'playing_B' && (
+        <div className="text-[9px] text-center text-slate-500 mt-1 font-mono">Team A is done. Team B — take the device and fill in your answers!</div>
+      )}
+
+      {phase === 'scoring' && (
+        <div className="flex flex-col gap-2 py-2">
+          <div className="text-center text-xs font-bold text-teal-400 uppercase tracking-widest mb-1">Round {round} Results — Letter "{letter}"</div>
+          <div className="space-y-1.5 overflow-y-auto max-h-[200px]">
+            {categories.map((cat, i) => {
+              const aVal = (answersA[cat] || '').trim();
+              const bVal = (answersB[cat] || '').trim();
+              const aValid = aVal.toLowerCase().startsWith(letter.toLowerCase()) && aVal.length > 1;
+              const bValid = bVal.toLowerCase().startsWith(letter.toLowerCase()) && bVal.length > 1;
+              const unique = aVal.toLowerCase() !== bVal.toLowerCase();
+              return (
+                <div key={i} className="bg-black/20 border border-[#44387a]/20 rounded-xl p-2 text-[10px] font-mono">
+                  <div className="text-slate-500 uppercase text-[8px] mb-1">{cat}</div>
+                  <div className="flex justify-between gap-2">
+                    <span className={`${aValid ? (unique ? 'text-teal-400' : 'text-amber-400') : 'text-slate-600 line-through'}`}>
+                      A: {aVal || '—'} {aValid ? (unique ? '+2' : '+1') : '0'}
+                    </span>
+                    <span className={`${bValid ? (unique ? 'text-cyan-400' : 'text-amber-400') : 'text-slate-600 line-through'}`}>
+                      B: {bVal || '—'} {bValid ? (unique ? '+2' : '+1') : '0'}
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
           <button
-            onClick={startRound}
-            className="w-full py-2 bg-teal-600 hover:bg-teal-500 text-white font-bold uppercase tracking-wider rounded-lg mt-2 cursor-pointer"
+            onClick={nextRound}
+            className="w-full py-2.5 bg-gradient-to-r from-teal-600 to-cyan-600 text-white text-xs font-black uppercase tracking-widest rounded-xl cursor-pointer mt-1"
           >
-            Play Again 🔄
+            {round >= maxRounds ? '🏆 See Final Results' : `▶ Round ${round + 1}`}
+          </button>
+        </div>
+      )}
+
+      {phase === 'results' && (
+        <div className="flex flex-col items-center gap-3 py-4 text-center">
+          <div className="text-5xl">{totalA > totalB ? '🔷' : totalB > totalA ? '🌊' : '🤝'}</div>
+          <div className="text-lg font-black text-[#faebd7]">
+            {totalA > totalB ? 'Team A Wins!' : totalB > totalA ? 'Team B Wins!' : "It's a Tie!"}
+          </div>
+          <div className="text-2xl font-mono font-black">
+            <span className="text-teal-400">{totalA}</span> — <span className="text-cyan-400">{totalB}</span>
+          </div>
+          <div className="grid grid-cols-3 gap-2 text-[9px] font-mono text-slate-400 w-full max-w-xs">
+            {[0, 1, 2].map(i => (
+              <div key={i} className="bg-black/20 rounded-lg p-1.5 border border-[#44387a]/20">
+                <div className="text-slate-500">Rd {i + 1}</div>
+                <div><span className="text-teal-400">{scoresA[i]}</span> v <span className="text-cyan-400">{scoresB[i]}</span></div>
+              </div>
+            ))}
+          </div>
+          <button onClick={restart} className="px-6 py-2.5 bg-teal-600 text-white text-xs font-bold uppercase rounded-xl cursor-pointer">
+            Play Again
           </button>
         </div>
       )}
     </div>
   );
 }
+
 
 // ==========================================
 // 6. GRID DOMAIN TERRITORY CAPTURE BOARD GAME
@@ -2912,11 +3398,19 @@ function BlinkGame({ playTone, triggerHaptic, joined, currentUser, lastAction, s
 // 11. HI-LO D20 DECISION GAME
 // ==========================================
 function HiLoGame({ playTone, triggerHaptic, joined, currentUser, lastAction, sendGameAction }: GameSyncProps) {
+  type DMode = { label: string; sides: number };
+  const MODES: DMode[] = [
+    { label: 'D6', sides: 6 },
+    { label: 'D12', sides: 12 },
+    { label: 'D20', sides: 20 },
+    { label: 'D100', sides: 100 },
+  ];
+  const [mode, setMode] = useState<DMode>(MODES[2]!);
   const [currentNum, setCurrentNum] = useState<number>(() => Math.floor(Math.random() * 20) + 1);
   const [streak, setStreak] = useState<number>(0);
   const [bestStreak, setBestStreak] = useState<number>(() => Number(localStorage.getItem('game_best') || '0'));
   const [isRolling, setIsRolling] = useState<boolean>(false);
-  const [log, setLog] = useState<string>('Guess if the next roll will be higher or lower than the current D20!');
+  const [log, setLog] = useState<string>('Guess if the next roll will be higher or lower!');
 
   const handleGuess = (direction: 'higher' | 'lower') => {
     if (isRolling) return;
@@ -2926,11 +3420,11 @@ function HiLoGame({ playTone, triggerHaptic, joined, currentUser, lastAction, se
 
     let rolls = 0;
     const interval = setInterval(() => {
-      setCurrentNum(Math.floor(Math.random() * 20) + 1);
+      setCurrentNum(Math.floor(Math.random() * mode.sides) + 1);
       rolls++;
       if (rolls >= 10) {
         clearInterval(interval);
-        const finalNum = Math.floor(Math.random() * 20) + 1;
+        const finalNum = Math.floor(Math.random() * mode.sides) + 1;
         setCurrentNum(finalNum);
         setIsRolling(false);
 
@@ -2998,8 +3492,21 @@ function HiLoGame({ playTone, triggerHaptic, joined, currentUser, lastAction, se
   return (
     <div className="flex-grow flex flex-col justify-between select-none">
       <div className="flex justify-between items-center pb-2 border-b border-[#44387a]/20 mb-3">
-        <span className="text-[12px] font-bold text-amber-400">🎲 Hi-Lo D20 Guessing</span>
-        <button onClick={triggerReset} className="text-[10px] text-amber-400/80 hover:text-white transition cursor-pointer">Reset Streak</button>
+        <span className="text-[12px] font-bold text-amber-400">🎲 Hi-Lo Dice Guessing</span>
+        <button onClick={triggerReset} className="text-[10px] text-amber-400/80 hover:text-white transition cursor-pointer">Reset</button>
+      </div>
+
+      {/* Difficulty selector */}
+      <div className="flex gap-1.5 mb-2 justify-center">
+        {MODES.map(m => (
+          <button
+            key={m.label}
+            onClick={() => { setMode(m); setCurrentNum(Math.floor(Math.random() * m.sides) + 1); setStreak(0); }}
+            className={`px-2.5 py-1 rounded-lg text-[9px] font-black uppercase border transition cursor-pointer ${mode.label === m.label ? 'bg-amber-500 border-amber-400 text-slate-900' : 'bg-black/30 border-[#44387a]/30 text-slate-400 hover:text-white'}`}
+          >
+            {m.label}
+          </button>
+        ))}
       </div>
 
       <div className="bg-black/30 p-2.5 rounded-xl min-h-[40px] text-[11px] leading-relaxed font-mono text-center mb-4">
@@ -3130,9 +3637,11 @@ function ScorepadGame({ triggerHaptic, joined, currentUser, lastAction, sendGame
               <span className="text-xs font-mono font-black text-amber-400 bg-black/35 px-2 py-0.5 rounded-md min-w-[28px] text-center">{p.score}</span>
             </div>
             <div className="flex items-center gap-1.5">
+              <button onClick={() => adjScore(idx, -5)} className="w-7 h-7 rounded-lg bg-red-600/10 border border-red-500/20 hover:bg-red-500/25 text-red-400 font-bold text-[9px] cursor-pointer focus:outline-none transition">-5</button>
               <button onClick={() => adjScore(idx, -1)} className="w-7 h-7 rounded-lg bg-red-600/10 border border-red-500/20 hover:bg-red-500/25 text-red-400 font-bold text-xs cursor-pointer focus:outline-none transition">-1</button>
               <button onClick={() => adjScore(idx, 1)} className="w-7 h-7 rounded-lg bg-emerald-600/10 border border-emerald-500/20 hover:bg-emerald-500/25 text-emerald-400 font-bold text-xs cursor-pointer focus:outline-none transition">+1</button>
-              <button onClick={() => adjScore(idx, 5)} className="w-9 h-7 rounded-lg bg-[#44387a]/20 border border-[#44387a]/40 hover:bg-[#44387a]/35 text-purple-300 font-bold text-[10px] cursor-pointer focus:outline-none transition">+5</button>
+              <button onClick={() => adjScore(idx, 5)} className="w-8 h-7 rounded-lg bg-[#44387a]/20 border border-[#44387a]/40 hover:bg-[#44387a]/35 text-purple-300 font-bold text-[10px] cursor-pointer focus:outline-none transition">+5</button>
+              <button onClick={() => adjScore(idx, 10)} className="w-9 h-7 rounded-lg bg-amber-600/15 border border-amber-500/30 hover:bg-amber-500/25 text-amber-400 font-bold text-[10px] cursor-pointer focus:outline-none transition">+10</button>
               <button onClick={() => delPlayer(idx)} className="w-6 h-7 text-slate-500 hover:text-red-400 font-bold text-sm cursor-pointer focus:outline-none transition">×</button>
             </div>
           </div>
