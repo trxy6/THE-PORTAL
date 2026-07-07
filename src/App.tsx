@@ -305,7 +305,7 @@ export default function App() {
     return localStorage.getItem('portal_github_site_url') || 'https://Treydog-ramirez.github.io/dnd-portal/';
   });
   const [qrType, setQrType] = useState<'live' | 'github'>('live');
-  const [gameTab, setGameTab] = useState<'war' | 'cosmic' | 'arcade'>('war');
+  const [gameTab, setGameTab] = useState<'war' | 'cosmic'>('war');
 
   const haptic = (pattern: number | number[]) => {
     if (typeof (window as any).haptic === 'function') {
@@ -4389,9 +4389,11 @@ export default function App() {
         document.getElementById('game-view-hilow')?.classList.add('hidden');
         document.getElementById('game-view-score')?.classList.add('hidden');
         document.getElementById('game-view-spin')?.classList.add('hidden');
+        document.getElementById('game-view-arcade')?.classList.add('hidden');
         document.getElementById('game-view-hilow')?.classList.remove('flex');
         document.getElementById('game-view-score')?.classList.remove('flex');
         document.getElementById('game-view-spin')?.classList.remove('flex');
+        document.getElementById('game-view-arcade')?.classList.remove('flex');
 
         const activeId = `game-view-${tab.dataset.gameTab}`;
         const activeEl = document.getElementById(activeId);
@@ -8183,20 +8185,12 @@ Since I run entirely on-device, I cannot fetch live websites or use external ser
               >
                 🔮 Cosmic Words
               </button>
-              <button
-                onClick={() => { setGameTab('arcade'); haptic(10); }}
-                className={`flex-grow py-2 text-[10px] font-extrabold tracking-widest uppercase transition-all rounded-lg ${gameTab === 'arcade' ? 'active bg-[#3fd9c7]/20 text-[#3fd9c7] border border-[#3fd9c7]/30' : 'text-[#b4aae2]/50'}`}
-              >
-                🎮 Cabin Arcade
-              </button>
             </div>
 
             {gameTab === 'war' ? (
               <D20War currentUser={currentUser} />
-            ) : gameTab === 'cosmic' ? (
-              <CosmicWords currentUser={currentUser} />
             ) : (
-              <TenGamesArena />
+              <CosmicWords currentUser={currentUser} />
             )}
           </div>
         </div>
@@ -9969,8 +9963,11 @@ Since I run entirely on-device, I cannot fetch live websites or use external ser
               <div className="calc-tab cursor-pointer text-xs uppercase font-extrabold tracking-wider mr-4" data-game-tab="score" id="tab-game-score">
                 Scorepad
               </div>
-              <div className="calc-tab cursor-pointer text-xs uppercase font-extrabold tracking-wider" data-game-tab="spin" id="tab-game-spin">
+              <div className="calc-tab cursor-pointer text-xs uppercase font-extrabold tracking-wider mr-4" data-game-tab="spin" id="tab-game-spin">
                 Astrolabe
+              </div>
+              <div className="calc-tab cursor-pointer text-xs uppercase font-extrabold tracking-wider" data-game-tab="arcade" id="tab-game-arcade">
+                Cabin Arcade
               </div>
             </div>
 
@@ -10061,6 +10058,11 @@ Since I run entirely on-device, I cannot fetch live websites or use external ser
                   💫 REVOLVE ASTROLABE
                 </button>
               </div>
+            </div>
+
+            {/* SUB-GAME 4: CABIN ARCADE (10 GAMES) */}
+            <div className="game-sub-view flex-col hidden" id="game-view-arcade">
+              <TenGamesArena />
             </div>
 
           </section>
