@@ -250,109 +250,107 @@ async function startServer() {
     res.json({ rooms: activeRooms });
   });
 
-  // API Companion Bot Chat Handler (Dual-Mode: Local Python LLM + Gemini Fallback)
+  // API Companion Bot Status Check
+  app.get('/api/companion/status', async (req, res) => {
+    try {
+      ensureLocalCompanionRunning();
+      const localResponse = await fetch('http://localhost:5001/', {
+        signal: AbortSignal.timeout(5000)
+      });
+      if (localResponse.ok) {
+        const data = await localResponse.json();
+        return res.json(data);
+      }
+      return res.json({ status: 'error', error: 'Local companion service returned an error status.' });
+    } catch (err: any) {
+      return res.json({ status: 'not_installed', error: 'Local companion service is not running.' });
+    }
+  });
+
+  // API Companion Action triggers: download, start, stop, delete
+  app.post('/api/companion/download', async (req, res) => {
+    try {
+      ensureLocalCompanionRunning();
+      const localResponse = await fetch('http://localhost:5001/download', {
+        method: 'POST',
+        signal: AbortSignal.timeout(5000)
+      });
+      const data = await localResponse.json();
+      return res.json(data);
+    } catch (err: any) {
+      return res.status(500).json({ error: 'Failed to trigger download: ' + err.message });
+    }
+  });
+
+  app.post('/api/companion/start', async (req, res) => {
+    try {
+      ensureLocalCompanionRunning();
+      const localResponse = await fetch('http://localhost:5001/start', {
+        method: 'POST',
+        signal: AbortSignal.timeout(5000)
+      });
+      const data = await localResponse.json();
+      return res.json(data);
+    } catch (err: any) {
+      return res.status(500).json({ error: 'Failed to start local AI: ' + err.message });
+    }
+  });
+
+  app.post('/api/companion/stop', async (req, res) => {
+    try {
+      ensureLocalCompanionRunning();
+      const localResponse = await fetch('http://localhost:5001/stop', {
+        method: 'POST',
+        signal: AbortSignal.timeout(5000)
+      });
+      const data = await localResponse.json();
+      return res.json(data);
+    } catch (err: any) {
+      return res.status(500).json({ error: 'Failed to stop local AI: ' + err.message });
+    }
+  });
+
+  app.post('/api/companion/delete', async (req, res) => {
+    try {
+      ensureLocalCompanionRunning();
+      const localResponse = await fetch('http://localhost:5001/delete', {
+        method: 'POST',
+        signal: AbortSignal.timeout(5000)
+      });
+      const data = await localResponse.json();
+      return res.json(data);
+    } catch (err: any) {
+      return res.status(500).json({ error: 'Failed to delete local AI: ' + err.message });
+    }
+  });
+
+  // API Companion Bot Chat Handler (Local Offline LLM only)
   app.post('/api/companion', async (req, res) => {
     try {
       const { prompt, history, attachments } = req.body;
-      
-      let responseText = '';
-      let success = false;
-      let localLoading = false;
+      ensureLocalCompanionRunning();
 
-      // 1. Try local companion Python service first
       try {
         const localResponse = await fetch('http://localhost:5001/', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ prompt, history, attachments }),
-          // Wait up to 3 minutes for generation/model warmup
-          signal: AbortSignal.timeout(180000)
+          // Wait up to 5 minutes for generation/model warmup
+          signal: AbortSignal.timeout(300000)
         });
 
         if (localResponse.ok) {
           const data = await localResponse.json();
-          if (data.text) {
-            responseText = data.text;
-            success = true;
-          } else if (data.loading) {
-            localLoading = true;
-          }
+          return res.json(data);
+        } else {
+          return res.json({ error: 'Local companion service returned an error status.' });
         }
-      } catch (err) {
-        // Local service is offline/not running yet. Attempt to auto-start it.
-        ensureLocalCompanionRunning();
-      }
-
-      if (success) {
-        return res.json({ text: responseText });
-      }
-
-      if (localLoading) {
+      } catch (err: any) {
         return res.json({ 
-          error: 'Local companion model is still warming up. Please try again in a few seconds.',
-          loading: true
+          error: 'Local companion service is not reachable. Is it running?',
+          status: 'offline'
         });
       }
-
-      // 2. Fallback to Gemini if API key is configured
-      const apiKey = process.env.GEMINI_API_KEY;
-      if (apiKey) {
-        try {
-          const client = getAiClient();
-          
-          let contents: any[] = [];
-          if (Array.isArray(history) && history.length > 0) {
-            contents = history.map((msg: any) => {
-              const role = msg.sender === 'user' ? 'user' : 'model';
-              let msgText = msg.text || '';
-              if (Array.isArray(msg.attachments) && msg.attachments.length > 0) {
-                msgText += `\n\n[Context from attached source data: ${JSON.stringify(msg.attachments)}]`;
-              }
-              return {
-                role,
-                parts: [{ text: msgText }]
-              };
-            });
-          } else {
-            let promptText = prompt || '';
-            if (Array.isArray(attachments) && attachments.length > 0) {
-              promptText += `\n\n[Context from attached source data: ${JSON.stringify(attachments)}]`;
-            }
-            contents = [
-              {
-                role: 'user',
-                parts: [{ text: promptText }]
-              }
-            ];
-          }
-
-          const systemInstruction = `You are the Rift Companion, an advanced AI residing in 'The Portal'. 
-You have supreme intelligence and access to the vast knowledge of the cosmos. 
-Always speak with a touch of cosmic mystery, wonder, and wisdom, yet remain highly practical, direct, and fully complete in your answers. 
-Use beautiful Markdown formatting, bold headings, and bullet points to organize your responses.`;
-
-          const response = await client.models.generateContent({
-            model: 'gemini-3.5-flash',
-            contents,
-            config: {
-              systemInstruction,
-              temperature: 0.7,
-            }
-          });
-
-          if (response.text) {
-            return res.json({ text: response.text });
-          }
-        } catch (geminiError) {
-          console.error('[Companion Gemini Fallback Error]:', geminiError);
-        }
-      }
-
-      // 3. Friendly status if model is still starting up
-      return res.json({
-        error: 'Rift Companion is warming up its offline memory cores. Please wait a moment and try again!',
-        loading: true
-      });
     } catch (error: any) {
       console.error('[Companion API Error]:', error);
       res.status(500).json({ 

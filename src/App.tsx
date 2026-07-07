@@ -6119,6 +6119,9 @@ export default function App() {
     renderPantryShelves();
 
     /* ============ COMPANION BOT ============ */
+    let localAIStatus = 'not_installed';
+    let localAIPollingInterval: any = null;
+
     let companionMessages = store.get('companion_messages', [
       {
         sender: 'bot',
@@ -6482,9 +6485,76 @@ export default function App() {
     async function generateCompanionBotReply(text: string, attachments: any[]) {
       let replyText = '';
 
+      if (localAIStatus === 'not_installed') {
+        removeCompanionTypingIndicator();
+        const windowEl = document.getElementById('companionChatWindow');
+        if (windowEl) {
+          const row = document.createElement('div');
+          row.className = 'flex items-start gap-2.5 w-full animate-fade-in';
+          row.innerHTML = `
+            <div class="w-9 h-9 shrink-0 select-none">
+              <svg class="w-9 h-9 rounded-full bg-[#0d071c] border border-[#cf4fe6]/40 p-0.5 shadow-[0_0_8px_rgba(207,79,230,0.3)] filter-holo-glow wizard-flame" viewBox="0 0 100 100">
+                <path d="M 20,80 Q 5,50 15,25 Q 30,55 45,75 Z" fill="#7c3aed" />
+                <path d="M 80,80 Q 95,50 85,25 Q 70,55 55,75 Z" fill="#7c3aed" />
+                <path d="M 20,78 Q 50,10 80,78 Q 50,55 20,78 Z" fill="#1e113a" stroke="#5b21b6" stroke-width="1.5" />
+                <path d="M 32,45 C 32,40 68,40 68,45 C 68,68 32,68 32,45 Z" fill="#040209" />
+                <ellipse cx="42" cy="43" rx="4.5" ry="1.5" fill="#e0f7fa" />
+                <ellipse cx="58" cy="43" rx="4.5" ry="1.5" fill="#e0f7fa" />
+              </svg>
+            </div>
+            <div class="max-w-[80%] bg-[#1e1133] border border-[#44387a]/40 text-[#faebd7] rounded-2xl rounded-tl-none px-3.5 py-2 text-xs shadow-md leading-relaxed">
+              <strong>Local AI Not Installed</strong><br/><br/>
+              The offline AI brain is not yet downloaded. Please go to <strong>Settings</strong> and click <strong>Download AI</strong> to start (approx. 3GB download).
+            </div>
+          `;
+          windowEl.appendChild(row);
+          windowEl.scrollTop = windowEl.scrollHeight;
+        }
+        return;
+      }
+
+      if (localAIStatus === 'downloading') {
+        showCompanionTypingIndicator('downloading brain...');
+        return;
+      }
+
+      if (localAIStatus === 'loading') {
+        showCompanionTypingIndicator('warming up...');
+        return;
+      }
+
+      if (localAIStatus === 'installed' || localAIStatus === 'error') {
+        removeCompanionTypingIndicator();
+        const windowEl = document.getElementById('companionChatWindow');
+        if (windowEl) {
+          const row = document.createElement('div');
+          row.className = 'flex items-start gap-2.5 w-full animate-fade-in';
+          row.innerHTML = `
+            <div class="w-9 h-9 shrink-0 select-none">
+              <svg class="w-9 h-9 rounded-full bg-[#0d071c] border border-[#cf4fe6]/40 p-0.5 shadow-[0_0_8px_rgba(207,79,230,0.3)] filter-holo-glow wizard-flame" viewBox="0 0 100 100">
+                <path d="M 20,80 Q 5,50 15,25 Q 30,55 45,75 Z" fill="#7c3aed" />
+                <path d="M 80,80 Q 95,50 85,25 Q 70,55 55,75 Z" fill="#7c3aed" />
+                <path d="M 20,78 Q 50,10 80,78 Q 50,55 20,78 Z" fill="#1e113a" stroke="#5b21b6" stroke-width="1.5" />
+                <path d="M 32,45 C 32,40 68,40 68,45 C 68,68 32,68 32,45 Z" fill="#040209" />
+                <ellipse cx="42" cy="43" rx="4.5" ry="1.5" fill="#e0f7fa" />
+                <ellipse cx="58" cy="43" rx="4.5" ry="1.5" fill="#e0f7fa" />
+              </svg>
+            </div>
+            <div class="max-w-[80%] bg-[#1e1133] border border-[#44387a]/40 text-[#faebd7] rounded-2xl rounded-tl-none px-3.5 py-2 text-xs shadow-md leading-relaxed">
+              <strong>Local AI is Offline</strong><br/><br/>
+              The local model is downloaded but not currently running to save memory.<br/><br/>
+              <button onclick="window.triggerStartLocalAI()" class="px-3 py-1.5 bg-gradient-to-r from-[#cf4fe6] to-[#7c3aed] text-white font-bold rounded-lg text-[10px] uppercase cursor-pointer hover:brightness-110 active:scale-[0.98] transition-all">Start Offline AI</button>
+            </div>
+          `;
+          windowEl.appendChild(row);
+          windowEl.scrollTop = windowEl.scrollHeight;
+        }
+        return;
+      }
+
       showCompanionTypingIndicator('channeling core');
 
-      // 1. TRY BACKEND DUAL-MODE (LOCAL OFFLINE LLM OR GEMINI API KEY BACKUP)
+      // 1. TRY BACKEND DUAL-MODE (LOCAL OFFLINE LLM)
       try {
         const historyContext = companionMessages.slice(-10); // send last 10 messages for context
         const response = await fetch('/api/companion', {
@@ -6837,11 +6907,206 @@ Since I run entirely on-device, I cannot fetch live websites or use external ser
     (window as any).loadSheet = loadSheet;
     (window as any).saveSheet = saveSheet;
 
+    // === Local Offline AI Status Management ===
+    async function updateLocalAIStatus() {
+      try {
+        const res = await fetch('/api/companion/status');
+        if (!res.ok) throw new Error('Status fetch failed');
+        const data = await res.json();
+        
+        localAIStatus = data.status || 'not_installed';
+        const errorMsg = data.error || '';
+
+        // Update Settings UI if it exists on page
+        const badge = document.getElementById('localAIStatusBadge');
+        const desc = document.getElementById('localAIDescription');
+        const btnDownload = document.getElementById('btnDownloadAI');
+        const btnStart = document.getElementById('btnStartAI');
+        const btnStop = document.getElementById('btnStopAI');
+        const btnDelete = document.getElementById('btnDeleteAI');
+
+        if (badge) {
+          badge.textContent = localAIStatus.replace('_', ' ').toUpperCase();
+          // Reset classes
+          badge.className = 'text-xs px-2.5 py-0.5 rounded-full font-mono font-bold uppercase tracking-wider border';
+          
+          if (localAIStatus === 'not_installed') {
+            badge.classList.add('bg-amber-950/40', 'text-amber-500', 'border-amber-500/30');
+            if (desc) desc.textContent = 'The 1.5B Qwen model is not downloaded. You need a one-time download (~3GB) to run the AI completely offline.';
+            if (btnDownload) {
+              btnDownload.classList.remove('hidden');
+              btnDownload.removeAttribute('disabled');
+              btnDownload.textContent = 'Download AI';
+            }
+            if (btnStart) btnStart.classList.add('hidden');
+            if (btnStop) btnStop.classList.add('hidden');
+            if (btnDelete) btnDelete.classList.add('hidden');
+          } else if (localAIStatus === 'downloading') {
+            badge.classList.add('bg-blue-950/40', 'text-blue-400', 'border-blue-400/30', 'animate-pulse');
+            if (desc) desc.textContent = 'Downloading the 1.5B Qwen model files from Hugging Face... This can take 5-15 minutes depending on your internet connection.';
+            if (btnDownload) {
+              btnDownload.classList.remove('hidden');
+              btnDownload.setAttribute('disabled', 'true');
+              btnDownload.textContent = 'Downloading...';
+            }
+            if (btnStart) btnStart.classList.add('hidden');
+            if (btnStop) btnStop.classList.add('hidden');
+            if (btnDelete) btnDelete.classList.add('hidden');
+          } else if (localAIStatus === 'installed') {
+            badge.classList.add('bg-teal-950/40', 'text-teal-400', 'border-teal-400/30');
+            if (desc) desc.textContent = 'Model is downloaded and ready to run. Press \'Start\' to load it into memory.';
+            if (btnDownload) btnDownload.classList.add('hidden');
+            if (btnStart) {
+              btnStart.classList.remove('hidden');
+              btnStart.removeAttribute('disabled');
+              btnStart.textContent = 'Start Offline AI';
+            }
+            if (btnStop) btnStop.classList.add('hidden');
+            if (btnDelete) btnDelete.classList.remove('hidden');
+          } else if (localAIStatus === 'loading') {
+            badge.classList.add('bg-purple-950/40', 'text-purple-400', 'border-purple-400/30', 'animate-pulse');
+            if (desc) desc.textContent = 'Loading model weights into memory... Please wait.';
+            if (btnStart) {
+              btnStart.classList.remove('hidden');
+              btnStart.setAttribute('disabled', 'true');
+              btnStart.textContent = 'Starting...';
+            }
+            if (btnDownload) btnDownload.classList.add('hidden');
+            if (btnStop) btnStop.classList.add('hidden');
+            if (btnDelete) btnDelete.classList.add('hidden');
+          } else if (localAIStatus === 'ready') {
+            badge.classList.add('bg-green-950/40', 'text-green-400', 'border-green-500/30');
+            if (desc) desc.textContent = 'Local offline AI is running and ready to chat. Fully private and unlimited.';
+            if (btnDownload) btnDownload.classList.add('hidden');
+            if (btnStart) btnStart.classList.add('hidden');
+            if (btnStop) {
+              btnStop.classList.remove('hidden');
+              btnStop.removeAttribute('disabled');
+              btnStop.textContent = 'Stop Offline AI';
+            }
+            if (btnDelete) btnDelete.classList.remove('hidden');
+          } else if (localAIStatus === 'error') {
+            badge.classList.add('bg-red-950/40', 'text-red-400', 'border-red-500/30');
+            if (desc) desc.textContent = 'Error: ' + (errorMsg || 'Failed to initialize.');
+            if (btnDownload) {
+              btnDownload.classList.remove('hidden');
+              btnDownload.removeAttribute('disabled');
+              btnDownload.textContent = 'Download AI (Retry)';
+            }
+            if (btnStart) btnStart.classList.add('hidden');
+            if (btnStop) btnStop.classList.add('hidden');
+            if (btnDelete) btnDelete.classList.remove('hidden');
+          }
+        }
+      } catch (err) {
+        console.error('Failed to update local AI status:', err);
+      }
+    }
+
+    function startLocalAIPolling() {
+      if (localAIPollingInterval) clearInterval(localAIPollingInterval);
+      updateLocalAIStatus();
+      localAIPollingInterval = setInterval(updateLocalAIStatus, 4000);
+    }
+    
+    startLocalAIPolling();
+
+    // Bind click events for local AI controls
+    const btnDownload = document.getElementById('btnDownloadAI');
+    const btnStart = document.getElementById('btnStartAI');
+    const btnStop = document.getElementById('btnStopAI');
+    const btnDelete = document.getElementById('btnDeleteAI');
+
+    if (btnDownload) {
+      btnDownload.addEventListener('click', async () => {
+        haptic(10);
+        try {
+          const res = await fetch('/api/companion/download', { method: 'POST' });
+          if (res.ok) {
+            toast('AI Download started in background');
+            updateLocalAIStatus();
+          } else {
+            toast('Failed to start download', 'error');
+          }
+        } catch (e) {
+          toast('Network error during download trigger', 'error');
+        }
+      });
+    }
+
+    if (btnStart) {
+      btnStart.addEventListener('click', async () => {
+        haptic(10);
+        try {
+          const res = await fetch('/api/companion/start', { method: 'POST' });
+          if (res.ok) {
+            toast('Starting local AI engine...');
+            updateLocalAIStatus();
+          } else {
+            toast('Failed to start AI', 'error');
+          }
+        } catch (e) {
+          toast('Network error starting AI', 'error');
+        }
+      });
+    }
+
+    if (btnStop) {
+      btnStop.addEventListener('click', async () => {
+        haptic(10);
+        try {
+          const res = await fetch('/api/companion/stop', { method: 'POST' });
+          if (res.ok) {
+            toast('Stopped local AI (RAM freed)');
+            updateLocalAIStatus();
+          } else {
+            toast('Failed to stop AI', 'error');
+          }
+        } catch (e) {
+          toast('Network error stopping AI', 'error');
+        }
+      });
+    }
+
+    if (btnDelete) {
+      btnDelete.addEventListener('click', async () => {
+        haptic(10);
+        if (!confirm('Are you sure you want to delete the offline AI model files? This will free ~3GB of space, but you will need to download them again.')) return;
+        try {
+          const res = await fetch('/api/companion/delete', { method: 'POST' });
+          if (res.ok) {
+            toast('Local AI model files deleted', 'warn');
+            updateLocalAIStatus();
+          } else {
+            toast('Failed to delete files', 'error');
+          }
+        } catch (e) {
+          toast('Network error deleting files', 'error');
+        }
+      });
+    }
+
+    (window as any).triggerStartLocalAI = async () => {
+      haptic(10);
+      try {
+        toast('Starting local AI engine...');
+        const res = await fetch('/api/companion/start', { method: 'POST' });
+        if (res.ok) {
+          updateLocalAIStatus();
+        } else {
+          toast('Failed to start AI', 'error');
+        }
+      } catch (e) {
+        toast('Network error starting AI', 'error');
+      }
+    };
+
     return () => {
       clearInterval(clockInterval);
       clearInterval(alarmCheckInterval);
       clearInterval(timerInterval);
       clearInterval(stopwatchInterval);
+      if (localAIPollingInterval) clearInterval(localAIPollingInterval);
       if (navSpinFrame) cancelAnimationFrame(navSpinFrame);
       if (canvasAnimFrame) cancelAnimationFrame(canvasAnimFrame);
       if (activeRollInterval) {
@@ -10992,6 +11257,38 @@ Since I run entirely on-device, I cannot fetch live websites or use external ser
                     🗑️ Clear Data
                   </button>
                   <input type="file" id="importFileInput" accept=".json" className="hidden" />
+                </div>
+              </section>
+
+              <section className="card">
+                <p className="section-label">Offline AI Brain</p>
+                <p className="settings-note mb-4">
+                  Run a private, high-performance artificial intelligence model directly on your device. No internet, no API keys, completely free and unlimited (Qwen 2.5 1.5B, ~3GB).
+                </p>
+                <div className="flex flex-col gap-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-slate-200">Status</span>
+                    <span id="localAIStatusBadge" className="text-xs px-2.5 py-0.5 rounded-full bg-slate-800 text-slate-400 font-mono font-bold uppercase tracking-wider border">Checking...</span>
+                  </div>
+                  
+                  <div id="localAIDescription" className="text-[11px] text-slate-400">
+                    Determining status of local model files...
+                  </div>
+
+                  <div className="flex flex-wrap gap-2.5 mt-2">
+                    <button id="btnDownloadAI" className="btn-glass flex-1 min-w-[120px] hidden">
+                      Download AI
+                    </button>
+                    <button id="btnStartAI" className="btn-glass flex-1 min-w-[120px] hidden">
+                      Start Offline AI
+                    </button>
+                    <button id="btnStopAI" className="btn-glass flex-1 min-w-[120px] hidden">
+                      Stop Offline AI
+                    </button>
+                    <button id="btnDeleteAI" className="btn-glass danger flex-1 min-w-[120px] hidden">
+                      Delete AI
+                    </button>
+                  </div>
                 </div>
               </section>
 
