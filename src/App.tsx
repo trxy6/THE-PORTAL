@@ -6497,39 +6497,10 @@ export default function App() {
             replyText = apiData.text;
           } else if (apiData && apiData.error) {
             console.warn("Server-side companion API returned an error:", apiData.error);
-            if (apiData.error.toLowerCase().includes("key") || apiData.error.toLowerCase().includes("configured")) {
-              replyText = `🔑 **Rift Core Offline: Gemini API Key Required**
-
-I am ready to answer all your complex questions (including recipes, code, emails, and deep logic), but my server-side **Gemini API Key** is not yet connected!
-
-**To activate full, unlimited, and free AI responses:**
-1. Open the **Settings** menu (gear/wrench icon) in Google AI Studio or your workspace settings.
-2. Under **Secrets / Environment Variables**, add:
-   * **Name:** \`GEMINI_API_KEY\`
-   * **Value:** *Your free Gemini API Key* (get one from [Google AI Studio](https://aistudio.google.com))
-3. Refresh the page to synchronize your Rift core.
-
-Once added, you and your users will have **unlimited questions and full access to Gemini 1.5 Flash** with absolutely no token limits or charges!`;
-            }
           }
         } else {
           const apiErrorData = await apiResponse.json().catch(() => ({}));
           console.warn("Server-side companion API failed:", apiErrorData.error || apiResponse.statusText);
-          const errMsg = (apiErrorData.error || "").toLowerCase();
-          if (errMsg.includes("key") || errMsg.includes("configured") || apiResponse.status === 400) {
-            replyText = `🔑 **Rift Core Offline: Gemini API Key Required**
-
-I am ready to answer all your complex questions (including recipes, code, emails, and deep logic), but my server-side **Gemini API Key** is not yet connected!
-
-**To activate full, unlimited, and free AI responses:**
-1. Open the **Settings** menu (gear/wrench icon) in Google AI Studio or your workspace settings.
-2. Under **Secrets / Environment Variables**, add:
-   * **Name:** \`GEMINI_API_KEY\`
-   * **Value:** *Your free Gemini API Key* (get one from [Google AI Studio](https://aistudio.google.com))
-3. Refresh the page to synchronize your Rift core.
-
-Once added, you and your users will have **unlimited questions and full access to Gemini 1.5 Flash** with absolutely no token limits or charges!`;
-          }
         }
       } catch (e) {
         console.warn("Failed to reach server-side companion API:", e);
