@@ -16,30 +16,25 @@ def load_model_thread():
     try:
         print("[Companion Server] Loading tokenizer and model (Qwen/Qwen2.5-1.5B-Instruct)...")
         import torch
+        # Avoid thread conflicts causing Windows segmentation faults
+        torch.set_num_threads(1)
+        
         from transformers import AutoModelForCausalLM, AutoTokenizer
 
         model_id = "Qwen/Qwen2.5-1.5B-Instruct"
         tokenizer = AutoTokenizer.from_pretrained(model_id)
         
-        # Load in float32 on CPU, or float16/bfloat16 if GPU is available
         device = "cuda" if torch.cuda.is_available() else "cpu"
         print(f"[Companion Server] Using device: {device}")
         
+        # Load model with low memory usage and thread protection
         model = AutoModelForCausalLM.from_pretrained(
             model_id,
-            torch_dtype=torch.float32 if device == "cpu" else torch.float16
-        ).to(device)
-        
-        # Optimize CPU threads if running on CPU
-        if device == "cpu":
-            # Set to a reasonable number of threads (e.g., 4 or half of available CPUs)
-            try:
-                num_cores = os.cpu_count() or 4
-                threads = max(1, min(4, num_cores - 1))
-                torch.set_num_threads(threads)
-                print(f"[Companion Server] Set PyTorch threads to: {threads}")
-            except Exception as e:
-                print(f"[Companion Server] Failed to set threads: {e}")
+            torch_dtype=torch.float32 if device == "cpu" else torch.float16,
+            low_cpu_mem_usage=True
+        )
+        if device != "cpu":
+            model = model.to(device)
 
         model_loaded = True
         print("[Companion Server] Model loaded successfully and ready for inference!")
