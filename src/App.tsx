@@ -6477,34 +6477,7 @@ export default function App() {
     async function generateCompanionBotReply(text: string, attachments: any[]) {
       let replyText = '';
 
-      // 1. TRY THE SERVER-SIDE FULL-POWER GEMINI API (FIRST PREFERENCE)
-      try {
-        showCompanionTypingIndicator('channeling core');
-        const apiResponse = await fetch('/api/companion', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            prompt: text,
-            history: companionMessages,
-            attachments
-          })
-        });
-        if (apiResponse.ok) {
-          const apiData = await apiResponse.json();
-          if (apiData && apiData.text) {
-            replyText = apiData.text;
-          } else if (apiData && apiData.error) {
-            console.warn("Server-side companion API returned an error:", apiData.error);
-          }
-        } else {
-          const apiErrorData = await apiResponse.json().catch(() => ({}));
-          console.warn("Server-side companion API failed:", apiErrorData.error || apiResponse.statusText);
-        }
-      } catch (e) {
-        console.warn("Failed to reach server-side companion API:", e);
-      }
+      showCompanionTypingIndicator('channeling core');
 
       // 1.5. TRY CHROME'S EXPERIMENTAL BUILT-IN ON-DEVICE AI (FALLBACK)
       if (!replyText) {
