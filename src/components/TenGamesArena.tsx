@@ -38,6 +38,7 @@ interface TenGamesArenaProps {
 
 export default function TenGamesArena({ currentUser = 'Traveler' }: TenGamesArenaProps) {
   const [activeGame, setActiveGame] = useState<GameID>('war'); // Default to D20 War
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const [filterCategory, setFilterCategory] = useState<'all' | 'chance' | 'social' | 'board'>('all');
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [hapticsEnabled, setHapticsEnabled] = useState(true);
@@ -150,8 +151,193 @@ export default function TenGamesArena({ currentUser = 'Traveler' }: TenGamesAren
     }
   };
 
+  const GAME_DETAILS: Record<string, { label: string; desc: string }> = {
+    cheat: { label: '🃏 Cheat / Doubt', desc: 'Card shedding game of bluffing vs bots' },
+    mafia: { label: '🐺 Werewolf', desc: 'Narrator-driven role assignment party game' },
+    celebrity: { label: '🎫 Fishbowl', desc: 'Word guessing party game in rounds' },
+    blackjack: { label: '🎩 Alchem-21', desc: 'Offline card blackjack game vs Alchemist AI' },
+    categories: { label: '✏️ Categories', desc: 'Word category naming battle against time' },
+    grid_domain: { label: '🟩 Grid Domain', desc: 'Territory capture tactical strategy game' },
+    dice_duel: { label: '🎲 Farkle', desc: 'Push-your-luck golden potion dice collection duel' },
+    labyrinth: { label: '🔦 Fog Escape', desc: 'Fog of war grid escape labyrinth' },
+    chain_reaction: { label: '💥 Chain Burst', desc: 'Physics-based ball bouncing match' },
+    blink: { label: '⚡ Blink Tap', desc: 'Reaction timer tapping game' },
+    war: { label: '⚔️ D20 War', desc: 'Real-time online multiplayer D20 roll battles' },
+    cosmic: { label: '🔮 Cosmic Words', desc: 'Multiplayer word clue and anagram guessing' },
+    hilow: { label: '🎲 Hi-Lo', desc: 'Predict if the next roll of the polyhedral D20 will be higher or lower' },
+    scorepad: { label: '📝 Scorepad', desc: 'Board game scores and tracker tool' },
+    astrolabe: { label: '💫 Astrolabe', desc: 'Random group choice spinner' }
+  };
+
+  const renderActiveGame = () => {
+    switch (activeGame) {
+      case 'cheat':
+        return (
+          <CheatGame 
+            playTone={playTone} 
+            triggerHaptic={triggerHaptic} 
+            joined={joined} 
+            currentUser={currentUser} 
+            connectedPlayers={connectedPlayers} 
+            lastAction={lastAction} 
+            sendGameAction={sendGameAction} 
+          />
+        );
+      case 'mafia':
+        return (
+          <MafiaGame 
+            playTone={playTone} 
+            triggerHaptic={triggerHaptic} 
+            joined={joined} 
+            currentUser={currentUser} 
+            connectedPlayers={connectedPlayers} 
+            lastAction={lastAction} 
+            sendGameAction={sendGameAction} 
+          />
+        );
+      case 'celebrity':
+        return (
+          <CelebrityGame 
+            playTone={playTone} 
+            triggerHaptic={triggerHaptic} 
+            joined={joined} 
+            currentUser={currentUser} 
+            connectedPlayers={connectedPlayers} 
+            lastAction={lastAction} 
+            sendGameAction={sendGameAction} 
+          />
+        );
+      case 'blackjack':
+        return (
+          <BlackjackGame 
+            playTone={playTone} 
+            triggerHaptic={triggerHaptic} 
+            joined={joined} 
+            currentUser={currentUser} 
+            connectedPlayers={connectedPlayers} 
+            lastAction={lastAction} 
+            sendGameAction={sendGameAction} 
+          />
+        );
+      case 'categories':
+        return (
+          <CategoriesGame 
+            playTone={playTone} 
+            triggerHaptic={triggerHaptic} 
+            joined={joined} 
+            currentUser={currentUser} 
+            connectedPlayers={connectedPlayers} 
+            lastAction={lastAction} 
+            sendGameAction={sendGameAction} 
+          />
+        );
+      case 'grid_domain':
+        return (
+          <GridDomainGame 
+            playTone={playTone} 
+            triggerHaptic={triggerHaptic} 
+            joined={joined} 
+            currentUser={currentUser} 
+            connectedPlayers={connectedPlayers} 
+            lastAction={lastAction} 
+            sendGameAction={sendGameAction} 
+          />
+        );
+      case 'dice_duel':
+        return (
+          <DiceDuelGame 
+            playTone={playTone} 
+            triggerHaptic={triggerHaptic} 
+            joined={joined} 
+            currentUser={currentUser} 
+            connectedPlayers={connectedPlayers} 
+            lastAction={lastAction} 
+            sendGameAction={sendGameAction} 
+          />
+        );
+      case 'labyrinth':
+        return (
+          <LabyrinthGame 
+            playTone={playTone} 
+            triggerHaptic={triggerHaptic} 
+            joined={joined} 
+            currentUser={currentUser} 
+            connectedPlayers={connectedPlayers} 
+            lastAction={lastAction} 
+            sendGameAction={sendGameAction} 
+          />
+        );
+      case 'chain_reaction':
+        return (
+          <ChainReactionGame 
+            playTone={playTone} 
+            triggerHaptic={triggerHaptic} 
+            joined={joined} 
+            currentUser={currentUser} 
+            connectedPlayers={connectedPlayers} 
+            lastAction={lastAction} 
+            sendGameAction={sendGameAction} 
+          />
+        );
+      case 'blink':
+        return (
+          <BlinkGame 
+            playTone={playTone} 
+            triggerHaptic={triggerHaptic} 
+            joined={joined} 
+            currentUser={currentUser} 
+            connectedPlayers={connectedPlayers} 
+            lastAction={lastAction} 
+            sendGameAction={sendGameAction} 
+          />
+        );
+      case 'war':
+        return <D20War currentUser={currentUser} />;
+      case 'cosmic':
+        return <CosmicWords currentUser={currentUser} />;
+      case 'hilow':
+        return (
+          <HiLoGame 
+            playTone={playTone} 
+            triggerHaptic={triggerHaptic} 
+            joined={joined} 
+            currentUser={currentUser} 
+            connectedPlayers={connectedPlayers} 
+            lastAction={lastAction} 
+            sendGameAction={sendGameAction} 
+          />
+        );
+      case 'scorepad':
+        return (
+          <ScorepadGame 
+            triggerHaptic={triggerHaptic} 
+            joined={joined} 
+            currentUser={currentUser} 
+            connectedPlayers={connectedPlayers} 
+            lastAction={lastAction} 
+            sendGameAction={sendGameAction} 
+          />
+        );
+      case 'astrolabe':
+        return (
+          <AstrolabeGame 
+            playTone={playTone} 
+            triggerHaptic={triggerHaptic} 
+            joined={joined} 
+            currentUser={currentUser} 
+            connectedPlayers={connectedPlayers} 
+            lastAction={lastAction} 
+            sendGameAction={sendGameAction} 
+          />
+        );
+      default:
+        return null;
+    }
+  };
+
   return (
     <div className="w-full max-w-5xl mx-auto p-6 bg-[#0c061a]/75 text-[#faebd7] rounded-2xl border border-[#cf4fe6]/15 shadow-2xl relative overflow-hidden backdrop-blur-xl transition-all duration-300">
+
       {/* Background radial atmosphere */}
       <div className="absolute top-0 right-0 w-64 h-64 bg-[#cf4fe6]/10 rounded-full blur-3xl pointer-events-none"></div>
       <div className="absolute bottom-0 left-0 w-64 h-64 bg-[#3fd9c7]/10 rounded-full blur-3xl pointer-events-none"></div>
@@ -321,183 +507,131 @@ export default function TenGamesArena({ currentUser = 'Traveler' }: TenGamesAren
       </div>
 
       {/* ACTIVE GAME CANVAS / RENDER AREA */}
-      <div className="min-h-[440px] bg-[#090314]/55 rounded-2xl border border-[#3fd9c7]/10 p-6 flex flex-col justify-between backdrop-blur-md">
-        
-        {/* GAME 1: CHEAT (I DOUBT IT) */}
-        {activeGame === 'cheat' && (
-          <CheatGame 
-            playTone={playTone} 
-            triggerHaptic={triggerHaptic} 
-            joined={joined} 
-            currentUser={currentUser} 
-            connectedPlayers={connectedPlayers} 
-            lastAction={lastAction} 
-            sendGameAction={sendGameAction} 
-          />
-        )}
+      <div className="min-h-[440px] bg-[#090314]/55 rounded-2xl border border-[#3fd9c7]/10 p-5 flex flex-col justify-between backdrop-blur-md relative">
+        {/* Game Title & Controls Header */}
+        <div className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center pb-3 border-b border-[#2e2454] mb-4 gap-3 select-none">
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-black font-mono text-[#faebd7] uppercase tracking-wider">
+              🎮 {GAME_DETAILS[activeGame]?.label || 'Active Simulation'}
+            </span>
+          </div>
 
-        {/* GAME 2: MAFIA / WEREWOLF */}
-        {activeGame === 'mafia' && (
-          <MafiaGame 
-            playTone={playTone} 
-            triggerHaptic={triggerHaptic} 
-            joined={joined} 
-            currentUser={currentUser} 
-            connectedPlayers={connectedPlayers} 
-            lastAction={lastAction} 
-            sendGameAction={sendGameAction} 
-          />
-        )}
+          <div className="flex flex-wrap items-center gap-2">
+            {/* Inline room connection status & controls */}
+            <div className="flex items-center gap-1.5 bg-black/40 border border-[#3fd9c7]/20 px-2.5 py-1 rounded-lg">
+              <div className={`w-1.5 h-1.5 rounded-full ${joined ? 'bg-[#3fd9c7] animate-pulse' : 'bg-red-500'}`} />
+              {joined ? (
+                <span className="text-[9px] text-[#3fd9c7] font-bold font-mono">
+                  ROOM: {roomCode.toUpperCase()}
+                </span>
+              ) : (
+                <button
+                  onClick={() => {
+                    const code = prompt("Enter Room Code to connect & sync this game:", roomCode);
+                    if (code) {
+                      const sanitized = code.toLowerCase().replace(/[^a-z0-9-]/g, '');
+                      setRoomCode(sanitized);
+                      connectToRoom(sanitized);
+                    }
+                  }}
+                  className="text-[9px] text-[#3fd9c7]/80 hover:text-[#3fd9c7] font-bold uppercase transition font-mono cursor-pointer"
+                >
+                  ⚡ Sync Game
+                </button>
+              )}
+            </div>
 
-        {/* GAME 3: CELEBRITY / FISHBOWL */}
-        {activeGame === 'celebrity' && (
-          <CelebrityGame 
-            playTone={playTone} 
-            triggerHaptic={triggerHaptic} 
-            joined={joined} 
-            currentUser={currentUser} 
-            connectedPlayers={connectedPlayers} 
-            lastAction={lastAction} 
-            sendGameAction={sendGameAction} 
-          />
-        )}
+            {/* Go Fullscreen button */}
+            <button
+              onClick={() => { setIsFullscreen(true); triggerHaptic(15); }}
+              className="px-3 py-1 bg-gradient-to-r from-[#cf4fe6]/20 to-[#3fd9c7]/20 border border-[#cf4fe6]/35 text-[#faebd7] hover:brightness-110 rounded-lg text-[9px] uppercase font-bold tracking-wider transition cursor-pointer"
+            >
+              📺 Go Fullscreen
+            </button>
+          </div>
+        </div>
 
-        {/* GAME 4: ALCHEMICAL BLACKJACK */}
-        {activeGame === 'blackjack' && (
-          <BlackjackGame 
-            playTone={playTone} 
-            triggerHaptic={triggerHaptic} 
-            joined={joined} 
-            currentUser={currentUser} 
-            connectedPlayers={connectedPlayers} 
-            lastAction={lastAction} 
-            sendGameAction={sendGameAction} 
-          />
-        )}
-
-        {/* GAME 5: CATEGORIES */}
-        {activeGame === 'categories' && (
-          <CategoriesGame 
-            playTone={playTone} 
-            triggerHaptic={triggerHaptic} 
-            joined={joined} 
-            currentUser={currentUser} 
-            connectedPlayers={connectedPlayers} 
-            lastAction={lastAction} 
-            sendGameAction={sendGameAction} 
-          />
-        )}
-
-        {/* GAME 6: GRID DOMAIN */}
-        {activeGame === 'grid_domain' && (
-          <GridDomainGame 
-            playTone={playTone} 
-            triggerHaptic={triggerHaptic} 
-            joined={joined} 
-            currentUser={currentUser} 
-            connectedPlayers={connectedPlayers} 
-            lastAction={lastAction} 
-            sendGameAction={sendGameAction} 
-          />
-        )}
-
-        {/* GAME 7: DICE DUEL */}
-        {activeGame === 'dice_duel' && (
-          <DiceDuelGame 
-            playTone={playTone} 
-            triggerHaptic={triggerHaptic} 
-            joined={joined} 
-            currentUser={currentUser} 
-            connectedPlayers={connectedPlayers} 
-            lastAction={lastAction} 
-            sendGameAction={sendGameAction} 
-          />
-        )}
-
-        {/* GAME 8: FOG ESCAPE */}
-        {activeGame === 'labyrinth' && (
-          <LabyrinthGame 
-            playTone={playTone} 
-            triggerHaptic={triggerHaptic} 
-            joined={joined} 
-            currentUser={currentUser} 
-            connectedPlayers={connectedPlayers} 
-            lastAction={lastAction} 
-            sendGameAction={sendGameAction} 
-          />
-        )}
-
-        {/* GAME 9: CHAIN BURST */}
-        {activeGame === 'chain_reaction' && (
-          <ChainReactionGame 
-            playTone={playTone} 
-            triggerHaptic={triggerHaptic} 
-            joined={joined} 
-            currentUser={currentUser} 
-            connectedPlayers={connectedPlayers} 
-            lastAction={lastAction} 
-            sendGameAction={sendGameAction} 
-          />
-        )}
-
-        {/* GAME 10: BLINK TAP */}
-        {activeGame === 'blink' && (
-          <BlinkGame 
-            playTone={playTone} 
-            triggerHaptic={triggerHaptic} 
-            joined={joined} 
-            currentUser={currentUser} 
-            connectedPlayers={connectedPlayers} 
-            lastAction={lastAction} 
-            sendGameAction={sendGameAction} 
-          />
-        )}
-
-        {/* GAME 11: D20 WAR */}
-        {activeGame === 'war' && <D20War currentUser={currentUser} />}
-
-        {/* GAME 12: COSMIC WORDS */}
-        {activeGame === 'cosmic' && <CosmicWords currentUser={currentUser} />}
-
-        {/* GAME 13: HI-LO */}
-        {activeGame === 'hilow' && (
-          <HiLoGame 
-            playTone={playTone} 
-            triggerHaptic={triggerHaptic} 
-            joined={joined} 
-            currentUser={currentUser} 
-            connectedPlayers={connectedPlayers} 
-            lastAction={lastAction} 
-            sendGameAction={sendGameAction} 
-          />
-        )}
-
-        {/* GAME 14: SCOREPAD */}
-        {activeGame === 'scorepad' && (
-          <ScorepadGame 
-            triggerHaptic={triggerHaptic} 
-            joined={joined} 
-            currentUser={currentUser} 
-            connectedPlayers={connectedPlayers} 
-            lastAction={lastAction} 
-            sendGameAction={sendGameAction} 
-          />
-        )}
-
-        {/* GAME 15: ASTROLABE */}
-        {activeGame === 'astrolabe' && (
-          <AstrolabeGame 
-            playTone={playTone} 
-            triggerHaptic={triggerHaptic} 
-            joined={joined} 
-            currentUser={currentUser} 
-            connectedPlayers={connectedPlayers} 
-            lastAction={lastAction} 
-            sendGameAction={sendGameAction} 
-          />
-        )}
-
+        {/* The active game itself */}
+        <div className="flex-grow flex flex-col justify-between">
+          {renderActiveGame()}
+        </div>
       </div>
+
+      {/* FULLSCREEN OVERLAY PORTAL VIEW */}
+      {isFullscreen && (
+        <div className="fixed inset-0 z-50 bg-gradient-to-br from-[#0c061a] via-[#160b33] to-[#04010a] p-4 sm:p-6 md:p-8 flex flex-col justify-between overflow-y-auto">
+          <div className="max-w-4xl mx-auto w-full flex-grow flex flex-col justify-between">
+            {/* Fullscreen header */}
+            <div className="flex flex-col sm:flex-row justify-between items-center pb-4 border-b border-[#cf4fe6]/20 mb-6 gap-4 font-mono select-none">
+              <div className="flex items-center gap-3">
+                <button 
+                  onClick={() => { setIsFullscreen(false); triggerHaptic(10); }}
+                  className="px-3.5 py-1.5 bg-[#cf4fe6]/10 border border-[#cf4fe6]/30 text-[#cf4fe6] hover:bg-[#cf4fe6]/20 rounded-xl text-xs uppercase font-black transition cursor-pointer"
+                >
+                  ← Exit Fullscreen
+                </button>
+                <h2 className="text-lg font-extrabold uppercase text-transparent bg-clip-text bg-gradient-to-r from-amber-200 to-cyan-300">
+                  {GAME_DETAILS[activeGame]?.label}
+                </h2>
+              </div>
+
+              {/* Online Room Sync Bar inside Fullscreen */}
+              <div className="flex items-center gap-3 bg-black/40 border border-[#3fd9c7]/20 px-3.5 py-2 rounded-xl">
+                <div className={`w-2 h-2 rounded-full ${joined ? 'bg-[#3fd9c7] animate-pulse' : 'bg-red-500 animate-pulse'}`}></div>
+                {joined ? (
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] text-cyan-400 font-bold">
+                      ROOM: {roomCode.toUpperCase()} ({connectedPlayers.length} Active)
+                    </span>
+                    <button
+                      onClick={disconnectFromRoom}
+                      className="text-[9px] text-red-400 hover:text-red-300 font-bold uppercase transition ml-1"
+                    >
+                      Disconnect
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => {
+                      const code = prompt("Enter room code to sync & play with friends:", roomCode);
+                      if (code) {
+                        const sanitized = code.toLowerCase().replace(/[^a-z0-9-]/g, '');
+                        setRoomCode(sanitized);
+                        connectToRoom(sanitized);
+                      }
+                    }}
+                    className="text-[10px] text-cyan-400/80 hover:text-cyan-300 font-bold uppercase transition cursor-pointer"
+                  >
+                    ⚡ Sync Room (Go Online)
+                  </button>
+                )}
+              </div>
+
+              {/* Audio controls */}
+              <div className="flex items-center gap-2">
+                <button 
+                  onClick={() => { setSoundEnabled(!soundEnabled); triggerHaptic(10); }}
+                  className={`w-8 h-8 rounded-lg border flex items-center justify-center transition ${soundEnabled ? 'border-[#3fd9c7]/40 bg-[#3fd9c7]/10 text-[#3fd9c7]' : 'border-slate-800 bg-black/30 text-slate-600'}`}
+                >
+                  {soundEnabled ? <Volume2 size={13} /> : <VolumeX size={13} />}
+                </button>
+                <button 
+                  onClick={() => { setHapticsEnabled(!hapticsEnabled); triggerHaptic(20); }}
+                  className={`w-8 h-8 rounded-lg border flex items-center justify-center transition ${hapticsEnabled ? 'border-[#cf4fe6]/40 bg-[#cf4fe6]/10 text-[#cf4fe6]' : 'border-slate-800 bg-black/30 text-slate-600'}`}
+                >
+                  📳
+                </button>
+              </div>
+            </div>
+
+            {/* Big Fullscreen Game Container */}
+            <div className="flex-grow flex flex-col justify-between bg-[#090314]/65 border border-[#3fd9c7]/15 rounded-3xl p-6 md:p-8 backdrop-blur-xl shadow-2xl overflow-y-auto mb-4">
+              {renderActiveGame()}
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
