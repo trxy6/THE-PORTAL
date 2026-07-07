@@ -21,6 +21,17 @@ interface Player {
   score: number;
 }
 
+interface GameSyncProps {
+  playTone?: any;
+  triggerHaptic?: any;
+  socket?: WebSocket | null;
+  joined?: boolean;
+  currentUser?: string;
+  connectedPlayers?: { userId: string; roll: number | null }[];
+  lastAction?: { senderId: string; payload: any } | null;
+  sendGameAction?: (payload: any) => void;
+}
+
 interface TenGamesArenaProps {
   currentUser?: string | null;
 }
@@ -35,6 +46,82 @@ export default function TenGamesArena({ currentUser = 'Traveler' }: TenGamesAren
     { id: '2', name: 'Alchemist AI', isAI: true, score: 0 },
     { id: '3', name: 'Rift Bot', isAI: true, score: 0 }
   ]);
+
+  // WebSocket Connection States
+  const [socket, setSocket] = useState<WebSocket | null>(null);
+  const [socketStatus, setSocketStatus] = useState<'disconnected' | 'connecting' | 'connected'>('disconnected');
+  const [roomCode, setRoomCode] = useState(() => localStorage.getItem('arcade_room_code') || 'rift-chamber');
+  const [joined, setJoined] = useState(false);
+  const [maxPlayersChoice, setMaxPlayersChoice] = useState<number>(4);
+  const [connectedPlayers, setConnectedPlayers] = useState<{ userId: string; roll: number | null }[]>([]);
+  const [lastAction, setLastAction] = useState<{ senderId: string; payload: any } | null>(null);
+
+  const connectToRoom = (targetRoom: string) => {
+    if (!currentUser) return;
+    setSocketStatus('connecting');
+    localStorage.setItem('arcade_room_code', targetRoom);
+
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const wsUrl = `${protocol}//${window.location.host}/ws-war`;
+
+    const ws = new WebSocket(wsUrl);
+
+    ws.onopen = () => {
+      setSocketStatus('connected');
+      setSocket(ws);
+      ws.send(JSON.stringify({
+        type: 'join',
+        roomCode: targetRoom,
+        userId: currentUser,
+        maxPlayers: maxPlayersChoice
+      }));
+      setJoined(true);
+      triggerHaptic([15, 30]);
+    };
+
+    ws.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        if (data.type === 'room_sync') {
+          setConnectedPlayers(data.players);
+        } else if (data.type === 'game_action') {
+          setLastAction({ senderId: data.senderId, payload: data.payload });
+        }
+      } catch (e) {
+        console.error("Arcade socket message error", e);
+      }
+    };
+
+    ws.onclose = () => {
+      setSocketStatus('disconnected');
+      setSocket(null);
+      setJoined(false);
+      setConnectedPlayers([]);
+    };
+  };
+
+  const disconnectFromRoom = () => {
+    if (socket) {
+      socket.close();
+    }
+  };
+
+  const sendGameAction = (payload: any) => {
+    if (socket && socket.readyState === WebSocket.OPEN) {
+      socket.send(JSON.stringify({
+        type: 'game_action',
+        payload
+      }));
+    }
+  };
+
+  useEffect(() => {
+    return () => {
+      if (socket) {
+        socket.close();
+      }
+    };
+  }, [socket]);
 
   // Utility: Haptics fallback
   const triggerHaptic = (pattern: number | number[]) => {
@@ -99,6 +186,71 @@ export default function TenGamesArena({ currentUser = 'Traveler' }: TenGamesAren
             📳
           </button>
         </div>
+      </div>
+
+      {/* Universal Multiplayer Connection Panel */}
+      <div className="mb-6 p-4 rounded-xl border border-[#3fd9c7]/15 bg-[#120a2c]/55 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4 select-none">
+        <div className="flex items-center gap-3">
+          <div className="w-2.5 h-2.5 rounded-full bg-[#3fd9c7] animate-ping"></div>
+          <div>
+            <span className="text-[11px] font-bold text-[#3fd9c7] uppercase tracking-wider block leading-none">Arcade Rift Portal</span>
+            <span className="text-[9px] text-[#b4aae2]/70 mt-1 block">Connect with friends using the same room code to sync all games!</span>
+          </div>
+        </div>
+
+        {joined ? (
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="flex items-center gap-1.5 py-1.5 px-3 rounded-lg bg-emerald-500/10 border border-emerald-500/35">
+              <span className="text-[9px] font-bold text-emerald-400 font-mono">
+                🔮 ROOM: {roomCode.toUpperCase()} ({connectedPlayers.length}/{maxPlayersChoice})
+              </span>
+            </div>
+            
+            <div className="flex items-center gap-1">
+              {connectedPlayers.map((p, i) => (
+                <span key={i} className="text-[9.5px] font-bold font-mono px-2 py-1 rounded bg-[#cf4fe6]/10 border border-[#cf4fe6]/30 text-[#faebd7]">
+                  {p.userId === currentUser ? '👑 (You)' : p.userId}
+                </span>
+              ))}
+            </div>
+
+            <button
+              onClick={disconnectFromRoom}
+              className="px-3.5 py-1.5 bg-transparent border border-red-500/40 text-red-400 hover:bg-red-600 hover:text-white rounded-lg text-[10px] uppercase font-bold tracking-wider transition cursor-pointer"
+            >
+              Close Connection
+            </button>
+          </div>
+        ) : (
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
+            <input
+              type="text"
+              value={roomCode}
+              onChange={(e) => setRoomCode(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))}
+              placeholder="Enter room code..."
+              className="bg-black/40 border border-[#44387a]/45 rounded-lg px-3 py-1.5 text-xs font-mono text-[#faebd7] placeholder-[#b4aae2]/30 focus:outline-none focus:border-[#3fd9c7]"
+            />
+            <div className="flex items-center gap-1 bg-black/20 border border-[#44387a]/20 rounded-lg p-0.5">
+              <span className="text-[8px] text-slate-500 px-2 uppercase font-bold">Max</span>
+              <select
+                value={maxPlayersChoice}
+                onChange={(e) => setMaxPlayersChoice(Number(e.target.value))}
+                className="bg-transparent border-none text-xs text-amber-400 font-mono py-1 px-1 focus:outline-none cursor-pointer"
+              >
+                <option value={2}>2 Players</option>
+                <option value={3}>3 Players</option>
+                <option value={4}>4 Players</option>
+              </select>
+            </div>
+            <button
+              onClick={() => connectToRoom(roomCode)}
+              disabled={socketStatus === 'connecting'}
+              className="px-4 py-2 bg-gradient-to-r from-[#3fd9c7] to-[#cf4fe6] text-slate-950 font-bold rounded-lg text-[10.5px] uppercase tracking-wider hover:brightness-110 transition cursor-pointer shadow-[0_0_12px_rgba(63,217,199,0.2)]"
+            >
+              {socketStatus === 'connecting' ? 'Channelling...' : '⚡ Sync Room'}
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Category Tabs */}
@@ -172,34 +324,134 @@ export default function TenGamesArena({ currentUser = 'Traveler' }: TenGamesAren
       <div className="min-h-[440px] bg-[#090314]/55 rounded-2xl border border-[#3fd9c7]/10 p-6 flex flex-col justify-between backdrop-blur-md">
         
         {/* GAME 1: CHEAT (I DOUBT IT) */}
-        {activeGame === 'cheat' && <CheatGame playTone={playTone} triggerHaptic={triggerHaptic} />}
+        {activeGame === 'cheat' && (
+          <CheatGame 
+            playTone={playTone} 
+            triggerHaptic={triggerHaptic} 
+            joined={joined} 
+            currentUser={currentUser} 
+            connectedPlayers={connectedPlayers} 
+            lastAction={lastAction} 
+            sendGameAction={sendGameAction} 
+          />
+        )}
 
         {/* GAME 2: MAFIA / WEREWOLF */}
-        {activeGame === 'mafia' && <MafiaGame playTone={playTone} triggerHaptic={triggerHaptic} />}
+        {activeGame === 'mafia' && (
+          <MafiaGame 
+            playTone={playTone} 
+            triggerHaptic={triggerHaptic} 
+            joined={joined} 
+            currentUser={currentUser} 
+            connectedPlayers={connectedPlayers} 
+            lastAction={lastAction} 
+            sendGameAction={sendGameAction} 
+          />
+        )}
 
         {/* GAME 3: CELEBRITY / FISHBOWL */}
-        {activeGame === 'celebrity' && <CelebrityGame playTone={playTone} triggerHaptic={triggerHaptic} />}
+        {activeGame === 'celebrity' && (
+          <CelebrityGame 
+            playTone={playTone} 
+            triggerHaptic={triggerHaptic} 
+            joined={joined} 
+            currentUser={currentUser} 
+            connectedPlayers={connectedPlayers} 
+            lastAction={lastAction} 
+            sendGameAction={sendGameAction} 
+          />
+        )}
 
         {/* GAME 4: ALCHEMICAL BLACKJACK */}
-        {activeGame === 'blackjack' && <BlackjackGame playTone={playTone} triggerHaptic={triggerHaptic} />}
+        {activeGame === 'blackjack' && (
+          <BlackjackGame 
+            playTone={playTone} 
+            triggerHaptic={triggerHaptic} 
+            joined={joined} 
+            currentUser={currentUser} 
+            connectedPlayers={connectedPlayers} 
+            lastAction={lastAction} 
+            sendGameAction={sendGameAction} 
+          />
+        )}
 
         {/* GAME 5: CATEGORIES */}
-        {activeGame === 'categories' && <CategoriesGame playTone={playTone} triggerHaptic={triggerHaptic} />}
+        {activeGame === 'categories' && (
+          <CategoriesGame 
+            playTone={playTone} 
+            triggerHaptic={triggerHaptic} 
+            joined={joined} 
+            currentUser={currentUser} 
+            connectedPlayers={connectedPlayers} 
+            lastAction={lastAction} 
+            sendGameAction={sendGameAction} 
+          />
+        )}
 
         {/* GAME 6: GRID DOMAIN */}
-        {activeGame === 'grid_domain' && <GridDomainGame playTone={playTone} triggerHaptic={triggerHaptic} />}
+        {activeGame === 'grid_domain' && (
+          <GridDomainGame 
+            playTone={playTone} 
+            triggerHaptic={triggerHaptic} 
+            joined={joined} 
+            currentUser={currentUser} 
+            connectedPlayers={connectedPlayers} 
+            lastAction={lastAction} 
+            sendGameAction={sendGameAction} 
+          />
+        )}
 
         {/* GAME 7: DICE DUEL */}
-        {activeGame === 'dice_duel' && <DiceDuelGame playTone={playTone} triggerHaptic={triggerHaptic} />}
+        {activeGame === 'dice_duel' && (
+          <DiceDuelGame 
+            playTone={playTone} 
+            triggerHaptic={triggerHaptic} 
+            joined={joined} 
+            currentUser={currentUser} 
+            connectedPlayers={connectedPlayers} 
+            lastAction={lastAction} 
+            sendGameAction={sendGameAction} 
+          />
+        )}
 
         {/* GAME 8: FOG ESCAPE */}
-        {activeGame === 'labyrinth' && <LabyrinthGame playTone={playTone} triggerHaptic={triggerHaptic} />}
+        {activeGame === 'labyrinth' && (
+          <LabyrinthGame 
+            playTone={playTone} 
+            triggerHaptic={triggerHaptic} 
+            joined={joined} 
+            currentUser={currentUser} 
+            connectedPlayers={connectedPlayers} 
+            lastAction={lastAction} 
+            sendGameAction={sendGameAction} 
+          />
+        )}
 
         {/* GAME 9: CHAIN BURST */}
-        {activeGame === 'chain_reaction' && <ChainReactionGame playTone={playTone} triggerHaptic={triggerHaptic} />}
+        {activeGame === 'chain_reaction' && (
+          <ChainReactionGame 
+            playTone={playTone} 
+            triggerHaptic={triggerHaptic} 
+            joined={joined} 
+            currentUser={currentUser} 
+            connectedPlayers={connectedPlayers} 
+            lastAction={lastAction} 
+            sendGameAction={sendGameAction} 
+          />
+        )}
 
         {/* GAME 10: BLINK TAP */}
-        {activeGame === 'blink' && <BlinkGame playTone={playTone} triggerHaptic={triggerHaptic} />}
+        {activeGame === 'blink' && (
+          <BlinkGame 
+            playTone={playTone} 
+            triggerHaptic={triggerHaptic} 
+            joined={joined} 
+            currentUser={currentUser} 
+            connectedPlayers={connectedPlayers} 
+            lastAction={lastAction} 
+            sendGameAction={sendGameAction} 
+          />
+        )}
 
         {/* GAME 11: D20 WAR */}
         {activeGame === 'war' && <D20War currentUser={currentUser} />}
@@ -208,13 +460,42 @@ export default function TenGamesArena({ currentUser = 'Traveler' }: TenGamesAren
         {activeGame === 'cosmic' && <CosmicWords currentUser={currentUser} />}
 
         {/* GAME 13: HI-LO */}
-        {activeGame === 'hilow' && <HiLoGame playTone={playTone} triggerHaptic={triggerHaptic} />}
+        {activeGame === 'hilow' && (
+          <HiLoGame 
+            playTone={playTone} 
+            triggerHaptic={triggerHaptic} 
+            joined={joined} 
+            currentUser={currentUser} 
+            connectedPlayers={connectedPlayers} 
+            lastAction={lastAction} 
+            sendGameAction={sendGameAction} 
+          />
+        )}
 
         {/* GAME 14: SCOREPAD */}
-        {activeGame === 'scorepad' && <ScorepadGame triggerHaptic={triggerHaptic} />}
+        {activeGame === 'scorepad' && (
+          <ScorepadGame 
+            triggerHaptic={triggerHaptic} 
+            joined={joined} 
+            currentUser={currentUser} 
+            connectedPlayers={connectedPlayers} 
+            lastAction={lastAction} 
+            sendGameAction={sendGameAction} 
+          />
+        )}
 
         {/* GAME 15: ASTROLABE */}
-        {activeGame === 'astrolabe' && <AstrolabeGame playTone={playTone} triggerHaptic={triggerHaptic} />}
+        {activeGame === 'astrolabe' && (
+          <AstrolabeGame 
+            playTone={playTone} 
+            triggerHaptic={triggerHaptic} 
+            joined={joined} 
+            currentUser={currentUser} 
+            connectedPlayers={connectedPlayers} 
+            lastAction={lastAction} 
+            sendGameAction={sendGameAction} 
+          />
+        )}
 
       </div>
     </div>
@@ -229,7 +510,7 @@ interface Card {
   value: string;
 }
 
-function CheatGame({ playTone, triggerHaptic }: { playTone: any, triggerHaptic: any }) {
+function CheatGame({ playTone, triggerHaptic, joined, currentUser, lastAction, sendGameAction }: GameSyncProps) {
   const [playerHand, setPlayerHand] = useState<Card[]>([]);
   const [botHands, setBots] = useState<Record<string, Card[]>>({ AI_1: [], AI_2: [] });
   const [pile, setPile] = useState<Card[]>([]);
@@ -410,7 +691,7 @@ function CheatGame({ playTone, triggerHaptic }: { playTone: any, triggerHaptic: 
 // ==========================================
 // 2. SOCIAL DEDUCTION GAME (MAFIA / WEREWOLF)
 // ==========================================
-function MafiaGame({ playTone, triggerHaptic }: { playTone: any, triggerHaptic: any }) {
+function MafiaGame({ playTone, triggerHaptic, joined, currentUser, lastAction, sendGameAction }: GameSyncProps) {
   const [phase, setPhase] = useState<'setup' | 'night' | 'discussion' | 'game_over'>('setup');
   const [role, setRole] = useState<string>('Villager');
   const [log, setLog] = useState<string>('Welcome to Labyrinth Werewolf. Set up your cabin game.');
@@ -524,7 +805,7 @@ function MafiaGame({ playTone, triggerHaptic }: { playTone: any, triggerHaptic: 
 // ==========================================
 // 3. CELEBRITY / FISHBOWL 3-ROUND PARTY GAME
 // ==========================================
-function CelebrityGame({ playTone, triggerHaptic }: { playTone: any, triggerHaptic: any }) {
+function CelebrityGame({ playTone, triggerHaptic, joined, currentUser, lastAction, sendGameAction }: GameSyncProps) {
   const [words, setWords] = useState<string[]>(['Dungeon Master', 'Gollum', 'Baby Yoda', 'Hogwarts', 'Espresso']);
   const [wordInput, setWordInput] = useState<string>('');
   const [activeWord, setActiveWord] = useState<string>('Ready');
@@ -661,7 +942,7 @@ function CelebrityGame({ playTone, triggerHaptic }: { playTone: any, triggerHapt
 // ==========================================
 // 4. ALCHEMICAL BLACKJACK CARD GAME (21)
 // ==========================================
-function BlackjackGame({ playTone, triggerHaptic }: { playTone: any, triggerHaptic: any }) {
+function BlackjackGame({ playTone, triggerHaptic, joined, currentUser, lastAction, sendGameAction }: GameSyncProps) {
   const [playerHand, setPlayerHand] = useState<number[]>([]);
   const [dealerHand, setDealerHand] = useState<number[]>([]);
   const [gameStatus, setGameStatus] = useState<'betting' | 'playing' | 'dealer_turn' | 'outcome'>('betting');
@@ -810,7 +1091,7 @@ function BlackjackGame({ playTone, triggerHaptic }: { playTone: any, triggerHapt
 // ==========================================
 // 5. COSMIC CATEGORIES (SCATTERGORIES BLITZ)
 // ==========================================
-function CategoriesGame({ playTone, triggerHaptic }: { playTone: any, triggerHaptic: any }) {
+function CategoriesGame({ playTone, triggerHaptic, joined, currentUser, lastAction, sendGameAction }: GameSyncProps) {
   const [activeLetter, setActiveLetter] = useState<string>('R');
   const [timer, setTimer] = useState<number>(45);
   const [gameActive, setGameActive] = useState<boolean>(false);
@@ -935,7 +1216,7 @@ function CategoriesGame({ playTone, triggerHaptic }: { playTone: any, triggerHap
 // ==========================================
 // 6. GRID DOMAIN TERRITORY CAPTURE BOARD GAME
 // ==========================================
-function GridDomainGame({ playTone, triggerHaptic }: { playTone: any, triggerHaptic: any }) {
+function GridDomainGame({ playTone, triggerHaptic, joined, currentUser, connectedPlayers, lastAction, sendGameAction }: GameSyncProps) {
   const [grid, setGrid] = useState<number[]>([]);
   const [turn, setTurn] = useState<number>(1);
   const [log, setLog] = useState<string>('Click adjacent grid areas to lock in your domain.');
@@ -943,18 +1224,34 @@ function GridDomainGame({ playTone, triggerHaptic }: { playTone: any, triggerHap
 
   const size = 5;
 
+  const playerList = connectedPlayers ? connectedPlayers.map(p => p.userId).sort() : [];
+  const myIndex = playerList.indexOf(currentUser || '');
+  const myPlayerNum = myIndex !== -1 ? myIndex + 1 : 1; 
+  const opponentName = playerList[myPlayerNum === 1 ? 1 : 0] || 'Opponent';
+
   const resetBoard = () => {
-    triggerHaptic(20);
-    playTone(440, 'triangle', 0.2);
+    if (triggerHaptic) triggerHaptic(20);
+    if (playTone) playTone(440, 'triangle', 0.2);
+    resetBoardLocal();
+    if (joined && sendGameAction) {
+      sendGameAction({ type: 'grid_reset' });
+    }
+  };
+
+  const resetBoardLocal = () => {
     setGrid(Array(size * size).fill(0));
     setTurn(1);
     setGameOver(false);
-    setLog('Blue Player 1, claim your first tile anywhere!');
+    if (joined) {
+      setLog(myPlayerNum === 1 ? 'Blue Player 1 (You) — click anywhere to claim your first tile!' : `Waiting for ${playerList[0] || 'Player 1'} to start...`);
+    } else {
+      setLog('Blue Player 1, claim your first tile anywhere!');
+    }
   };
 
   useEffect(() => {
-    resetBoard();
-  }, []);
+    resetBoardLocal();
+  }, [joined, connectedPlayers]);
 
   const getAdjacentIndices = (idx: number) => {
     const r = Math.floor(idx / size);
@@ -990,11 +1287,11 @@ function GridDomainGame({ playTone, triggerHaptic }: { playTone: any, triggerHap
       
       setGameOver(true);
       if (p1Count > p2Count) {
-        setLog(`Game Over! Player 1 wins: ${p1Count} to ${p2Count}! 🏆`);
-        playTone(659, 'sine', 0.4);
+        setLog(`Game Over! Player 1 (Blue) wins: ${p1Count} to ${p2Count}! 🏆`);
+        if (playTone) playTone(659, 'sine', 0.4);
       } else if (p2Count > p1Count) {
-        setLog(`Game Over! Alchemist Bot wins: ${p2Count} to ${p1Count}!`);
-        playTone(220, 'sawtooth', 0.4);
+        setLog(`Game Over! Player 2 (Red) wins: ${p2Count} to ${p1Count}! 🏆`);
+        if (playTone) playTone(220, 'sawtooth', 0.4);
       } else {
         setLog(`Game Over! A tie match: ${p1Count} to ${p2Count}!`);
       }
@@ -1005,14 +1302,21 @@ function GridDomainGame({ playTone, triggerHaptic }: { playTone: any, triggerHap
 
   const handleTileClick = (idx: number) => {
     if (gameOver || grid[idx] !== 0) return;
+    
+    if (joined && turn !== myPlayerNum) {
+      if (triggerHaptic) triggerHaptic([50, 50]);
+      setLog(`It's not your turn! Wait for ${opponentName}.`);
+      return;
+    }
+
     if (!isValidMove(idx, turn, grid)) {
-      triggerHaptic([50, 50]);
+      if (triggerHaptic) triggerHaptic([50, 50]);
       setLog('Invalid move! Tiles must be placed adjacent to your existing domain.');
       return;
     }
 
-    triggerHaptic(10);
-    playTone(turn === 1 ? 523 : 349, 'sine', 0.12);
+    if (triggerHaptic) triggerHaptic(10);
+    if (playTone) playTone(turn === 1 ? 523 : 349, 'sine', 0.12);
 
     const nextGrid = [...grid];
     nextGrid[idx] = turn;
@@ -1020,34 +1324,60 @@ function GridDomainGame({ playTone, triggerHaptic }: { playTone: any, triggerHap
 
     if (checkVictory(nextGrid)) return;
 
-    setTurn(2);
-    setLog(`Alchemist AI is calculating territory...`);
+    const nextTurn = turn === 1 ? 2 : 1;
+    setTurn(nextTurn);
 
-    setTimeout(() => {
-      const validMoves = nextGrid
-        .map((_, i) => isValidMove(i, 2, nextGrid) ? i : -1)
-        .filter(v => v !== -1);
-
-      if (validMoves.length > 0) {
-        const aiChoice = validMoves[Math.floor(Math.random() * validMoves.length)];
-        nextGrid[aiChoice] = 2;
-        setGrid(nextGrid);
-        triggerHaptic(12);
-        playTone(349, 'sine', 0.12);
-
-        if (checkVictory(nextGrid)) return;
+    if (joined) {
+      setLog(`Claimed tile! Waiting for ${opponentName}...`);
+      if (sendGameAction) {
+        sendGameAction({ type: 'grid_move', index: idx, playerNum: myPlayerNum });
       }
+    } else {
+      setLog(`Alchemist AI is calculating territory...`);
+      setTimeout(() => {
+        const validMoves = nextGrid
+          .map((_, i) => isValidMove(i, 2, nextGrid) ? i : -1)
+          .filter(v => v !== -1);
 
-      setTurn(1);
-      setLog('Blue Player 1, click an adjacent tile to claim domain!');
-    }, 1000);
+        if (validMoves.length > 0) {
+          const aiChoice = validMoves[Math.floor(Math.random() * validMoves.length)];
+          nextGrid[aiChoice] = 2;
+          setGrid(nextGrid);
+          if (triggerHaptic) triggerHaptic(12);
+          if (playTone) playTone(349, 'sine', 0.12);
+
+          if (checkVictory(nextGrid)) return;
+        }
+
+        setTurn(1);
+        setLog('Blue Player 1, click an adjacent tile to claim domain!');
+      }, 1000);
+    }
   };
+
+  useEffect(() => {
+    if (joined && lastAction && lastAction.senderId !== currentUser) {
+      const { type, index, playerNum } = lastAction.payload;
+      if (type === 'grid_move') {
+        const nextGrid = [...grid];
+        nextGrid[index] = playerNum;
+        setGrid(nextGrid);
+        if (!checkVictory(nextGrid)) {
+          const nextTurn = playerNum === 1 ? 2 : 1;
+          setTurn(nextTurn);
+          setLog(myPlayerNum === nextTurn ? 'Your turn! Claim an adjacent tile.' : `Waiting for ${opponentName}...`);
+        }
+      } else if (type === 'grid_reset') {
+        resetBoardLocal();
+      }
+    }
+  }, [lastAction, joined, currentUser]);
 
   return (
     <div className="flex-grow flex flex-col justify-between">
       <div className="flex justify-between items-center pb-2 border-b border-[#44387a]/20 mb-3 select-none">
         <span className="text-[12px] font-bold text-emerald-400">🟩 Grid Domain (Territory Capture)</span>
-        <button onClick={resetBoard} className="text-[10px] text-emerald-400/80 hover:text-white transition">Clear Board</button>
+        <button onClick={resetBoard} className="text-[10px] text-emerald-400/80 hover:text-white transition cursor-pointer">Clear Board</button>
       </div>
 
       <div className="bg-black/30 p-2.5 rounded-xl min-h-[40px] text-[11px] leading-relaxed font-mono text-center mb-3">
@@ -1077,11 +1407,11 @@ function GridDomainGame({ playTone, triggerHaptic }: { playTone: any, triggerHap
       <div className="flex justify-between items-center text-[10px] font-mono select-none mt-2">
         <div className="flex items-center gap-1">
           <span className="w-2.5 h-2.5 bg-blue-600 rounded-full border border-blue-400"></span>
-          <span>Player 1 (Blue)</span>
+          <span>{joined ? (playerList[0] || 'Player 1') : 'Player 1 (Blue)'}</span>
         </div>
         <div className="flex items-center gap-1">
           <span className="w-2.5 h-2.5 bg-red-600 rounded-full border border-red-400"></span>
-          <span>Alchemist (Red)</span>
+          <span>{joined ? (playerList[1] || 'Player 2') : 'Alchemist Bot (Red)'}</span>
         </div>
       </div>
     </div>
@@ -1091,18 +1421,30 @@ function GridDomainGame({ playTone, triggerHaptic }: { playTone: any, triggerHap
 // ==========================================
 // 7. DICE DUEL PUSH YOUR LUCK DICE GAME
 // ==========================================
-function DiceDuelGame({ playTone, triggerHaptic }: { playTone: any, triggerHaptic: any }) {
+function DiceDuelGame({ playTone, triggerHaptic, joined, currentUser, connectedPlayers, lastAction, sendGameAction }: GameSyncProps) {
   const [bankedScore, setBankedScore] = useState<number>(0);
   const [currentTurnScore, setCurrentTurnScore] = useState<number>(0);
   const [activeDie, setActiveDie] = useState<number>(5);
   const [isRolling, setIsRolling] = useState<boolean>(false);
   const [log, setLog] = useState<string>('Shake the device or click "Roll Die" to begin!');
+  
+  const [duelTurn, setDuelTurn] = useState<number>(1);
+  const playerList = connectedPlayers ? connectedPlayers.map(p => p.userId).sort() : [];
+  const myIndex = playerList.indexOf(currentUser || '');
+  const myPlayerNum = myIndex !== -1 ? myIndex + 1 : 1;
+  const opponentName = playerList[myPlayerNum === 1 ? 1 : 0] || 'Opponent';
 
   const handleRoll = () => {
     if (isRolling) return;
+    if (joined && duelTurn !== myPlayerNum) {
+      if (triggerHaptic) triggerHaptic([50, 50]);
+      setLog(`It's not your turn! Wait for ${opponentName}.`);
+      return;
+    }
+
     setIsRolling(true);
-    triggerHaptic([30, 40, 30]);
-    playTone(260, 'triangle', 0.2);
+    if (triggerHaptic) triggerHaptic([30, 40, 30]);
+    if (playTone) playTone(260, 'triangle', 0.2);
 
     let rolls = 0;
     const interval = setInterval(() => {
@@ -1120,26 +1462,93 @@ function DiceDuelGame({ playTone, triggerHaptic }: { playTone: any, triggerHapti
     setActiveDie(finalVal);
     setIsRolling(false);
 
+    let nextTurnScore = currentTurnScore;
+    let nextDuelTurn = duelTurn;
+    let logMsg = '';
+
     if (finalVal === 1) {
-      triggerHaptic([150, 80, 150]);
-      playTone(180, 'sawtooth', 0.4);
-      setCurrentTurnScore(0);
-      setLog('Oh no! You rolled a "1" and bust! Your turn score is wiped out.');
+      if (triggerHaptic) triggerHaptic([150, 80, 150]);
+      if (playTone) playTone(180, 'sawtooth', 0.4);
+      nextTurnScore = 0;
+      logMsg = `Oh no! Rolled a "1" and bust! Turn passes.`;
+      nextDuelTurn = joined ? (duelTurn === 1 ? 2 : 1) : 1;
     } else {
-      triggerHaptic(10);
-      playTone(523, 'sine', 0.1);
-      setCurrentTurnScore(prev => prev + finalVal);
-      setLog(`You rolled a ${finalVal}! Add to your turn potion score or "Bank Potion" safety coins.`);
+      if (triggerHaptic) triggerHaptic(10);
+      if (playTone) playTone(523, 'sine', 0.1);
+      nextTurnScore = currentTurnScore + finalVal;
+      logMsg = `You rolled a ${finalVal}! Bank safety coins or roll again.`;
+    }
+
+    setCurrentTurnScore(nextTurnScore);
+    setDuelTurn(nextDuelTurn);
+    setLog(logMsg);
+
+    if (joined && sendGameAction) {
+      sendGameAction({
+        type: 'duel_roll_result',
+        value: finalVal,
+        currentTurnScore: nextTurnScore,
+        duelTurn: nextDuelTurn,
+        log: logMsg
+      });
     }
   };
 
   const handleBank = () => {
     if (currentTurnScore === 0) return;
-    triggerHaptic(20);
-    playTone(659, 'sine', 0.3);
-    setBankedScore(prev => prev + currentTurnScore);
+    if (joined && duelTurn !== myPlayerNum) return;
+
+    if (triggerHaptic) triggerHaptic(20);
+    if (playTone) playTone(659, 'sine', 0.3);
+    const nextBanked = bankedScore + currentTurnScore;
+    setBankedScore(nextBanked);
     setCurrentTurnScore(0);
-    setLog(`Successfully banked ${currentTurnScore} score into safety coins! Challenge continues.`);
+    const nextTurn = joined ? (duelTurn === 1 ? 2 : 1) : 1;
+    setDuelTurn(nextTurn);
+    const logMsg = `Banked ${currentTurnScore} score! Turn passes.`;
+    setLog(logMsg);
+
+    if (joined && sendGameAction) {
+      sendGameAction({
+        type: 'duel_bank_result',
+        bankedScore: nextBanked,
+        duelTurn: nextTurn,
+        log: logMsg
+      });
+    }
+  };
+
+  useEffect(() => {
+    if (joined && lastAction && lastAction.senderId !== currentUser) {
+      const { type, value, currentTurnScore: incomingTurnScore, duelTurn: incomingTurn, bankedScore: incomingBanked, log: incomingLog } = lastAction.payload;
+      if (type === 'duel_roll_result') {
+        setActiveDie(value);
+        setCurrentTurnScore(incomingTurnScore);
+        setDuelTurn(incomingTurn);
+        setLog(incomingLog);
+      } else if (type === 'duel_bank_result') {
+        setBankedScore(incomingBanked);
+        setCurrentTurnScore(0);
+        setDuelTurn(incomingTurn);
+        setLog(incomingLog);
+      } else if (type === 'duel_reset') {
+        resetScoresLocal();
+      }
+    }
+  }, [lastAction, joined, currentUser]);
+
+  const resetScoresLocal = () => {
+    setBankedScore(0);
+    setCurrentTurnScore(0);
+    setDuelTurn(1);
+    setLog('Dice Duel reset. Let the games begin!');
+  };
+
+  const triggerReset = () => {
+    resetScoresLocal();
+    if (joined && sendGameAction) {
+      sendGameAction({ type: 'duel_reset' });
+    }
   };
 
   const renderDieDots = (val: number) => {
@@ -1170,7 +1579,7 @@ function DiceDuelGame({ playTone, triggerHaptic }: { playTone: any, triggerHapti
     <div className="flex-grow flex flex-col justify-between">
       <div className="flex justify-between items-center pb-2 border-b border-[#44387a]/20 mb-3 select-none">
         <span className="text-[12px] font-bold text-yellow-400">🎲 Dice Duel (Push Your Luck)</span>
-        <button onClick={() => { setBankedScore(0); setCurrentTurnScore(0); }} className="text-[10px] text-yellow-400/80 hover:text-white transition">Reset Scores</button>
+        <button onClick={triggerReset} className="text-[10px] text-yellow-400/80 hover:text-white transition cursor-pointer">Reset Scores</button>
       </div>
 
       <div className="bg-black/30 p-2.5 rounded-xl min-h-[40px] text-[11px] leading-relaxed font-mono text-center">
@@ -1195,14 +1604,14 @@ function DiceDuelGame({ playTone, triggerHaptic }: { playTone: any, triggerHapti
       <div className="flex gap-2 select-none">
         <button
           onClick={handleRoll}
-          disabled={isRolling}
+          disabled={isRolling || (joined && duelTurn !== myPlayerNum)}
           className="flex-1 py-3 bg-yellow-600 hover:bg-yellow-500 text-slate-950 font-bold text-xs uppercase tracking-wider rounded-xl transition cursor-pointer disabled:opacity-45"
         >
-          Roll Potion Die 🎲
+          {joined && duelTurn !== myPlayerNum ? 'Waiting for opponent...' : 'Roll Potion Die 🎲'}
         </button>
         <button
           onClick={handleBank}
-          disabled={currentTurnScore === 0}
+          disabled={currentTurnScore === 0 || (joined && duelTurn !== myPlayerNum)}
           className="px-6 py-3 bg-slate-800 hover:bg-slate-700 text-yellow-400 border border-yellow-500/25 font-bold text-xs uppercase tracking-wider rounded-xl transition cursor-pointer disabled:opacity-45"
         >
           Bank 🕊️
@@ -1215,7 +1624,7 @@ function DiceDuelGame({ playTone, triggerHaptic }: { playTone: any, triggerHapti
 // ==========================================
 // 8. LABYRINTH LIGHT FOG FANTASY ESCAPE
 // ==========================================
-function LabyrinthGame({ playTone, triggerHaptic }: { playTone: any, triggerHaptic: any }) {
+function LabyrinthGame({ playTone, triggerHaptic, joined, currentUser, lastAction, sendGameAction }: GameSyncProps) {
   const [gridSize] = useState<number>(6);
   const [playerPos, setPlayerPos] = useState({ x: 0, y: 0 });
   const [exitPos] = useState({ x: 5, y: 5 });
@@ -1332,7 +1741,7 @@ interface ReactBall {
   explosionDuration: number;
 }
 
-function ChainReactionGame({ playTone, triggerHaptic }: { playTone: any, triggerHaptic: any }) {
+function ChainReactionGame({ playTone, triggerHaptic, joined, currentUser, lastAction, sendGameAction }: GameSyncProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [gameState, setGameState] = useState<'idle' | 'playing' | 'won' | 'lost'>('idle');
   const [explodedCount, setExplodedCount] = useState<number>(0);
@@ -1536,30 +1945,44 @@ function ChainReactionGame({ playTone, triggerHaptic }: { playTone: any, trigger
 // ==========================================
 // 10. BLINK REFLEX TAP GAME
 // ==========================================
-function BlinkGame({ playTone, triggerHaptic }: { playTone: any, triggerHaptic: any }) {
+function BlinkGame({ playTone, triggerHaptic, joined, currentUser, lastAction, sendGameAction }: GameSyncProps) {
   const [gameState, setGameState] = useState<'idle' | 'waiting' | 'blinked' | 'result'>('idle');
   const [log, setLog] = useState<string>('Test your reflex time. Click start, wait for green, and TAP!');
   const [reactionTime, setReactionTime] = useState<number | null>(null);
   const [highScore, setHighScore] = useState<number>(() => {
     return parseInt(localStorage.getItem('blink_highscore') || '999');
   });
+  const [opponentTime, setOpponentTime] = useState<number | null>(null);
+  const [opponentName, setOpponentName] = useState<string>('');
+
   const timerRef = useRef<any>(null);
   const startTimeRef = useRef<number>(0);
 
   const startReflexTest = () => {
-    triggerHaptic(15);
-    playTone(523, 'sine', 0.1);
+    if (triggerHaptic) triggerHaptic(15);
+    if (playTone) playTone(523, 'sine', 0.1);
+    
+    const delay = 1500 + Math.random() * 3000;
+    
+    if (joined && sendGameAction) {
+      sendGameAction({ type: 'blink_start', delay });
+    }
+    
+    startBlinkSequence(delay);
+  };
+
+  const startBlinkSequence = (delay: number) => {
     setGameState('waiting');
     setLog('Focus... wait for it...');
     setReactionTime(null);
+    setOpponentTime(null);
 
-    const delay = 1500 + Math.random() * 3000;
     timerRef.current = setTimeout(() => {
       setGameState('blinked');
       setLog('TAP NOW! ⚡');
       startTimeRef.current = performance.now();
-      triggerHaptic([80, 80]);
-      playTone(880, 'sine', 0.15);
+      if (triggerHaptic) triggerHaptic([80, 80]);
+      if (playTone) playTone(880, 'sine', 0.15);
     }, delay);
   };
 
@@ -1567,26 +1990,70 @@ function BlinkGame({ playTone, triggerHaptic }: { playTone: any, triggerHaptic: 
     if (gameState === 'waiting') {
       clearTimeout(timerRef.current);
       setGameState('idle');
-      triggerHaptic([150, 100]);
-      playTone(220, 'sawtooth', 0.4);
+      if (triggerHaptic) triggerHaptic([150, 100]);
+      if (playTone) playTone(220, 'sawtooth', 0.4);
       setLog('TOO EARLY! Wait for the screen to blink green.');
+      if (joined && sendGameAction) {
+        sendGameAction({ type: 'blink_early' });
+      }
     } else if (gameState === 'blinked') {
       const endTime = performance.now();
       const elapsed = Math.round(endTime - startTimeRef.current);
       setReactionTime(elapsed);
       setGameState('result');
-      triggerHaptic(25);
-      playTone(659, 'sine', 0.2);
+      if (triggerHaptic) triggerHaptic(25);
+      if (playTone) playTone(659, 'sine', 0.2);
 
       if (elapsed < highScore) {
         setHighScore(elapsed);
         localStorage.setItem('blink_highscore', elapsed.toString());
-        setLog(`New personal record! ${elapsed} ms! ⚡🏆`);
-      } else {
-        setLog(`Your reflex response time: ${elapsed} ms.`);
       }
+
+      if (joined && sendGameAction) {
+        sendGameAction({ type: 'blink_tapped', name: currentUser, elapsed });
+      }
+
+      evaluateWinner(elapsed, opponentTime);
     }
   };
+
+  const evaluateWinner = (myTime: number | null, oppTime: number | null) => {
+    if (!joined) {
+      if (myTime !== null) {
+        setLog(`Your reflex response time: ${myTime} ms.`);
+      }
+      return;
+    }
+    
+    if (myTime !== null && oppTime !== null) {
+      if (myTime < oppTime) {
+        setLog(`Victory! You tapped in ${myTime}ms (Opponent: ${oppTime}ms) ⚡🏆`);
+      } else if (oppTime < myTime) {
+        setLog(`Defeat! Opponent tapped in ${oppTime}ms (You: ${myTime}ms) 💀`);
+      } else {
+        setLog(`Tie Match! Both tapped in ${myTime}ms!`);
+      }
+    } else if (myTime !== null) {
+      setLog(`You tapped in ${myTime}ms! Waiting for opponent...`);
+    }
+  };
+
+  useEffect(() => {
+    if (joined && lastAction && lastAction.senderId !== currentUser) {
+      const { type, delay, name, elapsed } = lastAction.payload;
+      if (type === 'blink_start') {
+        startBlinkSequence(delay);
+      } else if (type === 'blink_early') {
+        clearTimeout(timerRef.current);
+        setGameState('idle');
+        setLog('Opponent tapped early! Restart the reflex test.');
+      } else if (type === 'blink_tapped') {
+        setOpponentTime(elapsed);
+        setOpponentName(name);
+        evaluateWinner(reactionTime, elapsed);
+      }
+    }
+  }, [lastAction, joined, currentUser, reactionTime]);
 
   useEffect(() => {
     return () => clearTimeout(timerRef.current);
@@ -1640,7 +2107,7 @@ function BlinkGame({ playTone, triggerHaptic }: { playTone: any, triggerHaptic: 
 // ==========================================
 // 11. HI-LO D20 DECISION GAME
 // ==========================================
-function HiLoGame({ playTone, triggerHaptic }: { playTone: any, triggerHaptic: any }) {
+function HiLoGame({ playTone, triggerHaptic, joined, currentUser, lastAction, sendGameAction }: GameSyncProps) {
   const [currentNum, setCurrentNum] = useState<number>(() => Math.floor(Math.random() * 20) + 1);
   const [streak, setStreak] = useState<number>(0);
   const [bestStreak, setBestStreak] = useState<number>(() => Number(localStorage.getItem('game_best') || '0'));
@@ -1650,8 +2117,8 @@ function HiLoGame({ playTone, triggerHaptic }: { playTone: any, triggerHaptic: a
   const handleGuess = (direction: 'higher' | 'lower') => {
     if (isRolling) return;
     setIsRolling(true);
-    triggerHaptic([30, 30]);
-    playTone(320, 'triangle', 0.15);
+    if (triggerHaptic) triggerHaptic([30, 30]);
+    if (playTone) playTone(320, 'triangle', 0.15);
 
     let rolls = 0;
     const interval = setInterval(() => {
@@ -1664,31 +2131,71 @@ function HiLoGame({ playTone, triggerHaptic }: { playTone: any, triggerHaptic: a
         setIsRolling(false);
 
         const isCorrect = direction === 'higher' ? finalNum >= currentNum : finalNum <= currentNum;
+        let nextStreak = streak;
+        let nextBest = bestStreak;
+        let logMsg = '';
+
         if (isCorrect) {
-          const nextStreak = streak + 1;
-          setStreak(nextStreak);
+          nextStreak = streak + 1;
           if (nextStreak > bestStreak) {
-            setBestStreak(nextStreak);
-            localStorage.setItem('game_best', String(nextStreak));
+            nextBest = nextStreak;
+            localStorage.setItem('game_best', String(nextBest));
           }
-          setLog(`Rolled ${finalNum}! Correct – keep the streak going!`);
-          triggerHaptic(15);
-          playTone(587, 'sine', 0.15);
+          logMsg = `Rolled ${finalNum}! Correct – keep the streak going!`;
+          if (triggerHaptic) triggerHaptic(15);
+          if (playTone) playTone(587, 'sine', 0.15);
         } else {
-          setStreak(0);
-          setLog(`Rolled ${finalNum}! Streak broken. Try again!`);
-          triggerHaptic([120, 80, 120]);
-          playTone(220, 'sawtooth', 0.35);
+          nextStreak = 0;
+          logMsg = `Rolled ${finalNum}! Streak broken. Try again!`;
+          if (triggerHaptic) triggerHaptic([120, 80, 120]);
+          if (playTone) playTone(220, 'sawtooth', 0.35);
+        }
+
+        setStreak(nextStreak);
+        setBestStreak(nextBest);
+        setLog(logMsg);
+
+        if (joined && sendGameAction) {
+          sendGameAction({
+            type: 'hilo_guess_result',
+            currentNum: finalNum,
+            streak: nextStreak,
+            bestStreak: nextBest,
+            log: logMsg
+          });
         }
       }
     }, 70);
+  };
+
+  useEffect(() => {
+    if (joined && lastAction && lastAction.senderId !== currentUser) {
+      const { type, currentNum: num, streak: str, bestStreak: bStr, log: incomingLog } = lastAction.payload;
+      if (type === 'hilo_guess_result') {
+        setCurrentNum(num);
+        setStreak(str);
+        setBestStreak(bStr);
+        setLog(incomingLog);
+      } else if (type === 'hilo_reset') {
+        setStreak(0);
+        setLog('Guess if the next roll will be higher or lower!');
+      }
+    }
+  }, [lastAction, joined, currentUser]);
+
+  const triggerReset = () => {
+    setStreak(0);
+    setLog('Guess if the next roll will be higher or lower!');
+    if (joined && sendGameAction) {
+      sendGameAction({ type: 'hilo_reset' });
+    }
   };
 
   return (
     <div className="flex-grow flex flex-col justify-between select-none">
       <div className="flex justify-between items-center pb-2 border-b border-[#44387a]/20 mb-3">
         <span className="text-[12px] font-bold text-amber-400">🎲 Hi-Lo D20 Guessing</span>
-        <button onClick={() => { setStreak(0); setLog('Guess if the next roll will be higher or lower!'); }} className="text-[10px] text-amber-400/80 hover:text-white transition">Reset Streak</button>
+        <button onClick={triggerReset} className="text-[10px] text-amber-400/80 hover:text-white transition cursor-pointer">Reset Streak</button>
       </div>
 
       <div className="bg-black/30 p-2.5 rounded-xl min-h-[40px] text-[11px] leading-relaxed font-mono text-center mb-4">
@@ -1742,7 +2249,7 @@ function HiLoGame({ playTone, triggerHaptic }: { playTone: any, triggerHaptic: a
 // ==========================================
 // 12. BOARD GAME SCOREPAD TRACKER
 // ==========================================
-function ScorepadGame({ triggerHaptic }: { triggerHaptic: any }) {
+function ScorepadGame({ triggerHaptic, joined, currentUser, lastAction, sendGameAction }: GameSyncProps) {
   const [players, setPlayers] = useState<{ name: string; score: number }[]>(() => {
     try {
       const stored = localStorage.getItem('boardgame_scores');
@@ -1758,21 +2265,34 @@ function ScorepadGame({ triggerHaptic }: { triggerHaptic: any }) {
   const save = (list: typeof players) => {
     setPlayers(list);
     localStorage.setItem('boardgame_scores', JSON.stringify(list));
+    if (joined && sendGameAction) {
+      sendGameAction({ type: 'scorepad_update', playersList: list });
+    }
   };
+
+  useEffect(() => {
+    if (joined && lastAction && lastAction.senderId !== currentUser) {
+      const { type, playersList } = lastAction.payload;
+      if (type === 'scorepad_update') {
+        setPlayers(playersList);
+        localStorage.setItem('boardgame_scores', JSON.stringify(playersList));
+      }
+    }
+  }, [lastAction, joined, currentUser]);
 
   const adjScore = (idx: number, delta: number) => {
     const list = [...players];
     if (list[idx]) {
       list[idx].score += delta;
       save(list);
-      triggerHaptic(10);
+      if (triggerHaptic) triggerHaptic(10);
     }
   };
 
   const delPlayer = (idx: number) => {
     const list = players.filter((_, i) => i !== idx);
     save(list);
-    triggerHaptic(15);
+    if (triggerHaptic) triggerHaptic(15);
   };
 
   const addPlayer = () => {
@@ -1782,20 +2302,20 @@ function ScorepadGame({ triggerHaptic }: { triggerHaptic: any }) {
     const list = [...players, { name, score: 0 }];
     save(list);
     setNewName('');
-    triggerHaptic(12);
+    if (triggerHaptic) triggerHaptic(12);
   };
 
   const resetScores = () => {
     const list = players.map(p => ({ ...p, score: 0 }));
     save(list);
-    triggerHaptic(50);
+    if (triggerHaptic) triggerHaptic(50);
   };
 
   return (
     <div className="flex-grow flex flex-col justify-between select-none">
       <div className="flex justify-between items-center pb-2 border-b border-[#44387a]/20 mb-3">
         <span className="text-[12px] font-bold text-teal-400">📝 Scorepad Tracker</span>
-        <button onClick={resetScores} className="text-[10px] text-teal-400/80 hover:text-white transition">Reset Scores</button>
+        <button onClick={resetScores} className="text-[10px] text-teal-400/80 hover:text-white transition cursor-pointer">Reset Scores</button>
       </div>
 
       <div className="flex-grow flex flex-col gap-2.5 max-h-[220px] overflow-y-auto pr-1">
@@ -1825,7 +2345,7 @@ function ScorepadGame({ triggerHaptic }: { triggerHaptic: any }) {
         />
         <button
           onClick={addPlayer}
-          className="px-4 py-2 bg-teal-600 hover:bg-teal-500 text-white rounded-xl text-xs font-bold uppercase tracking-wider transition"
+          className="px-4 py-2 bg-teal-600 hover:bg-teal-500 text-white rounded-xl text-xs font-bold uppercase tracking-wider transition cursor-pointer"
         >
           Add
         </button>
@@ -1837,22 +2357,32 @@ function ScorepadGame({ triggerHaptic }: { triggerHaptic: any }) {
 // ==========================================
 // 13. ASTROLABE GROUP SPINNER
 // ==========================================
-function AstrolabeGame({ playTone, triggerHaptic }: { playTone: any, triggerHaptic: any }) {
+function AstrolabeGame({ playTone, triggerHaptic, joined, currentUser, lastAction, sendGameAction }: GameSyncProps) {
   const [choices, setChoices] = useState<string>('Yes, No, Doubt, Reroll, Portal Warp, Wild Magic');
   const [selected, setSelected] = useState<string>('READY');
   const [isSpinning, setIsSpinning] = useState<boolean>(false);
 
   const handleSpin = () => {
     if (isSpinning) return;
-    triggerHaptic([10, 40, 80]);
+    if (triggerHaptic) triggerHaptic([10, 40, 80]);
     const options = choices.split(',').map(o => o.trim()).filter(Boolean);
     if (options.length === 0) return;
 
+    const finalWord = options[Math.floor(Math.random() * options.length)]?.toUpperCase() || 'READY';
+
+    if (joined && sendGameAction) {
+      sendGameAction({ type: 'astrolabe_spin', choices, finalWord });
+    }
+
+    startSpinAnimation(choices, finalWord);
+  };
+
+  const startSpinAnimation = (optText: string, finalWord: string) => {
+    const options = optText.split(',').map(o => o.trim()).filter(Boolean);
     setIsSpinning(true);
     setSelected('...');
-    playTone(260, 'sine', 0.1);
+    if (playTone) playTone(260, 'sine', 0.1);
 
-    let counter = 0;
     const interval = setInterval(() => {
       const tempWord = options[Math.floor(Math.random() * options.length)];
       setSelected(tempWord || '');
@@ -1860,19 +2390,28 @@ function AstrolabeGame({ playTone, triggerHaptic }: { playTone: any, triggerHapt
 
     setTimeout(() => {
       clearInterval(interval);
-      const finalWord = options[Math.floor(Math.random() * options.length)];
-      setSelected(finalWord?.toUpperCase() || 'READY');
+      setSelected(finalWord);
       setIsSpinning(false);
-      triggerHaptic([100, 200]);
-      playTone(523, 'sine', 0.25);
+      if (triggerHaptic) triggerHaptic([100, 200]);
+      if (playTone) playTone(523, 'sine', 0.25);
     }, 2000);
   };
+
+  useEffect(() => {
+    if (joined && lastAction && lastAction.senderId !== currentUser) {
+      const { type, choices: incomingChoices, finalWord } = lastAction.payload;
+      if (type === 'astrolabe_spin') {
+        setChoices(incomingChoices);
+        startSpinAnimation(incomingChoices, finalWord);
+      }
+    }
+  }, [lastAction, joined, currentUser]);
 
   return (
     <div className="flex-grow flex flex-col justify-between select-none">
       <div className="flex justify-between items-center pb-2 border-b border-[#44387a]/20 mb-3">
         <span className="text-[12px] font-bold text-purple-400">🔮 Astrolabe Decision Spinner</span>
-        <button onClick={() => setSelected('READY')} className="text-[10px] text-purple-400/80 hover:text-white transition">Reset</button>
+        <button onClick={() => setSelected('READY')} className="text-[10px] text-purple-400/80 hover:text-white transition cursor-pointer">Reset</button>
       </div>
 
       <div className="flex justify-center items-center my-2 relative">
