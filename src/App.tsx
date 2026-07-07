@@ -6126,6 +6126,11 @@ export default function App() {
         timestamp: Date.now()
       }
     ]);
+    companionMessages = companionMessages.filter((msg: any) => {
+      const txt = msg.text || '';
+      return !txt.includes('Gemini API Key Required') && !txt.includes('Rift Core Offline') && !txt.includes('api/companion');
+    });
+    store.set('companion_messages', companionMessages);
     let companionAttachedNotes: number[] = [];
     let companionAttachedRecipes: string[] = [];
     let companionAttachedTasks: number[] = [];
@@ -6478,6 +6483,34 @@ export default function App() {
       let replyText = '';
 
       showCompanionTypingIndicator('channeling core');
+
+      // 1. TRY BACKEND DUAL-MODE (LOCAL OFFLINE LLM OR GEMINI API KEY BACKUP)
+      try {
+        const historyContext = companionMessages.slice(-10); // send last 10 messages for context
+        const response = await fetch('/api/companion', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            prompt: text,
+            history: historyContext,
+            attachments: attachments
+          })
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          if (data.text) {
+            replyText = data.text;
+          } else if (data.error) {
+            console.warn("[Companion Client Warning]:", data.error);
+            if (data.loading) {
+              replyText = `⚙️ **Offline Memory Core Loading**\n\nThe local cognitive intelligence model is still warming up on your device. Please wait a moment and try again!`;
+            }
+          }
+        }
+      } catch (err) {
+        console.error("[Companion Client Error]:", err);
+      }
 
       // 1.5. TRY CHROME'S EXPERIMENTAL BUILT-IN ON-DEVICE AI (FALLBACK)
       if (!replyText) {

@@ -5,6 +5,44 @@ import { createServer as createHttpServer } from 'http';
 import { WebSocketServer, WebSocket } from 'ws';
 import { createServer as createViteServer } from 'vite';
 import { GoogleGenAI } from '@google/genai';
+import { spawn, ChildProcess } from 'child_process';
+
+let companionProcess: ChildProcess | null = null;
+
+function ensureLocalCompanionRunning() {
+  if (companionProcess) return;
+
+  console.log('[Portal Server] Starting local companion python service (local_companion.py)...');
+  const pythonCmd = process.platform === 'win32' ? 'python' : 'python3';
+  
+  companionProcess = spawn(pythonCmd, ['-u', 'local_companion.py'], {
+    stdio: 'inherit',
+    detached: false
+  });
+
+  companionProcess.on('error', (err) => {
+    console.error('[Portal Server] Failed to start local companion process:', err);
+    companionProcess = null;
+  });
+
+  companionProcess.on('exit', (code, signal) => {
+    console.log(`[Portal Server] Local companion process exited with code ${code} (signal ${signal})`);
+    companionProcess = null;
+  });
+}
+
+// Kill the background companion service when parent exits
+process.on('exit', () => {
+  if (companionProcess) {
+    companionProcess.kill();
+  }
+});
+process.on('SIGINT', () => {
+  if (companionProcess) {
+    companionProcess.kill();
+  }
+  process.exit(0);
+});
 
 let aiClient: GoogleGenAI | null = null;
 
@@ -212,68 +250,109 @@ async function startServer() {
     res.json({ rooms: activeRooms });
   });
 
-  // API Companion Bot Chat Handler (Gemini-powered)
+  // API Companion Bot Chat Handler (Dual-Mode: Local Python LLM + Gemini Fallback)
   app.post('/api/companion', async (req, res) => {
     try {
       const { prompt, history, attachments } = req.body;
       
-      const apiKey = process.env.GEMINI_API_KEY;
-      if (!apiKey) {
-        return res.status(400).json({ 
-          error: 'Gemini API key is not configured in Settings > Secrets.' 
-        });
-      }
+      let responseText = '';
+      let success = false;
+      let localLoading = false;
 
-      const client = getAiClient();
-      
-      // Build conversation contents for multi-turn chat
-      let contents: any[] = [];
-      
-      if (Array.isArray(history) && history.length > 0) {
-        contents = history.map((msg: any) => {
-          const role = msg.sender === 'user' ? 'user' : 'model';
-          let msgText = msg.text || '';
-          
-          // If message has attachments, serialize them into the message text so Gemini sees them as context
-          if (Array.isArray(msg.attachments) && msg.attachments.length > 0) {
-            msgText += `\n\n[Context from attached source data: ${JSON.stringify(msg.attachments)}]`;
-          }
-          
-          return {
-            role,
-            parts: [{ text: msgText }]
-          };
+      // 1. Try local companion Python service first
+      try {
+        const localResponse = await fetch('http://localhost:5001/', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ prompt, history, attachments }),
+          // Wait up to 3 minutes for generation/model warmup
+          signal: AbortSignal.timeout(180000)
         });
-      } else {
-        // Fallback if no history is provided or is empty
-        let promptText = prompt || '';
-        if (Array.isArray(attachments) && attachments.length > 0) {
-          promptText += `\n\n[Context from attached source data: ${JSON.stringify(attachments)}]`;
+
+        if (localResponse.ok) {
+          const data = await localResponse.json();
+          if (data.text) {
+            responseText = data.text;
+            success = true;
+          } else if (data.loading) {
+            localLoading = true;
+          }
         }
-        contents = [
-          {
-            role: 'user',
-            parts: [{ text: promptText }]
-          }
-        ];
+      } catch (err) {
+        // Local service is offline/not running yet. Attempt to auto-start it.
+        ensureLocalCompanionRunning();
       }
 
-      const systemInstruction = `You are the Rift Companion, an advanced AI residing in 'The Portal'. 
+      if (success) {
+        return res.json({ text: responseText });
+      }
+
+      if (localLoading) {
+        return res.json({ 
+          error: 'Local companion model is still warming up. Please try again in a few seconds.',
+          loading: true
+        });
+      }
+
+      // 2. Fallback to Gemini if API key is configured
+      const apiKey = process.env.GEMINI_API_KEY;
+      if (apiKey) {
+        try {
+          const client = getAiClient();
+          
+          let contents: any[] = [];
+          if (Array.isArray(history) && history.length > 0) {
+            contents = history.map((msg: any) => {
+              const role = msg.sender === 'user' ? 'user' : 'model';
+              let msgText = msg.text || '';
+              if (Array.isArray(msg.attachments) && msg.attachments.length > 0) {
+                msgText += `\n\n[Context from attached source data: ${JSON.stringify(msg.attachments)}]`;
+              }
+              return {
+                role,
+                parts: [{ text: msgText }]
+              };
+            });
+          } else {
+            let promptText = prompt || '';
+            if (Array.isArray(attachments) && attachments.length > 0) {
+              promptText += `\n\n[Context from attached source data: ${JSON.stringify(attachments)}]`;
+            }
+            contents = [
+              {
+                role: 'user',
+                parts: [{ text: promptText }]
+              }
+            ];
+          }
+
+          const systemInstruction = `You are the Rift Companion, an advanced AI residing in 'The Portal'. 
 You have supreme intelligence and access to the vast knowledge of the cosmos. 
-You can answer any complex questions, write code, provide detailed food recipes, draft professional or creative emails, and explain esoteric or technical subjects simply and elegantly.
-Always speak with a touch of cosmic mystery, wonder, and wisdom, yet remain highly practical, direct, and fully complete in your answers (do not abbreviate code or omit recipe steps). 
+Always speak with a touch of cosmic mystery, wonder, and wisdom, yet remain highly practical, direct, and fully complete in your answers. 
 Use beautiful Markdown formatting, bold headings, and bullet points to organize your responses.`;
 
-      const response = await client.models.generateContent({
-        model: 'gemini-3.5-flash',
-        contents,
-        config: {
-          systemInstruction,
-          temperature: 0.7,
-        }
-      });
+          const response = await client.models.generateContent({
+            model: 'gemini-3.5-flash',
+            contents,
+            config: {
+              systemInstruction,
+              temperature: 0.7,
+            }
+          });
 
-      res.json({ text: response.text });
+          if (response.text) {
+            return res.json({ text: response.text });
+          }
+        } catch (geminiError) {
+          console.error('[Companion Gemini Fallback Error]:', geminiError);
+        }
+      }
+
+      // 3. Friendly status if model is still starting up
+      return res.json({
+        error: 'Rift Companion is warming up its offline memory cores. Please wait a moment and try again!',
+        loading: true
+      });
     } catch (error: any) {
       console.error('[Companion API Error]:', error);
       res.status(500).json({ 
@@ -410,6 +489,9 @@ Use beautiful Markdown formatting, bold headings, and bullet points to organize 
       res.sendFile(path.join(distPath, 'index.html'));
     });
   }
+
+  // Pre-warm local companion model service
+  ensureLocalCompanionRunning();
 
   server.listen(PORT, '0.0.0.0', () => {
     console.log(`[Portal Server] Full-stack application running on http://localhost:${PORT}`);
