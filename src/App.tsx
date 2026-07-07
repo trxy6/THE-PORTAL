@@ -7011,14 +7011,14 @@ Since I run entirely on-device, I cannot fetch live websites or use external ser
     
     startLocalAIPolling();
 
-    // Bind click events for local AI controls
-    const btnDownload = document.getElementById('btnDownloadAI');
-    const btnStart = document.getElementById('btnStartAI');
-    const btnStop = document.getElementById('btnStopAI');
-    const btnDelete = document.getElementById('btnDeleteAI');
+    // Use event delegation so the buttons work even when Settings panel
+    // is rendered after the useEffect runs (getElementById returns null on mount)
+    const localAIClickHandler = async (e: Event) => {
+      const target = e.target as HTMLElement;
+      const id = target?.id;
+      if (!id) return;
 
-    if (btnDownload) {
-      btnDownload.addEventListener('click', async () => {
+      if (id === 'btnDownloadAI') {
         haptic(10);
         try {
           const res = await fetch('/api/companion/download', { method: 'POST' });
@@ -7031,11 +7031,7 @@ Since I run entirely on-device, I cannot fetch live websites or use external ser
         } catch (e) {
           toast('Network error during download trigger', 'error');
         }
-      });
-    }
-
-    if (btnStart) {
-      btnStart.addEventListener('click', async () => {
+      } else if (id === 'btnStartAI') {
         haptic(10);
         try {
           const res = await fetch('/api/companion/start', { method: 'POST' });
@@ -7048,11 +7044,7 @@ Since I run entirely on-device, I cannot fetch live websites or use external ser
         } catch (e) {
           toast('Network error starting AI', 'error');
         }
-      });
-    }
-
-    if (btnStop) {
-      btnStop.addEventListener('click', async () => {
+      } else if (id === 'btnStopAI') {
         haptic(10);
         try {
           const res = await fetch('/api/companion/stop', { method: 'POST' });
@@ -7065,11 +7057,7 @@ Since I run entirely on-device, I cannot fetch live websites or use external ser
         } catch (e) {
           toast('Network error stopping AI', 'error');
         }
-      });
-    }
-
-    if (btnDelete) {
-      btnDelete.addEventListener('click', async () => {
+      } else if (id === 'btnDeleteAI') {
         haptic(10);
         if (!confirm('Are you sure you want to delete the offline AI model files? This will free ~3GB of space, but you will need to download them again.')) return;
         try {
@@ -7083,8 +7071,9 @@ Since I run entirely on-device, I cannot fetch live websites or use external ser
         } catch (e) {
           toast('Network error deleting files', 'error');
         }
-      });
-    }
+      }
+    };
+    document.addEventListener('click', localAIClickHandler);
 
     (window as any).triggerStartLocalAI = async () => {
       haptic(10);
@@ -7121,6 +7110,7 @@ Since I run entirely on-device, I cannot fetch live websites or use external ser
       }
       clearTimeout(coinTimer);
       clearTimeout(sheetStatusTimer);
+      document.removeEventListener('click', localAIClickHandler);
     };
   }, []);
 
