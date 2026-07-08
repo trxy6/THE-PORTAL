@@ -6,6 +6,7 @@ import { WebSocketServer, WebSocket } from 'ws';
 import { createServer as createViteServer } from 'vite';
 import { GoogleGenAI } from '@google/genai';
 import { spawn, ChildProcess } from 'child_process';
+import { FALLBACK_TRACKS, CURATED_PLAYLISTS } from './src/components/spotify/curatedTracks';
 
 let companionProcess: ChildProcess | null = null;
 
@@ -547,6 +548,375 @@ async function startServer() {
       res.json({ success: true });
     } catch (e: any) {
       res.status(500).json({ error: e.message });
+    }
+  });
+
+  // ==========================================
+  // SPOTIFY PLAYER INTEGRATION ENDPOINTS
+  // ==========================================
+
+  // Spotify OAuth URL generator
+  app.get("/api/auth/spotify/url", (req, res) => {
+    const { origin } = req.query;
+    if (!origin || typeof origin !== "string") {
+      return res.status(400).json({ error: "Origin query parameter is required." });
+    }
+
+    const client_id = process.env.SPOTIFY_CLIENT_ID;
+    if (!client_id) {
+      return res.status(400).json({
+        error: "Spotify Client ID is not configured in environment variables.",
+        unconfigured: true,
+      });
+    }
+
+    const redirect_uri = `${origin}/auth/callback`;
+    const scope = [
+      "user-read-private",
+      "user-read-email",
+      "playlist-read-private",
+      "playlist-read-collaborative",
+      "user-library-read",
+      "user-top-read",
+      "user-read-recently-played",
+      "user-read-playback-state",
+      "user-modify-playback-state"
+    ].join(" ");
+
+    const state = origin;
+    const params = new URLSearchParams({
+      response_type: "code",
+      client_id: client_id,
+      scope: scope,
+      redirect_uri: redirect_uri,
+      state: state,
+    });
+
+    res.json({ url: `https://accounts.spotify.com/authorize?${params.toString()}` });
+  });
+
+  // Spotify OAuth Callback Handler
+  app.get(["/auth/callback", "/auth/callback/"], async (req, res) => {
+    const { code, state, error } = req.query;
+
+    if (error) {
+      console.error("Spotify OAuth redirect error:", error);
+      return res.send(`
+        <html>
+          <body>
+            <script>
+              if (window.opener) {
+                window.opener.postMessage({ type: 'SPOTIFY_AUTH_FAILURE', error: "${error}" }, '*');
+                window.close();
+              } else {
+                window.location.href = '/';
+              }
+            </script>
+            <p>Authentication failed: ${error}. You may close this window.</p>
+          </body>
+        </html>
+      `);
+    }
+
+    if (!code || typeof code !== "string" || !state || typeof state !== "string") {
+      return res.status(400).send("Invalid callback request parameters.");
+    }
+
+    const client_id = process.env.SPOTIFY_CLIENT_ID;
+    const client_secret = process.env.SPOTIFY_CLIENT_SECRET;
+
+    if (!client_id || !client_secret) {
+      return res.status(500).send("Spotify Client credentials are not configured on the server.");
+    }
+
+    const redirect_uri = `${state}/auth/callback`;
+
+    try {
+      const tokenResponse = await fetch("https://accounts.spotify.com/api/token", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+          Authorization: "Basic " + Buffer.from(client_id + ":" + client_secret).toString("base64"),
+        },
+        body: new URLSearchParams({
+          grant_type: "authorization_code",
+          code: code,
+          redirect_uri: redirect_uri,
+        }).toString(),
+      });
+
+      if (!tokenResponse.ok) {
+        const errorText = await tokenResponse.text();
+        console.error("Spotify token exchange failed:", errorText);
+        throw new Error(`Token exchange failed: ${tokenResponse.status}`);
+      }
+
+      const data = await tokenResponse.json();
+      const accessToken = data.access_token;
+      const refreshToken = data.refresh_token;
+      const expiresIn = data.expires_in;
+
+      res.send(`
+        <html>
+          <head>
+            <title>Lumina Spotify Auth Callback</title>
+          </head>
+          <body style="background:#050505;color:#e0dcd0;font-family:sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;">
+            <div style="text-align:center;">
+              <h2 style="color:#c5a059;">Connection Successful!</h2>
+              <p>Syncing your Spotify music library...</p>
+              <script>
+                if (window.opener) {
+                  window.opener.postMessage({
+                    type: 'SPOTIFY_AUTH_SUCCESS',
+                    tokens: {
+                      accessToken: "${accessToken}",
+                      refreshToken: "${refreshToken}",
+                      expiresIn: ${expiresIn}
+                    }
+                  }, '*');
+                  setTimeout(() => window.close(), 1000);
+                } else {
+                  window.location.href = '/';
+                }
+              </script>
+            </div>
+          </body>
+        </html>
+      `);
+    } catch (err: any) {
+      console.error("Failed to exchange token:", err);
+      res.status(500).send(`Failed to authenticate with Spotify: ${err.message}`);
+    }
+  });
+
+  // Spotify Token Refresh Handler
+  app.post("/api/auth/spotify/refresh", async (req, res) => {
+    const { refreshToken } = req.body;
+    if (!refreshToken) {
+      return res.status(400).json({ error: "refreshToken is required." });
+    }
+
+    const client_id = process.env.SPOTIFY_CLIENT_ID;
+    const client_secret = process.env.SPOTIFY_CLIENT_SECRET;
+
+    if (!client_id || !client_secret) {
+      return res.status(500).json({ error: "Spotify credentials are not configured on the server." });
+    }
+
+    try {
+      const tokenResponse = await fetch("https://accounts.spotify.com/api/token", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+          Authorization: "Basic " + Buffer.from(client_id + ":" + client_secret).toString("base64"),
+        },
+        body: new URLSearchParams({
+          grant_type: "refresh_token",
+          refresh_token: refreshToken,
+        }).toString(),
+      });
+
+      if (!tokenResponse.ok) {
+        const errorText = await tokenResponse.text();
+        throw new Error(`Failed to refresh token: ${errorText}`);
+      }
+
+      const data = await tokenResponse.json();
+      res.json({
+        accessToken: data.access_token,
+        expiresIn: data.expires_in,
+      });
+    } catch (err: any) {
+      console.error("Failed to refresh Spotify token:", err);
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // Curated Playlists Endpoint
+  app.get("/api/playlists", (req, res) => {
+    try {
+      res.json({ playlists: CURATED_PLAYLISTS });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to load curated playlists" });
+    }
+  });
+
+  // AI Spotify Music Search with Google Search Grounding
+  app.post("/api/search", async (req, res) => {
+    const { query } = req.body;
+    if (!query || typeof query !== "string") {
+      return res.status(400).json({ error: "Query parameter is required." });
+    }
+
+    try {
+      const prompt = `Perform a live web search to find real, playable Spotify track IDs or links for songs matching the query: "${query}".
+Compiled songs should be extremely accurate. We want a list of exactly 6 matching tracks.
+For each track, search for its REAL, exact Spotify Track ID (a 22-character alphanumeric code, e.g. '0VjIjW4GlUZg7UpZCmPx6i').
+Do NOT output placeholder IDs, do NOT invent track IDs. If the exact track ID is not found, try to search for the track's canonical Spotify link.
+Format the output as a valid JSON array of objects matching this exact schema (no additional conversational text or wrapping, just the raw JSON array):
+[
+  {
+    "id": "22_character_spotify_track_id",
+    "title": "Song Title",
+    "artist": "Artist Name",
+    "album": "Album Name (or Single)",
+    "spotifyId": "22_character_spotify_track_id",
+    "spotifyUri": "https://open.spotify.com/track/22_character_spotify_track_id",
+    "imageUrl": "A professional high-quality music/album placeholder image URL from Unsplash (e.g. https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=300)",
+    "duration": "Track duration, e.g. '3:20'",
+    "genre": "Genre classification, e.g., 'Pop', 'Hip-Hop', 'Indie', 'Jazz'"
+  }
+]`;
+
+      const ai = getAiClient();
+      const response = await ai.models.generateContent({
+        model: "gemini-3.5-flash",
+        contents: prompt,
+        config: {
+          tools: [{ googleSearch: {} }],
+          responseMimeType: "application/json",
+        },
+      });
+
+      const text = response.text || "";
+      const parsedTracks = JSON.parse(text.trim());
+
+      if (Array.isArray(parsedTracks) && parsedTracks.length > 0) {
+        res.json({ tracks: parsedTracks, query });
+      } else {
+        throw new Error("Empty or invalid track format returned from AI model");
+      }
+    } catch (error) {
+      console.error("AI Search failed, using fallbacks:", error);
+      const lowercaseQuery = query.toLowerCase();
+      const filteredFallbacks = FALLBACK_TRACKS.filter(
+        (track) =>
+          track.title.toLowerCase().includes(lowercaseQuery) ||
+          track.artist.toLowerCase().includes(lowercaseQuery) ||
+          (track.album && track.album.toLowerCase().includes(lowercaseQuery))
+      );
+
+      res.json({
+        tracks: filteredFallbacks.length > 0 ? filteredFallbacks : FALLBACK_TRACKS.slice(0, 6),
+        query,
+        note: "Falling back to curated standard catalog due to search timeout.",
+      });
+    }
+  });
+
+  // Mood-based playlist curation via Gemini
+  app.post("/api/curate", async (req, res) => {
+    const { mood } = req.body;
+    if (!mood || typeof mood !== "string") {
+      return res.status(400).json({ error: "Mood/description is required." });
+    }
+
+    try {
+      const prompt = `Perform a live web search to construct a personalized thematic music playlist on Spotify based on this mood or description: "${mood}".
+We want a compilation of 5 highly fitting tracks. Ensure the Spotify IDs (22-character codes) are real and verified.
+Format the output as a valid JSON array of objects conforming to this schema (no extra text):
+[
+  {
+    "id": "spotify_id",
+    "title": "Song Title",
+    "artist": "Artist Name",
+    "album": "Album Name",
+    "spotifyId": "spotify_id",
+    "spotifyUri": "https://open.spotify.com/track/spotify_id",
+    "imageUrl": "Unsplash music/album cover artwork URL",
+    "duration": "M:SS",
+    "genre": "Genre"
+  }
+]`;
+
+      const ai = getAiClient();
+      const response = await ai.models.generateContent({
+        model: "gemini-3.5-flash",
+        contents: prompt,
+        config: {
+          tools: [{ googleSearch: {} }],
+          responseMimeType: "application/json",
+        },
+      });
+
+      const parsedTracks = JSON.parse((response.text || "").trim());
+      if (Array.isArray(parsedTracks) && parsedTracks.length > 0) {
+        res.json({
+          playlist: {
+            id: `ai-mood-${Date.now()}`,
+            name: `AI Mood: ${mood.substring(0, 30)}${mood.length > 30 ? "..." : ""}`,
+            description: `Custom curated soundtrack for: ${mood}`,
+            tracks: parsedTracks,
+          },
+        });
+      } else {
+        throw new Error("Invalid playlist content returned");
+      }
+    } catch (error) {
+      console.error("AI Curation failed, returning fallback playlist:", error);
+      res.json({
+        playlist: {
+          id: `fallback-${Date.now()}`,
+          name: `Vibe: ${mood.substring(0, 20)}`,
+          description: `Custom chill mix based on standard tracks.`,
+          tracks: FALLBACK_TRACKS.slice(0, 5),
+        },
+      });
+    }
+  });
+
+  // Synced scrolling lyrics generator using Gemini
+  app.post("/api/lyrics", async (req, res) => {
+    const { title, artist } = req.body;
+    if (!title || !artist) {
+      return res.status(400).json({ error: "Song title and artist are required." });
+    }
+
+    try {
+      const prompt = `Generate stylized synchronized scrolling lyrics for the song "${title}" by "${artist}".
+We want roughly 12-18 synchronized lyric lines timed chronologically across a 3-4 minute timeframe.
+The timestamps must be formatted like "M:SS" and match actual typical song parts (Intro, Verses, Chorus, Outro).
+Format the output as a valid JSON object with a single "lyrics" field containing the timed segments (no extra text):
+{
+  "lyrics": [
+    { "time": "0:00", "text": "🎵 [Instrumental Intro]" },
+    { "time": "0:15", "text": "Verse 1 starts..." },
+    { "time": "0:35", "text": "Next lyric line..." }
+  ]
+}`;
+
+      const ai = getAiClient();
+      const response = await ai.models.generateContent({
+        model: "gemini-3.5-flash",
+        contents: prompt,
+        config: {
+          responseMimeType: "application/json",
+        },
+      });
+
+      const parsedLyrics = JSON.parse((response.text || "").trim());
+      res.json(parsedLyrics);
+    } catch (error) {
+      console.error("Failed to generate timed lyrics:", error);
+      res.json({
+        lyrics: [
+          { "time": "0:00", "text": "🎵 [Instrumental Intro]" },
+          { "time": "0:10", "text": "Singing along in your mind..." },
+          { "time": "0:25", "text": "The beautiful melody flows" },
+          { "time": "0:40", "text": "Enjoying the rhythm of the track" },
+          { "time": "1:00", "text": "✨ [Chorus]" },
+          { "time": "1:15", "text": "This is your custom playback experience" },
+          { "time": "1:30", "text": "Full songs play directly in the Spotify widget" },
+          { "time": "1:45", "text": "No developer accounts required" },
+          { "time": "2:00", "text": "🎵 [Guitar Solo / Instrumental Break]" },
+          { "time": "2:25", "text": "Bringing high-fidelity styling to your browser" },
+          { "time": "2:45", "text": "✨ [Chorus]" },
+          { "time": "3:00", "text": "Almost at the end of the song..." },
+          { "time": "3:15", "text": "Fade out..." },
+          { "time": "3:30", "text": "🎵 [Outro]" }
+        ],
+      });
     }
   });
 

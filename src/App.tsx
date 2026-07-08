@@ -16,6 +16,7 @@ import DiceTrayCanvas from './components/DiceTrayCanvas';
 import D20War from './components/D20War';
 import CosmicWords from './components/CosmicWords';
 import TenGamesArena from './components/TenGamesArena';
+import SpotifyPlayer from './components/spotify/SpotifyPlayer';
 
 const SPORTS_LEAGUES = {
   mlb: {
@@ -94,6 +95,7 @@ const NAV_ITEMS = [
   { id: 'files', label: 'Files', icon: Folder },
   { id: 'images', label: 'Images', icon: Image },
   { id: 'browser', label: 'Browser', icon: Globe },
+  { id: 'music', label: 'Music', icon: Music },
   { id: 'utilities', label: 'Utilities', icon: Dices },
   { id: 'tools', label: 'Tools', icon: Wrench },
   { id: 'code', label: 'Code', icon: Code2 },
@@ -110,6 +112,7 @@ const QUICK_ACCESS = [
   { id: 'files', label: 'Files', icon: Folder, color: 'cyan', desc: 'Secure decentralized storage' },
   { id: 'images', label: 'Images', icon: Image, color: 'emerald', desc: 'AI media canvas & renders' },
   { id: 'browser', label: 'Browser', icon: Globe, color: 'cyan', desc: 'Encrypted sandboxed network' },
+  { id: 'music', label: 'Music', icon: Music, color: 'purple', desc: 'Sleek custom Spotify Player' },
   { id: 'utilities', label: 'Utilities', icon: Dices, color: 'purple', desc: 'System alchemical dice basins' },
   { id: 'code', label: 'Code', icon: Code2, color: 'blue', desc: 'Embedded sandbox compiler' },
   { id: 'notes', label: 'Notes', icon: FileText, color: 'amber', desc: 'Dynamic markdown compiler' },
@@ -3265,10 +3268,10 @@ export default function App() {
         </aside>
 
         {/* MIDDLE MAIN WORKSPACE */}
-        <main className="flex-1 p-6 overflow-y-auto relative">
+        <main className={`flex-1 relative ${activeTab === 'music' ? 'p-0 overflow-hidden' : 'p-6 overflow-y-auto'}`}>
           
           {/* Quick tab switch notifications */}
-          {activeTab !== 'home' && (
+          {activeTab !== 'home' && activeTab !== 'music' && (
             <div className="flex items-center gap-2 text-xs text-slate-500 mb-4 bg-slate-950/40 p-2 rounded border border-white/[0.02] max-w-max">
               <span>Workspace Portal</span>
               <span>/</span>
@@ -5079,6 +5082,11 @@ export default function App() {
                 </button>
               </div>
             </div>
+          )}
+
+          {/* MUSIC WORKSPACE (SPOTIFY LITE PLAYER) */}
+          {activeTab === 'music' && (
+            <SpotifyPlayer />
           )}
 
           {/* CODE WORKSPACE COMPILER */}
