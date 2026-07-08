@@ -498,6 +498,15 @@ export default function MusicHub({ portalDarkMode, themeColor }: MusicHubProps) 
     }
   };
 
+  const handleVolumeToggle = () => {
+    if (volume > 0) {
+      setPrevVolume(volume);
+      setVolume(0);
+    } else {
+      setVolume(prevVolume || 70);
+    }
+  };
+
   // Sync volume changes with Spotify Connect active device
   useEffect(() => {
     if (!token) return;
