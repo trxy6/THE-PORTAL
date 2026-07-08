@@ -5094,7 +5094,7 @@ export default function App() {
 
           {/* MUSIC WORKSPACE (SPOTIFY LITE PLAYER) */}
           {activeTab === 'music' && (
-            <SpotifyPlayer />
+            <SpotifyPlayer portalDarkMode={portalDarkMode} themeColor={themeColor} />
           )}
 
           {/* CODE WORKSPACE COMPILER */}

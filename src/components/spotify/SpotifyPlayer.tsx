@@ -65,7 +65,12 @@ async function generateCodeChallenge(v: string): Promise<string> {
   return base64urlencode(hashed);
 }
 
-export default function SpotifyPlayer() {
+interface SpotifyPlayerProps {
+  portalDarkMode: boolean;
+  themeColor: string;
+}
+
+export default function SpotifyPlayer({ portalDarkMode, themeColor }: SpotifyPlayerProps) {
   // Playlists and Library States
   const [curatedPlaylists, setCuratedPlaylists] = useState<Playlist[]>(CURATED_PLAYLISTS);
   const [userPlaylists, setUserPlaylists] = useState<Playlist[]>([]);
@@ -618,8 +623,33 @@ export default function SpotifyPlayer() {
     }
   };
 
+  const isDark = portalDarkMode;
+  const bgMain = isDark ? "#06000f" : "#f1f3f9";
+  const bgPanel = isDark ? "#0d0221" : "#ffffff";
+  const textMain = isDark ? "#e2d9f3" : "#1e293b";
+  const textMuted = isDark ? "rgba(167, 139, 250, 0.6)" : "#64748b";
+
   return (
-    <div id="spotify-player-root" className="w-full h-[calc(100vh-140px)] bg-[#050505] flex flex-col overflow-hidden text-[#e0dcd0] font-sans antialiased rounded-2xl border border-white/[0.04]">
+    <div
+      id="spotify-player-root"
+      className="w-full h-[calc(100vh-140px)] bg-charcoal-vibe flex flex-col overflow-hidden text-cream-vibe font-sans antialiased rounded-2xl border border-white/[0.04]"
+      style={{
+        '--theme-accent': themeColor === 'purple' ? '#8b5cf6' :
+                          themeColor === 'cyan' ? '#06b6d4' :
+                          themeColor === 'pink' ? '#ec4899' :
+                          themeColor === 'emerald' ? '#10b981' :
+                          themeColor === 'amber' ? '#f59e0b' : '#8b5cf6',
+        '--theme-accent-dark': themeColor === 'purple' ? '#6d28d9' :
+                               themeColor === 'cyan' ? '#0891b2' :
+                               themeColor === 'pink' ? '#db2777' :
+                               themeColor === 'emerald' ? '#059669' :
+                               themeColor === 'amber' ? '#d97706' : '#6d28d9',
+        '--theme-bg-main': bgMain,
+        '--theme-bg-panel': bgPanel,
+        '--theme-text-main': textMain,
+        '--theme-text-muted': textMuted,
+      } as React.CSSProperties}
+    >
       {/* Upper Content Section (Sidebar + Main panel + Synced Lyrics Right column) */}
       <div className="flex-1 flex min-h-0 relative">
         <Sidebar
