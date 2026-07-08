@@ -6,7 +6,14 @@ import { WebSocketServer, WebSocket } from 'ws';
 import { createServer as createViteServer } from 'vite';
 import { GoogleGenAI } from '@google/genai';
 import { spawn, ChildProcess } from 'child_process';
+import dotenv from 'dotenv';
 import { FALLBACK_TRACKS, CURATED_PLAYLISTS } from './src/components/spotify/curatedTracks';
+
+// Load environment variables from .env.local first, then fallback to .env
+if (fs.existsSync('.env.local')) {
+  dotenv.config({ path: '.env.local' });
+}
+dotenv.config();
 
 let companionProcess: ChildProcess | null = null;
 
