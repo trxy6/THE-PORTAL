@@ -597,17 +597,18 @@ export default function MusicHub({ portalDarkMode, themeColor }: MusicHubProps) 
         return;
       }
 
-      const total = firstPage.total;
+      // Cap the total loaded tracks to 150 (3 pages) to prevent 429 rate limiting on large libraries
+      const totalToFetch = Math.min(firstPage.total, 150);
       let allItems = [...firstPage.items];
 
-      // 2. Fetch remaining pages in small concurrent batches of 5 to avoid 429 rate limits
-      if (total > 50) {
+      // 2. Fetch remaining pages up to 150 tracks in small concurrent batches of 3
+      if (totalToFetch > 50) {
         const offsets: number[] = [];
-        for (let offset = 50; offset < total; offset += 50) {
+        for (let offset = 50; offset < totalToFetch; offset += 50) {
           offsets.push(offset);
         }
 
-        const batchSize = 5;
+        const batchSize = 3;
         for (let i = 0; i < offsets.length; i += batchSize) {
           const batch = offsets.slice(i, i + batchSize);
           const promises = batch.map(offset => apiFetch(activeToken, `v1/me/tracks?offset=${offset}&limit=50`));
@@ -618,7 +619,7 @@ export default function MusicHub({ portalDarkMode, themeColor }: MusicHubProps) 
             }
           });
           // Small breathing room delay between batches
-          await new Promise(resolve => setTimeout(resolve, 100));
+          await new Promise(resolve => setTimeout(resolve, 150));
         }
       }
 
@@ -654,17 +655,18 @@ export default function MusicHub({ portalDarkMode, themeColor }: MusicHubProps) 
         return;
       }
 
-      const total = firstPage.total;
+      // Cap playlists to 150 (3 pages) to avoid 429 rate limiting on massive profiles
+      const totalToFetch = Math.min(firstPage.total, 150);
       let allItems = [...firstPage.items];
 
-      // 2. Fetch remaining pages in small concurrent batches of 5 to avoid 429 rate limits
-      if (total > 50) {
+      // 2. Fetch remaining pages up to 150 playlists in small concurrent batches of 3
+      if (totalToFetch > 50) {
         const offsets: number[] = [];
-        for (let offset = 50; offset < total; offset += 50) {
+        for (let offset = 50; offset < totalToFetch; offset += 50) {
           offsets.push(offset);
         }
 
-        const batchSize = 5;
+        const batchSize = 3;
         for (let i = 0; i < offsets.length; i += batchSize) {
           const batch = offsets.slice(i, i + batchSize);
           const promises = batch.map(offset => apiFetch(activeToken, `v1/me/playlists?offset=${offset}&limit=50`));
@@ -675,7 +677,7 @@ export default function MusicHub({ portalDarkMode, themeColor }: MusicHubProps) 
             }
           });
           // Small breathing room delay between batches
-          await new Promise(resolve => setTimeout(resolve, 100));
+          await new Promise(resolve => setTimeout(resolve, 150));
         }
       }
 
@@ -761,13 +763,24 @@ export default function MusicHub({ portalDarkMode, themeColor }: MusicHubProps) 
     }
   };
 
-  // Load full library when token is available — pass token directly to avoid stale closure
+  // Load full library when token is available — staggered to avoid rate limits
   useEffect(() => {
     if (!token) return;
     const t = token; // capture current value
-    fetchAllLikedSongs(t);
-    fetchAllPlaylists(t);
-    fetchTopArtists(t);
+
+    const loadLibrary = async () => {
+      try {
+        await fetchAllLikedSongs(t);
+        await new Promise((resolve) => setTimeout(resolve, 300));
+        await fetchAllPlaylists(t);
+        await new Promise((resolve) => setTimeout(resolve, 300));
+        await fetchTopArtists(t);
+      } catch (err) {
+        console.error("Library load failed:", err);
+      }
+    };
+
+    loadLibrary();
   }, [token]);
 
   // Load tracks for selected playlist (memoized to prevent duplicate recreation)
