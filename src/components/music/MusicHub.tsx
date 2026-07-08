@@ -1704,6 +1704,10 @@ export default function MusicHub({ portalDarkMode, themeColor }: MusicHubProps) 
         onLoadedMetadata={handleLoadedMetadata}
         onEnded={handleSkipForward}
       />
+      {/* Build version indicator */}
+      <div className="absolute bottom-2 right-4 text-[8px] text-zinc-700 select-none pointer-events-none uppercase tracking-wider font-bold">
+        Build v1.1.2 - Staggered Lock
+      </div>
     </div>
   );
 }
