@@ -185,6 +185,11 @@ export default function MusicHub({ portalDarkMode, themeColor }: MusicHubProps) 
   const [isShuffled, setIsShuffled] = useState<boolean>(false);
   const [repeatMode, setRepeatMode] = useState<"off" | "context" | "track">("off");
 
+  // Playback Queue States
+  const [playbackQueue, setPlaybackQueue] = useState<SpotifyTrack[]>([]);
+  const [currentQueueIndex, setCurrentQueueIndex] = useState<number>(-1);
+  const [showQueue, setShowQueue] = useState<boolean>(false);
+
   // Web Playback SDK States
   const [spotifyPlayer, setSpotifyPlayer] = useState<any>(null);
   const [sdkDeviceId, setSdkDeviceId] = useState<string | null>(null);
@@ -773,7 +778,13 @@ export default function MusicHub({ portalDarkMode, themeColor }: MusicHubProps) 
   }, [searchQuery, token]);
 
   // 4. MUSIC PLAYBACK ACTIVE DEVICE CONTROLS
-  const handlePlayTrack = async (track: SpotifyTrack) => {
+  const handlePlayTrack = async (track: SpotifyTrack, indexInList?: number, customList?: SpotifyTrack[]) => {
+    const list = customList || (activeTab === "search" ? searchResults : currentTracksList);
+    setPlaybackQueue(list);
+
+    const idx = indexInList !== undefined ? indexInList : list.findIndex(t => t.id === track.id);
+    setCurrentQueueIndex(idx);
+
     setCurrentTrack(track);
     setIsPlaying(false);
     setDuration(Math.floor(track.durationMs / 1000));
@@ -788,7 +799,6 @@ export default function MusicHub({ portalDarkMode, themeColor }: MusicHubProps) 
     // A. If Spotify Web Playback SDK is connected, play full song directly on virtual device!
     if (isSdkConnected && sdkDeviceId && token && track.spotifyUri) {
       try {
-        const list = activeTab === "search" ? searchResults : currentTracksList;
         const trackUris = list.map(t => t.spotifyUri).filter(uri => uri);
 
         if (trackUris.length > 0) {
@@ -863,28 +873,24 @@ export default function MusicHub({ portalDarkMode, themeColor }: MusicHubProps) 
       } catch (e) {}
     }
 
-    // Local fallback: respect local shuffle/repeat modes
-    const list = activeTab === "search" ? searchResults : currentTracksList;
-    if (!currentTrack || list.length === 0) return;
+    if (playbackQueue.length === 0) return;
 
-    if (repeatMode === "track") {
-      // Repeat same track — replay from start
-      handlePlayTrack(currentTrack);
+    if (repeatMode === "track" && currentTrack) {
+      handlePlayTrack(currentTrack, currentQueueIndex, playbackQueue);
       return;
     }
 
     if (isShuffled) {
-      const remaining = list.filter(t => t.id !== currentTrack.id);
-      const next = remaining[Math.floor(Math.random() * remaining.length)] || list[0];
-      handlePlayTrack(next);
+      const randIdx = Math.floor(Math.random() * playbackQueue.length);
+      handlePlayTrack(playbackQueue[randIdx], randIdx, playbackQueue);
       return;
     }
 
-    const idx = list.findIndex(t => t.id === currentTrack.id);
-    if (idx !== -1 && idx < list.length - 1) {
-      handlePlayTrack(list[idx + 1]);
+    if (currentQueueIndex !== -1 && currentQueueIndex < playbackQueue.length - 1) {
+      const nextIdx = currentQueueIndex + 1;
+      handlePlayTrack(playbackQueue[nextIdx], nextIdx, playbackQueue);
     } else if (repeatMode === "context") {
-      handlePlayTrack(list[0]); // loop back to start of playlist
+      handlePlayTrack(playbackQueue[0], 0, playbackQueue);
     }
   };
 
@@ -906,13 +912,20 @@ export default function MusicHub({ portalDarkMode, themeColor }: MusicHubProps) 
       } catch (e) {}
     }
 
-    const list = activeTab === "search" ? searchResults : currentTracksList;
-    if (!currentTrack || list.length === 0) return;
-    const idx = list.findIndex(t => t.id === currentTrack.id);
-    if (idx > 0) {
-      handlePlayTrack(list[idx - 1]);
+    if (playbackQueue.length === 0) return;
+
+    if (isShuffled) {
+      const randIdx = Math.floor(Math.random() * playbackQueue.length);
+      handlePlayTrack(playbackQueue[randIdx], randIdx, playbackQueue);
+      return;
+    }
+
+    if (currentQueueIndex > 0) {
+      const prevIdx = currentQueueIndex - 1;
+      handlePlayTrack(playbackQueue[prevIdx], prevIdx, playbackQueue);
     } else {
-      handlePlayTrack(list[list.length - 1]);
+      const lastIdx = playbackQueue.length - 1;
+      handlePlayTrack(playbackQueue[lastIdx], lastIdx, playbackQueue);
     }
   };
 
@@ -1392,127 +1405,194 @@ export default function MusicHub({ portalDarkMode, themeColor }: MusicHubProps) 
       <div className="lg:col-span-4 flex flex-col gap-6 h-[620px]">
         {/* Tracks List Card */}
         <div className="flex-1 bg-white/[0.02] border border-white/[0.05] rounded-3xl p-4 flex flex-col gap-4 overflow-hidden">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-1.5 select-none">
-              <Sliders className="w-3.5 h-3.5 text-[var(--theme-accent)]" />
-              <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-400">
-                {activeTab === "liked"
-                  ? "Liked Tracks"
-                  : activeTab === "artists"
-                  ? "Top Artists"
-                  : activeTab === "search"
-                  ? "Search Results"
-                  : playlists.find((p) => p.id === selectedPlaylistId)?.name || "Playlist Tracks"}
-              </h3>
-            </div>
+          {/* Tab Selection: Tracks vs Play Queue */}
+          <div className="flex border-b border-white/5 pb-1 select-none">
+            <button
+              onClick={() => setShowQueue(false)}
+              className={`flex-1 text-center py-2 text-xs font-bold transition cursor-pointer ${
+                !showQueue
+                  ? "text-[var(--theme-accent)] border-b-2 border-[var(--theme-accent)]"
+                  : "text-zinc-500 hover:text-white"
+              }`}
+            >
+              Library Tracks
+            </button>
+            <button
+              onClick={() => setShowQueue(true)}
+              className={`flex-1 text-center py-2 text-xs font-bold transition cursor-pointer flex items-center justify-center gap-1.5 ${
+                showQueue
+                  ? "text-[var(--theme-accent)] border-b-2 border-[var(--theme-accent)]"
+                  : "text-zinc-500 hover:text-white"
+              }`}
+            >
+              Play Queue
+              {playbackQueue.length > 0 && (
+                <span className="bg-white/10 px-1.5 py-0.5 rounded-full text-[9px] text-zinc-400">
+                  {playbackQueue.length}
+                </span>
+              )}
+            </button>
           </div>
 
-          {/* Search Input bar */}
-          <div className="relative w-full">
-            <Search className="w-3.5 h-3.5 text-zinc-500 absolute left-3 top-1/2 -translate-y-1/2" />
-            <input
-              type="text"
-              placeholder="Search artists, songs..."
-              value={searchQuery}
-              onChange={(e) => {
-                setSearchQuery(e.target.value);
-                if (activeTab !== "search") setActiveTab("search");
-              }}
-              disabled={!token}
-              className="w-full bg-white/[0.03] border border-white/5 rounded-xl pl-9 pr-3 py-2 text-xs focus:outline-none focus:border-[var(--theme-accent)] transition text-white placeholder-zinc-500"
-            />
-          </div>
+          {!showQueue ? (
+            <>
+              {/* Search Input bar */}
+              <div className="relative w-full">
+                <Search className="w-3.5 h-3.5 text-zinc-500 absolute left-3 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  placeholder="Search artists, songs..."
+                  value={searchQuery}
+                  onChange={(e) => {
+                    setSearchQuery(e.target.value);
+                    if (activeTab !== "search") setActiveTab("search");
+                  }}
+                  disabled={!token}
+                  className="w-full bg-white/[0.03] border border-white/5 rounded-xl pl-9 pr-3 py-2 text-xs focus:outline-none focus:border-[var(--theme-accent)] transition text-white placeholder-zinc-500"
+                />
+              </div>
 
-          {/* List area */}
-          <div className="flex-1 overflow-y-auto space-y-1 pr-1 scrollbar-thin">
-            {activeTab === "artists" ? (
-              /* RENDER ARTISTS LIST */
-              topArtists.map((artist) => (
-                <div
-                  key={artist.id}
-                  className="w-full p-2.5 rounded-xl text-left text-xs flex items-center gap-3 border border-transparent bg-white/[0.01]"
-                >
-                  <img
-                    src={artist.imageUrl}
-                    alt={artist.name}
-                    className="w-10 h-10 rounded-full object-cover shrink-0"
-                    referrerPolicy="no-referrer"
-                  />
-                  <div className="min-w-0">
-                    <p className="font-semibold text-white truncate">{artist.name}</p>
-                    <p className="text-[10px] text-zinc-500 truncate mt-0.5 uppercase tracking-wider">{artist.genres.slice(0, 2).join(", ") || "Artist"}</p>
-                  </div>
-                </div>
-              ))
-            ) : (
-              /* RENDER TRACKS LIST (Liked, playlists or search) */
-              (activeTab === "search" ? searchResults : currentTracksList).map((t) => (
-                <div
-                  key={t.id}
-                  onClick={() => handlePlayTrack(t)}
-                  className={`w-full p-2 rounded-xl text-left text-xs flex items-center justify-between transition cursor-pointer group ${
-                    currentTrack?.id === t.id
-                      ? "bg-white/[0.05] border border-[var(--theme-accent)]/20"
-                      : "hover:bg-white/[0.02] border border-transparent"
-                  }`}
-                >
-                  <div className="flex items-center gap-3 min-w-0">
-                    <div className="w-8 h-8 rounded overflow-hidden bg-white/5 shrink-0 flex items-center justify-center text-zinc-600 relative">
+              {/* List area */}
+              <div className="flex-1 overflow-y-auto space-y-1 pr-1 scrollbar-thin">
+                {activeTab === "artists" ? (
+                  /* RENDER ARTISTS LIST */
+                  topArtists.map((artist) => (
+                    <div
+                      key={artist.id}
+                      className="w-full p-2.5 rounded-xl text-left text-xs flex items-center gap-3 border border-transparent bg-white/[0.01]"
+                    >
                       <img
-                        src={t.imageUrl}
-                        alt={t.title}
-                        className="w-full h-full object-cover"
+                        src={artist.imageUrl}
+                        alt={artist.name}
+                        className="w-10 h-10 rounded-full object-cover shrink-0"
                         referrerPolicy="no-referrer"
                       />
-                      {currentTrack?.id === t.id && isPlaying && (
-                        <div className="absolute inset-0 bg-black/40 flex items-center justify-center text-[var(--theme-accent)]">
-                          <Disc className="w-4 h-4 animate-spin-slow" />
+                      <div className="min-w-0">
+                        <p className="font-semibold text-white truncate">{artist.name}</p>
+                        <p className="text-[10px] text-zinc-500 truncate mt-0.5 uppercase tracking-wider">{artist.genres.slice(0, 2).join(", ") || "Artist"}</p>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  /* RENDER TRACKS LIST (Liked, playlists or search) */
+                  (activeTab === "search" ? searchResults : currentTracksList).map((t, idx) => (
+                    <div
+                      key={t.id}
+                      onClick={() => handlePlayTrack(t, idx)}
+                      className={`w-full p-2 rounded-xl text-left text-xs flex items-center justify-between transition cursor-pointer group ${
+                        currentTrack?.id === t.id
+                          ? "bg-white/[0.05] border border-[var(--theme-accent)]/20"
+                          : "hover:bg-white/[0.02] border border-transparent"
+                      }`}
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="w-8 h-8 rounded overflow-hidden bg-white/5 shrink-0 flex items-center justify-center text-zinc-600 relative">
+                          <img
+                            src={t.imageUrl}
+                            alt={t.title}
+                            className="w-full h-full object-cover"
+                            referrerPolicy="no-referrer"
+                          />
+                          {currentTrack?.id === t.id && isPlaying && (
+                            <div className="absolute inset-0 bg-black/40 flex items-center justify-center text-[var(--theme-accent)]">
+                              <Disc className="w-4 h-4 animate-spin-slow" />
+                            </div>
+                          )}
                         </div>
-                      )}
-                    </div>
-                    <div className="truncate">
-                      <p className={`font-semibold truncate ${currentTrack?.id === t.id ? "text-[var(--theme-accent)]" : "text-white"}`}>
-                        {t.title}
-                      </p>
-                      <p className="text-[10px] text-zinc-500 truncate mt-0.5">{t.artist}</p>
-                    </div>
-                  </div>
+                        <div className="truncate">
+                          <p className={`font-semibold truncate ${currentTrack?.id === t.id ? "text-[var(--theme-accent)]" : "text-white"}`}>
+                            {t.title}
+                          </p>
+                          <p className="text-[10px] text-zinc-500 truncate mt-0.5">{t.artist}</p>
+                        </div>
+                      </div>
 
-                  <div className="flex items-center gap-2">
-                    {token && t.spotifyUri && (
-                      <button
-                        onClick={(e) => handleToggleLikeTrack(t, e)}
-                        className="p-1.5 hover:scale-110 transition cursor-pointer"
-                        title={likedTracks.some(lt => lt.id === t.id) ? "Remove from Liked Songs" : "Save to Liked Songs"}
-                      >
-                        <Heart
-                          className={`w-3.5 h-3.5 ${
-                            likedTracks.some(lt => lt.id === t.id)
-                              ? "text-pink-500 fill-current"
-                              : "text-zinc-500 hover:text-white"
-                          }`}
-                        />
-                      </button>
-                    )}
-                    <span className="text-[10px] text-zinc-500 tabular-nums shrink-0">{t.duration}</span>
+                      <div className="flex items-center gap-2">
+                        {token && t.spotifyUri && (
+                          <button
+                            onClick={(e) => handleToggleLikeTrack(t, e)}
+                            className="p-1.5 hover:scale-110 transition cursor-pointer"
+                            title={likedTracks.some(lt => lt.id === t.id) ? "Remove from Liked Songs" : "Save to Liked Songs"}
+                          >
+                            <Heart
+                              className={`w-3.5 h-3.5 ${
+                                likedTracks.some(lt => lt.id === t.id)
+                                  ? "text-pink-500 fill-current"
+                                  : "text-zinc-500 hover:text-white"
+                              }`}
+                            />
+                          </button>
+                        )}
+                        <span className="text-[10px] text-zinc-500 tabular-nums shrink-0">{t.duration}</span>
+                      </div>
+                    </div>
+                  ))
+                )}
+
+                {/* Empty displays */}
+                {!token && (
+                  <div className="text-zinc-500 text-center py-12 text-xs flex flex-col items-center gap-2">
+                    <Sliders className="w-8 h-8 opacity-40 text-[var(--theme-accent)]" />
+                    <span>Connect your Spotify account to load your library details.</span>
+                  </div>
+                )}
+                {token && activeTab !== "artists" && (activeTab === "search" ? searchResults : currentTracksList).length === 0 && (
+                  <div className="text-zinc-600 text-center py-12 italic text-xs">
+                    {isSearching ? "Searching catalog..." : "No tracks found in collection"}
+                  </div>
+                )}
+              </div>
+            </>
+          ) : (
+            /* RENDER QUEUE SCREEN */
+            <div className="flex-1 flex flex-col gap-4 overflow-hidden animate-[fadeIn_0.3s_ease-out]">
+              {/* Now Playing Section */}
+              {currentTrack && (
+                <div className="bg-white/[0.03] border border-white/5 rounded-2xl p-3 flex flex-col gap-2">
+                  <span className="text-[9px] uppercase tracking-wider font-bold text-zinc-500">Now Playing</span>
+                  <div className="flex items-center gap-3">
+                    <img src={currentTrack.imageUrl} alt={currentTrack.title} className="w-10 h-10 rounded object-cover shrink-0" />
+                    <div className="min-w-0 flex-1">
+                      <p className="font-bold text-sm text-[var(--theme-accent)] truncate">{currentTrack.title}</p>
+                      <p className="text-xs text-zinc-400 truncate mt-0.5">{currentTrack.artist}</p>
+                    </div>
+                    {isPlaying && <Disc className="w-5 h-5 text-[var(--theme-accent)] animate-spin-slow shrink-0" />}
                   </div>
                 </div>
-              ))
-            )}
+              )}
 
-            {/* Empty displays */}
-            {!token && (
-              <div className="text-zinc-500 text-center py-12 text-xs flex flex-col items-center gap-2">
-                <Sliders className="w-8 h-8 opacity-40 text-[var(--theme-accent)]" />
-                <span>Connect your Spotify account to load your library details.</span>
+              {/* Next Up Section */}
+              <div className="flex-1 flex flex-col gap-2 overflow-hidden">
+                <span className="text-[9px] uppercase tracking-wider font-bold text-zinc-500 px-1">Next Up</span>
+                <div className="flex-1 overflow-y-auto space-y-1 pr-1 scrollbar-thin">
+                  {playbackQueue.slice(currentQueueIndex + 1).map((t, indexOffset) => {
+                    const actualIndex = currentQueueIndex + 1 + indexOffset;
+                    return (
+                      <div
+                        key={`${t.id}-${actualIndex}`}
+                        onClick={() => handlePlayTrack(t, actualIndex, playbackQueue)}
+                        className="w-full p-2 rounded-xl text-left text-xs flex items-center justify-between hover:bg-white/[0.02] border border-transparent transition cursor-pointer group"
+                      >
+                        <div className="flex items-center gap-3 min-w-0">
+                          <img src={t.imageUrl} alt={t.title} className="w-8 h-8 rounded object-cover shrink-0" />
+                          <div className="truncate">
+                            <p className="font-semibold text-white truncate">{t.title}</p>
+                            <p className="text-[10px] text-zinc-500 truncate mt-0.5">{t.artist}</p>
+                          </div>
+                        </div>
+                        <span className="text-[10px] text-zinc-500 tabular-nums shrink-0">{t.duration}</span>
+                      </div>
+                    );
+                  })}
+                  {playbackQueue.length - 1 <= currentQueueIndex && (
+                    <div className="text-zinc-600 text-center py-8 italic text-xs">
+                      Queue end reached. Enable repeat context to loop.
+                    </div>
+                  )}
+                </div>
               </div>
-            )}
-            {token && activeTab !== "artists" && (activeTab === "search" ? searchResults : currentTracksList).length === 0 && (
-              <div className="text-zinc-600 text-center py-12 italic text-xs">
-                {isSearching ? "Searching catalog..." : "No tracks found in collection"}
-              </div>
-            )}
-          </div>
+            </div>
+          )}
 
           {/* Equalizer canvas */}
           <div className="h-16 shrink-0 border-t border-white/5 pt-2 flex flex-col gap-1.5">
