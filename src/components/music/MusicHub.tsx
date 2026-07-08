@@ -447,9 +447,6 @@ export default function MusicHub({ portalDarkMode, themeColor }: MusicHubProps) 
       const errText = await res.text().catch(() => "");
       const errMsg = `Spotify API error: ${res.status} ${res.statusText}${errText ? ` (${errText})` : ""}`;
       setApiError(errMsg);
-      if (res.status === 403) {
-        handleDisconnect();
-      }
       throw new Error(errMsg);
     }
     return res.json();
@@ -560,7 +557,12 @@ export default function MusicHub({ portalDarkMode, themeColor }: MusicHubProps) 
       .then((profile) => {
         setUserProfile(profile);
       })
-      .catch((e) => console.error(e));
+      .catch((e) => {
+        console.error(e);
+        if (e.message && e.message.includes("403")) {
+          handleDisconnect();
+        }
+      });
   }, [token]);
 
   // Core direct-fetch helper that accepts an explicit token (bypasses stale closure)
@@ -1532,24 +1534,30 @@ export default function MusicHub({ portalDarkMode, themeColor }: MusicHubProps) 
               {/* List area */}
               <div className="flex-1 overflow-y-auto space-y-1 pr-1 scrollbar-thin">
                 {activeTab === "artists" ? (
-                  /* RENDER ARTISTS LIST */
-                  topArtists.map((artist) => (
-                    <div
-                      key={artist.id}
-                      className="w-full p-2.5 rounded-xl text-left text-xs flex items-center gap-3 border border-transparent bg-white/[0.01]"
-                    >
-                      <img
-                        src={artist.imageUrl}
-                        alt={artist.name}
-                        className="w-10 h-10 rounded-full object-cover shrink-0"
-                        referrerPolicy="no-referrer"
-                      />
-                      <div className="min-w-0">
-                        <p className="font-semibold text-white truncate">{artist.name}</p>
-                        <p className="text-[10px] text-zinc-500 truncate mt-0.5 uppercase tracking-wider">{artist.genres.slice(0, 2).join(", ") || "Artist"}</p>
-                      </div>
+                  topArtists.length === 0 ? (
+                    <div className="text-center py-12 text-zinc-500 text-xs">
+                      No top artists found. Play more music on Spotify to populate your top artists list!
                     </div>
-                  ))
+                  ) : (
+                    /* RENDER ARTISTS LIST */
+                    topArtists.map((artist) => (
+                      <div
+                        key={artist.id}
+                        className="w-full p-2.5 rounded-xl text-left text-xs flex items-center gap-3 border border-transparent bg-white/[0.01]"
+                      >
+                        <img
+                          src={artist.imageUrl}
+                          alt={artist.name}
+                          className="w-10 h-10 rounded-full object-cover shrink-0"
+                          referrerPolicy="no-referrer"
+                        />
+                        <div className="min-w-0">
+                          <p className="font-semibold text-white truncate">{artist.name}</p>
+                          <p className="text-[10px] text-zinc-500 truncate mt-0.5 uppercase tracking-wider">{artist.genres.slice(0, 2).join(", ") || "Artist"}</p>
+                        </div>
+                      </div>
+                    ))
+                  )
                 ) : (
                   /* RENDER TRACKS LIST (Liked, playlists or search) */
                   (activeTab === "search" ? searchResults : currentTracksList).map((t, idx) => (
