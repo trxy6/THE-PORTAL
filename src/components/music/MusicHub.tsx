@@ -368,9 +368,8 @@ export default function MusicHub({ portalDarkMode, themeColor }: MusicHubProps) 
     return null;
   };
 
-  // Fetch API with Auth Header and Auto Refresh
   const fetchWebApi = async (endpoint: string, method = "GET", body?: any): Promise<any> => {
-    let activeToken = token;
+    let activeToken = localStorage.getItem("spotify_access_token") || token;
     if (!activeToken) return null;
 
     const executeRequest = async (t: string) => {
@@ -774,18 +773,28 @@ export default function MusicHub({ portalDarkMode, themeColor }: MusicHubProps) 
     // A. If Spotify Web Playback SDK is connected, play full song directly on virtual device!
     if (isSdkConnected && sdkDeviceId && token && track.spotifyUri) {
       try {
-        await fetch(`https://api.spotify.com/v1/me/player/play?device_id=${sdkDeviceId}`, {
-          method: "PUT",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({
-            uris: [track.spotifyUri]
-          })
-        });
-        setIsPlaying(true);
-        return;
+        const list = activeTab === "search" ? searchResults : currentTracksList;
+        const trackUris = list.map(t => t.spotifyUri).filter(uri => uri);
+
+        if (trackUris.length > 0) {
+          const body: any = {
+            uris: trackUris,
+            offset: {
+              uri: track.spotifyUri
+            }
+          };
+
+          await fetch(`https://api.spotify.com/v1/me/player/play?device_id=${sdkDeviceId}`, {
+            method: "PUT",
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify(body)
+          });
+          setIsPlaying(true);
+          return;
+        }
       } catch (e) {
         console.warn("Failed to play on Spotify Web SDK Device, falling back to native previews...", e);
       }
