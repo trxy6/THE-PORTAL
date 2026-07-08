@@ -20,7 +20,10 @@ import {
   User,
   Power,
   Sliders,
-  ExternalLink
+  ExternalLink,
+  Shuffle,
+  Repeat,
+  Repeat1
 } from "lucide-react";
 
 // Spotify Client Config
@@ -177,6 +180,10 @@ export default function MusicHub({ portalDarkMode, themeColor }: MusicHubProps) 
 
   // UI state
   const [activePlaybackStatus, setActivePlaybackStatus] = useState<"idle" | "loading" | "playing" | "paused" | "error">("idle");
+
+  // Playback mode states
+  const [isShuffled, setIsShuffled] = useState<boolean>(false);
+  const [repeatMode, setRepeatMode] = useState<"off" | "context" | "track">("off");
 
   // Web Playback SDK States
   const [spotifyPlayer, setSpotifyPlayer] = useState<any>(null);
@@ -529,19 +536,39 @@ export default function MusicHub({ portalDarkMode, themeColor }: MusicHubProps) 
       .catch((e) => console.error(e));
   }, [token]);
 
-  // Fetch Liked Songs (Saved Tracks) with pagination support
-  const fetchAllLikedSongs = async () => {
-    if (!token) return;
+  // Core direct-fetch helper that accepts an explicit token (bypasses stale closure)
+  const apiFetch = async (activeToken: string, endpoint: string, method = "GET", body?: any): Promise<any> => {
+    const res = await fetch(`https://api.spotify.com/${endpoint}`, {
+      headers: {
+        Authorization: `Bearer ${activeToken}`,
+        "Content-Type": "application/json"
+      },
+      method,
+      body: body ? JSON.stringify(body) : undefined
+    });
+    if (!res.ok) {
+      if (res.status === 204) return null;
+      console.error(`apiFetch error: ${res.status} ${res.statusText} for ${endpoint}`);
+      return null;
+    }
+    return res.json();
+  };
+
+  // Fetch Liked Songs (Saved Tracks) with full pagination
+  const fetchAllLikedSongs = async (activeToken: string) => {
     setActivePlaybackStatus("loading");
     try {
       let url = "v1/me/tracks?limit=50";
       let allTracks: SpotifyTrack[] = [];
-      
-      // Fetch up to 4 pages (200 songs)
-      for (let page = 0; page < 4; page++) {
-        const data = await fetchWebApi(url);
-        if (data && data.items && data.items.length > 0) {
-          const mapped = data.items.map((item: any) => ({
+
+      // Page through entire library (no cap)
+      while (url) {
+        const data = await apiFetch(activeToken, url);
+        if (!data || !data.items || data.items.length === 0) break;
+
+        const mapped = data.items
+          .filter((item: any) => item.track && item.track.id)
+          .map((item: any) => ({
             id: item.track.id,
             title: item.track.name,
             artist: item.track.artists.map((a: any) => a.name).join(", "),
@@ -552,60 +579,57 @@ export default function MusicHub({ portalDarkMode, themeColor }: MusicHubProps) 
             durationMs: item.track.duration_ms,
             previewUrl: item.track.preview_url
           }));
-          allTracks = [...allTracks, ...mapped];
-          if (data.next) {
-            const urlObj = new URL(data.next);
-            url = urlObj.pathname.substring(1) + urlObj.search;
-          } else {
-            break;
-          }
+
+        allTracks = [...allTracks, ...mapped];
+
+        if (data.next) {
+          const urlObj = new URL(data.next);
+          url = urlObj.pathname.substring(1) + urlObj.search;
         } else {
           break;
         }
       }
 
       setLikedTracks(allTracks);
-      if (activeTab === "liked") {
-        setCurrentTracksList(allTracks);
-      }
+      setCurrentTracksList(allTracks);
       setActivePlaybackStatus("idle");
     } catch (e) {
-      console.error(e);
+      console.error("fetchAllLikedSongs error:", e);
       setActivePlaybackStatus("error");
     }
   };
 
-  // Fetch Playlists with pagination support
-  const fetchAllPlaylists = async () => {
-    if (!token) return;
+  // Fetch ALL playlists with full pagination (no page cap)
+  const fetchAllPlaylists = async (activeToken: string) => {
     try {
       let url = "v1/me/playlists?limit=50";
       let allPlaylists: SpotifyPlaylist[] = [];
 
-      for (let page = 0; page < 5; page++) { // Fetch up to 5 pages (250 playlists)
-        const data = await fetchWebApi(url);
-        if (data && data.items && data.items.length > 0) {
-          const mapped = data.items.map((item: any) => ({
-            id: item.id,
-            name: item.name,
-            description: item.description || "Spotify Playlist",
-            imageUrl: item.images?.[0]?.url || "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=300",
-            trackCount: item.tracks.total
-          }));
-          allPlaylists = [...allPlaylists, ...mapped];
-          if (data.next) {
-            const urlObj = new URL(data.next);
-            url = urlObj.pathname.substring(1) + urlObj.search;
-          } else {
-            break;
-          }
+      while (url) {
+        const data = await apiFetch(activeToken, url);
+        if (!data || !data.items || data.items.length === 0) break;
+
+        const mapped = data.items.map((item: any) => ({
+          id: item.id,
+          name: item.name,
+          description: item.description || "Spotify Playlist",
+          imageUrl: item.images?.[0]?.url || "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=300",
+          trackCount: item.tracks?.total ?? 0
+        }));
+
+        allPlaylists = [...allPlaylists, ...mapped];
+
+        if (data.next) {
+          const urlObj = new URL(data.next);
+          url = urlObj.pathname.substring(1) + urlObj.search;
         } else {
           break;
         }
       }
+
       setPlaylists(allPlaylists);
     } catch (e) {
-      console.error(e);
+      console.error("fetchAllPlaylists error:", e);
     }
   };
 
@@ -637,10 +661,9 @@ export default function MusicHub({ portalDarkMode, themeColor }: MusicHubProps) 
   };
 
   // Fetch Top/Followed Artists
-  const fetchTopArtists = async () => {
-    if (!token) return;
+  const fetchTopArtists = async (activeToken: string) => {
     try {
-      const data = await fetchWebApi("v1/me/top/artists?limit=50");
+      const data = await apiFetch(activeToken, "v1/me/top/artists?limit=50");
       if (data && data.items) {
         const mapped = data.items.map((item: any) => ({
           id: item.id,
@@ -651,17 +674,17 @@ export default function MusicHub({ portalDarkMode, themeColor }: MusicHubProps) 
         setTopArtists(mapped);
       }
     } catch (e) {
-      console.error(e);
+      console.error("fetchTopArtists error:", e);
     }
   };
 
-  // Load playlists, top artists, and liked songs on successful connection
+  // Load full library when token is available — pass token directly to avoid stale closure
   useEffect(() => {
-    if (token) {
-      fetchAllLikedSongs();
-      fetchAllPlaylists();
-      fetchTopArtists();
-    }
+    if (!token) return;
+    const t = token; // capture current value
+    fetchAllLikedSongs(t);
+    fetchAllPlaylists(t);
+    fetchTopArtists(t);
   }, [token]);
 
   // Load tracks for selected playlist
@@ -808,6 +831,7 @@ export default function MusicHub({ portalDarkMode, themeColor }: MusicHubProps) 
   };
 
   const handleSkipForward = async () => {
+    // SDK: let Spotify handle skip (it respects server-side shuffle/repeat)
     if (spotifyPlayerRef.current && isSdkConnected) {
       try {
         await spotifyPlayerRef.current.nextTrack();
@@ -815,17 +839,42 @@ export default function MusicHub({ portalDarkMode, themeColor }: MusicHubProps) 
       } catch (e) {}
     }
 
+    // Local fallback: respect local shuffle/repeat modes
     const list = activeTab === "search" ? searchResults : currentTracksList;
     if (!currentTrack || list.length === 0) return;
+
+    if (repeatMode === "track") {
+      // Repeat same track — replay from start
+      handlePlayTrack(currentTrack);
+      return;
+    }
+
+    if (isShuffled) {
+      const remaining = list.filter(t => t.id !== currentTrack.id);
+      const next = remaining[Math.floor(Math.random() * remaining.length)] || list[0];
+      handlePlayTrack(next);
+      return;
+    }
+
     const idx = list.findIndex(t => t.id === currentTrack.id);
     if (idx !== -1 && idx < list.length - 1) {
       handlePlayTrack(list[idx + 1]);
-    } else {
-      handlePlayTrack(list[0]);
+    } else if (repeatMode === "context") {
+      handlePlayTrack(list[0]); // loop back to start of playlist
     }
   };
 
   const handleSkipBackward = async () => {
+    // If more than 3 s in, restart instead of going back (Spotify-like behaviour)
+    if (currentTime > 3) {
+      if (spotifyPlayerRef.current && isSdkConnected) {
+        try { await spotifyPlayerRef.current.seek(0); return; } catch (e) {}
+      }
+      if (audioRef.current) { audioRef.current.currentTime = 0; }
+      setCurrentTime(0);
+      return;
+    }
+
     if (spotifyPlayerRef.current && isSdkConnected) {
       try {
         await spotifyPlayerRef.current.previousTrack();
@@ -840,6 +889,34 @@ export default function MusicHub({ portalDarkMode, themeColor }: MusicHubProps) 
       handlePlayTrack(list[idx - 1]);
     } else {
       handlePlayTrack(list[list.length - 1]);
+    }
+  };
+
+  const handleToggleShuffle = async () => {
+    const next = !isShuffled;
+    setIsShuffled(next);
+    // Sync to Spotify API if connected
+    if (token) {
+      try {
+        await fetch(`https://api.spotify.com/v1/me/player/shuffle?state=${next}`, {
+          method: "PUT",
+          headers: { Authorization: `Bearer ${token}` }
+        });
+      } catch (e) {}
+    }
+  };
+
+  const handleCycleRepeat = async () => {
+    const next = repeatMode === "off" ? "context" : repeatMode === "context" ? "track" : "off";
+    setRepeatMode(next);
+    // Sync to Spotify API if connected
+    if (token) {
+      try {
+        await fetch(`https://api.spotify.com/v1/me/player/repeat?state=${next}`, {
+          method: "PUT",
+          headers: { Authorization: `Bearer ${token}` }
+        });
+      } catch (e) {}
     }
   };
 
@@ -1208,13 +1285,67 @@ export default function MusicHub({ portalDarkMode, themeColor }: MusicHubProps) 
         </div>
 
         {/* Bottom player controls */}
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 w-full z-10 pt-4 border-t border-white/5">
-          {/* Mute/Volume slider */}
-          <div className="flex items-center gap-2.5 w-full sm:w-28 justify-center sm:justify-start">
+        <div className="flex flex-col items-center gap-3 w-full z-10 pt-4 border-t border-white/5">
+
+          {/* Main transport row: Shuffle | SkipBack | Play | SkipForward | Repeat */}
+          <div className="flex items-center gap-4 justify-center w-full">
+            {/* Shuffle */}
             <button
-              onClick={handleVolumeToggle}
-              className="text-zinc-400 hover:text-white transition p-1"
+              onClick={handleToggleShuffle}
+              title={isShuffled ? "Shuffle On" : "Shuffle Off"}
+              className={`p-2 rounded-xl border transition cursor-pointer ${
+                isShuffled
+                  ? "bg-[var(--theme-accent)]/20 border-[var(--theme-accent)]/40 text-[var(--theme-accent)]"
+                  : "bg-white/5 border-white/10 text-zinc-500 hover:text-white"
+              }`}
             >
+              <Shuffle className="w-4 h-4" />
+            </button>
+
+            {/* Skip Back */}
+            <button
+              onClick={handleSkipBackward}
+              disabled={!currentTrack}
+              className="p-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl transition text-white disabled:opacity-20 disabled:pointer-events-none cursor-pointer"
+            >
+              <SkipBack className="w-4 h-4 fill-current" />
+            </button>
+
+            {/* Play / Pause */}
+            <button
+              onClick={handlePlayToggle}
+              disabled={!currentTrack}
+              className="w-14 h-14 bg-[var(--theme-accent)] hover:scale-105 text-white flex items-center justify-center rounded-full transition shadow-[0_0_20px_var(--theme-glow)] cursor-pointer disabled:opacity-40 disabled:pointer-events-none"
+            >
+              {isPlaying ? <Pause className="w-6 h-6 fill-current" /> : <Play className="w-6 h-6 fill-current translate-x-0.5" />}
+            </button>
+
+            {/* Skip Forward */}
+            <button
+              onClick={handleSkipForward}
+              disabled={!currentTrack}
+              className="p-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl transition text-white disabled:opacity-20 disabled:pointer-events-none cursor-pointer"
+            >
+              <SkipForward className="w-4 h-4 fill-current" />
+            </button>
+
+            {/* Repeat cycle: off → context (playlist) → track */}
+            <button
+              onClick={handleCycleRepeat}
+              title={repeatMode === "off" ? "Repeat Off" : repeatMode === "context" ? "Repeat Playlist" : "Repeat Track"}
+              className={`p-2 rounded-xl border transition cursor-pointer ${
+                repeatMode !== "off"
+                  ? "bg-[var(--theme-accent)]/20 border-[var(--theme-accent)]/40 text-[var(--theme-accent)]"
+                  : "bg-white/5 border-white/10 text-zinc-500 hover:text-white"
+              }`}
+            >
+              {repeatMode === "track" ? <Repeat1 className="w-4 h-4" /> : <Repeat className="w-4 h-4" />}
+            </button>
+          </div>
+
+          {/* Volume row */}
+          <div className="flex items-center gap-2.5 justify-center">
+            <button onClick={handleVolumeToggle} className="text-zinc-400 hover:text-white transition p-1">
               {volume === 0 ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
             </button>
             <input
@@ -1223,38 +1354,12 @@ export default function MusicHub({ portalDarkMode, themeColor }: MusicHubProps) 
               max={100}
               value={volume}
               onChange={(e) => setVolume(parseInt(e.target.value, 10))}
-              className="flex-1 h-[2px] max-w-[80px] bg-white/10 appearance-none rounded-full cursor-pointer accent-[var(--theme-accent)]"
+              className="h-[2px] w-24 bg-white/10 appearance-none rounded-full cursor-pointer accent-[var(--theme-accent)]"
             />
-          </div>
-
-          {/* Main playback control buttons */}
-          <div className="flex items-center gap-6 justify-center">
-            <button
-              onClick={handleSkipBackward}
-              disabled={!currentTrack}
-              className="p-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl transition text-white disabled:opacity-20 disabled:pointer-events-none"
-            >
-              <SkipBack className="w-4 h-4 fill-current" />
-            </button>
-            <button
-              onClick={handlePlayToggle}
-              disabled={!currentTrack}
-              className="w-14 h-14 bg-[var(--theme-accent)] hover:scale-105 text-white flex items-center justify-center rounded-full transition shadow-[0_0_20px_var(--theme-glow)] cursor-pointer"
-            >
-              {isPlaying ? <Pause className="w-6 h-6 fill-current" /> : <Play className="w-6 h-6 fill-current translate-x-0.5" />}
-            </button>
-            <button
-              onClick={handleSkipForward}
-              disabled={!currentTrack}
-              className="p-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl transition text-white disabled:opacity-20 disabled:pointer-events-none"
-            >
-              <SkipForward className="w-4 h-4 fill-current" />
-            </button>
-          </div>
-
-          {/* Connect status label */}
-          <div className="hidden sm:block text-[10px] uppercase font-bold text-zinc-500 border border-white/10 rounded-full px-2.5 py-1 tracking-wider bg-white/[0.02]">
-            {token ? (isSdkConnected ? "SDK Session" : "API Connected") : "Offline"}
+            {/* Connect status pill */}
+            <div className="hidden sm:block text-[10px] uppercase font-bold text-zinc-500 border border-white/10 rounded-full px-2.5 py-1 tracking-wider bg-white/[0.02] ml-2">
+              {token ? (isSdkConnected ? "SDK Session" : "API Connected") : "Offline"}
+            </div>
           </div>
         </div>
       </div>
