@@ -816,7 +816,8 @@ export default function MusicHub({ portalDarkMode, themeColor }: MusicHubProps) 
   const handleSelectPlaylist = useCallback(async (playlistId: string) => {
     setActivePlaybackStatus("loading");
     try {
-      const data = await fetchWebApi(`v1/playlists/${playlistId}/items?limit=50`);
+      const marketParam = userProfile?.country ? `&market=${userProfile.country}` : "";
+      const data = await fetchWebApi(`v1/playlists/${playlistId}/items?limit=50&additional_types=track${marketParam}`);
       if (data && data.items) {
         const mapped = data.items.filter((item: any) => item.track).map((item: any) => ({
           id: item.track.id,
@@ -836,7 +837,7 @@ export default function MusicHub({ portalDarkMode, themeColor }: MusicHubProps) 
       console.error("handleSelectPlaylist error:", e);
       setActivePlaybackStatus("error");
     }
-  }, [token, refreshToken]);
+  }, [token, refreshToken, userProfile]);
 
   // Sync catalog lists dynamically based on selected tabs and selected playlist
   useEffect(() => {
