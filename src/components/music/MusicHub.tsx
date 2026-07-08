@@ -536,7 +536,7 @@ export default function MusicHub({ portalDarkMode, themeColor }: MusicHubProps) 
     canvas.height = canvas.offsetHeight;
 
     const barCount = 24;
-    const barWidth = canvas.width / barCount - 2;
+    const barWidth = Math.max(2, canvas.width / barCount - 2);
     const barsArray: { x: number; height: number; targetHeight: number; speed: number }[] = [];
 
     for (let i = 0; i < barCount; i++) {
@@ -569,7 +569,8 @@ export default function MusicHub({ portalDarkMode, themeColor }: MusicHubProps) 
         
         ctx.beginPath();
         if (ctx.roundRect) {
-          ctx.roundRect(bar.x, canvas.height - bar.height, barWidth, bar.height, [barWidth / 2, barWidth / 2, 0, 0]);
+          const radius = Math.max(0, barWidth / 2);
+          ctx.roundRect(bar.x, canvas.height - bar.height, barWidth, bar.height, [radius, radius, 0, 0]);
         } else {
           ctx.rect(bar.x, canvas.height - bar.height, barWidth, bar.height);
         }
