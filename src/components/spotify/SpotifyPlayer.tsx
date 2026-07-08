@@ -473,6 +473,29 @@ export default function SpotifyPlayer({ portalDarkMode, themeColor }: SpotifyPla
     };
   }, [isPlaying, duration]);
 
+  // Synchronize volume slider with Spotify Web API Player
+  useEffect(() => {
+    const syncSpotifyVolume = async () => {
+      const token = spotifyToken || localStorage.getItem("spotify_access_token");
+      if (!token) return;
+      try {
+        await fetch(`https://api.spotify.com/v1/me/player/volume?volume_percent=${volume}`, {
+          method: "PUT",
+          headers: { Authorization: `Bearer ${token}` },
+        });
+      } catch (e) {
+        console.error("Failed to sync volume with Spotify API:", e);
+      }
+    };
+
+    // Debounce to prevent hitting API rate limits during slider drag
+    const timer = setTimeout(() => {
+      syncSpotifyVolume();
+    }, 250);
+
+    return () => clearTimeout(timer);
+  }, [volume, spotifyToken]);
+
   // Handle selecting a playlist from sidebar
   const handleSelectPlaylist = async (id: string, isCustom: boolean, isSpotifyRemote?: boolean) => {
     if (isSpotifyRemote) {
