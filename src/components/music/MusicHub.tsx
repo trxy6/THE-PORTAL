@@ -392,36 +392,41 @@ export default function MusicHub({ portalDarkMode, themeColor }: MusicHubProps) 
 
     let res = await executeRequest(activeToken);
 
-    // If 401, trigger automatic token refresh
-    if (res.status === 401 && refreshToken) {
-      try {
-        const refreshRes = await fetch("https://accounts.spotify.com/api/token", {
-          method: "POST",
-          headers: { "Content-Type": "application/x-www-form-urlencoded" },
-          body: new URLSearchParams({
-            client_id: SPOTIFY_CLIENT_ID,
-            grant_type: "refresh_token",
-            refresh_token: refreshToken
-          })
-        });
+    // If 401, trigger automatic token refresh (force disconnect if no refresh possible)
+    if (res.status === 401) {
+      if (refreshToken) {
+        try {
+          const refreshRes = await fetch("https://accounts.spotify.com/api/token", {
+            method: "POST",
+            headers: { "Content-Type": "application/x-www-form-urlencoded" },
+            body: new URLSearchParams({
+              client_id: SPOTIFY_CLIENT_ID,
+              grant_type: "refresh_token",
+              refresh_token: refreshToken
+            })
+          });
 
-        if (refreshRes.ok) {
-          const data = await refreshRes.json();
-          activeToken = data.access_token;
-          setToken(activeToken);
-          localStorage.setItem("spotify_access_token", data.access_token);
-          if (data.refresh_token) {
-            setRefreshToken(data.refresh_token);
-            localStorage.setItem("spotify_refresh_token", data.refresh_token);
+          if (refreshRes.ok) {
+            const data = await refreshRes.json();
+            activeToken = data.access_token;
+            setToken(activeToken);
+            localStorage.setItem("spotify_access_token", data.access_token);
+            if (data.refresh_token) {
+              setRefreshToken(data.refresh_token);
+              localStorage.setItem("spotify_refresh_token", data.refresh_token);
+            }
+            // Retry initial request with new token
+            res = await executeRequest(activeToken);
+          } else {
+            handleDisconnect();
+            return null;
           }
-          // Retry initial request with new token
-          res = await executeRequest(activeToken);
-        } else {
+        } catch (e) {
+          console.error("Failed to refresh token", e);
           handleDisconnect();
           return null;
         }
-      } catch (e) {
-        console.error("Failed to refresh token", e);
+      } else {
         handleDisconnect();
         return null;
       }
