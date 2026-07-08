@@ -11,8 +11,13 @@ model_loaded = False
 model = None
 tokenizer = None
 load_error = None
+model_downloaded_cache = None
 
 def is_model_downloaded():
+    global model_downloaded_cache
+    if model_downloaded_cache is not None:
+        return model_downloaded_cache
+        
     model_id = "Qwen/Qwen2.5-1.5B-Instruct"
     repo_folder = f"models--{model_id.replace('/', '--')}"
     try:
@@ -24,15 +29,18 @@ def is_model_downloaded():
     model_dir = os.path.join(cache_dir, repo_folder)
     
     if not os.path.exists(model_dir):
+        model_downloaded_cache = False
         return False
         
     snapshots_dir = os.path.join(model_dir, "snapshots")
     if not os.path.exists(snapshots_dir):
+        model_downloaded_cache = False
         return False
         
     try:
         snapshots = os.listdir(snapshots_dir)
         if not snapshots:
+            model_downloaded_cache = False
             return False
             
         for snapshot in snapshots:
@@ -41,10 +49,12 @@ def is_model_downloaded():
                 files = os.listdir(snapshot_path)
                 # Check for weight files
                 if any(f.endswith('.safetensors') or f.endswith('.bin') for f in files):
+                    model_downloaded_cache = True
                     return True
     except Exception:
         pass
         
+    model_downloaded_cache = False
     return False
 
 def load_model_in_background():
@@ -93,12 +103,13 @@ def start_loading_thread():
     t.start()
 
 def download_model_in_background():
-    global status, load_error
+    global status, load_error, model_downloaded_cache
     try:
         print("[Companion Server] Starting model download (Qwen/Qwen2.5-1.5B-Instruct)...")
         from huggingface_hub import snapshot_download
         snapshot_download(repo_id="Qwen/Qwen2.5-1.5B-Instruct")
         print("[Companion Server] Model download complete. Starting load...")
+        model_downloaded_cache = True
         load_model_in_background()
     except Exception as e:
         import traceback
@@ -143,7 +154,7 @@ def unload_model():
         return False
 
 def delete_model_files():
-    global model, tokenizer, model_loaded, status, load_error
+    global model, tokenizer, model_loaded, status, load_error, model_downloaded_cache
     try:
         # First unload from memory
         unload_model()
@@ -163,6 +174,7 @@ def delete_model_files():
             import shutil
             shutil.rmtree(model_dir)
             
+        model_downloaded_cache = False
         status = "not_installed"
         load_error = None
         print("[Companion Server] Model files deleted successfully.")
@@ -346,13 +358,14 @@ class CompanionHTTPHandler(BaseHTTPRequestHandler):
             import torch
             num_cores = max(1, os.cpu_count() // 2) if hasattr(os, 'cpu_count') else 4
             torch.set_num_threads(num_cores)
-            with torch.no_grad():
+            with torch.inference_mode():
                 generated_ids = model.generate(
                     **inputs,
                     max_new_tokens=512,
                     do_sample=True,
                     temperature=0.7,
-                    top_p=0.9
+                    top_p=0.9,
+                    use_cache=True
                 )
             
             # Extract generated response text

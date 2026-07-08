@@ -254,7 +254,7 @@ async function startServer() {
   app.get('/api/companion/status', async (req, res) => {
     try {
       ensureLocalCompanionRunning();
-      const localResponse = await fetch('http://localhost:5001/', {
+      const localResponse = await fetch('http://127.0.0.1:5001/', {
         signal: AbortSignal.timeout(5000)
       });
       if (localResponse.ok) {
@@ -271,7 +271,7 @@ async function startServer() {
   app.post('/api/companion/download', async (req, res) => {
     try {
       ensureLocalCompanionRunning();
-      const localResponse = await fetch('http://localhost:5001/download', {
+      const localResponse = await fetch('http://127.0.0.1:5001/download', {
         method: 'POST',
         signal: AbortSignal.timeout(5000)
       });
@@ -285,7 +285,7 @@ async function startServer() {
   app.post('/api/companion/start', async (req, res) => {
     try {
       ensureLocalCompanionRunning();
-      const localResponse = await fetch('http://localhost:5001/start', {
+      const localResponse = await fetch('http://127.0.0.1:5001/start', {
         method: 'POST',
         signal: AbortSignal.timeout(5000)
       });
@@ -299,7 +299,7 @@ async function startServer() {
   app.post('/api/companion/stop', async (req, res) => {
     try {
       ensureLocalCompanionRunning();
-      const localResponse = await fetch('http://localhost:5001/stop', {
+      const localResponse = await fetch('http://127.0.0.1:5001/stop', {
         method: 'POST',
         signal: AbortSignal.timeout(5000)
       });
@@ -313,7 +313,7 @@ async function startServer() {
   app.post('/api/companion/delete', async (req, res) => {
     try {
       ensureLocalCompanionRunning();
-      const localResponse = await fetch('http://localhost:5001/delete', {
+      const localResponse = await fetch('http://127.0.0.1:5001/delete', {
         method: 'POST',
         signal: AbortSignal.timeout(5000)
       });
@@ -331,7 +331,7 @@ async function startServer() {
       ensureLocalCompanionRunning();
 
       try {
-        const localResponse = await fetch('http://localhost:5001/', {
+        const localResponse = await fetch('http://127.0.0.1:5001/', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ prompt, history, attachments }),
