@@ -1,8 +1,3 @@
-/**
- * @license
- * SPDX-License-Identifier: Apache-2.0
- */
-
 import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import {
   Play,
@@ -11,25 +6,26 @@ import {
   SkipBack,
   Volume2,
   VolumeX,
-  Search,
-  Music,
   Heart,
-  ListMusic,
-  Sparkles,
+  Search,
   Disc,
+  Sliders,
   User,
   Power,
-  Sliders,
-  ExternalLink,
-  Shuffle,
-  Repeat,
-  Repeat1,
-  ListPlus
+  ListMusic,
+  ListPlus,
+  Loader2,
+  RefreshCw,
+  HelpCircle
 } from "lucide-react";
 
-// Spotify Client Config
-const SPOTIFY_CLIENT_ID = "6238dcf567664f328bde1570c68f9eae";
+// PROPS DEFINITION
+interface MusicHubProps {
+  portalDarkMode: boolean;
+  themeColor: string;
+}
 
+// TRACK INTERFACE
 interface SpotifyTrack {
   id: string;
   title: string;
@@ -39,118 +35,79 @@ interface SpotifyTrack {
   spotifyUri: string;
   duration: string;
   durationMs: number;
-  previewUrl?: string | null;
+  previewUrl?: string;
 }
 
-interface SpotifyPlaylist {
-  id: string;
-  name: string;
-  description: string;
-  imageUrl: string;
-  trackCount: number;
-}
-
-interface SpotifyArtist {
-  id: string;
-  name: string;
-  imageUrl: string;
-  genres: string[];
-}
-
-interface MusicHubProps {
-  portalDarkMode: boolean;
-  themeColor: string;
-}
-
+// DEFAULT CURATED TRACKS (For offline / not connected view)
 const CURATED_TRACKS: SpotifyTrack[] = [
   {
     id: "curated-1",
-    title: "Lumina Chillwave",
-    artist: "Aether",
-    album: "Solar Wind",
-    imageUrl: "https://images.unsplash.com/photo-1508700115892-45ecd05ae2ad?w=300&q=80",
+    title: "Aether",
+    artist: "Kozmic",
+    album: "Nova Horizon",
+    imageUrl: "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=300&q=80",
     spotifyUri: "",
-    duration: "6:12",
-    durationMs: 372000,
+    duration: "3:45",
+    durationMs: 225000,
     previewUrl: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3"
   },
   {
     id: "curated-2",
-    title: "Midnight Drive",
-    artist: "Kozmic",
-    album: "Synth Wave",
-    imageUrl: "https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?w=300&q=80",
+    title: "Lunar Escape",
+    artist: "Nova & Helios",
+    album: "Solar Wind",
+    imageUrl: "https://images.unsplash.com/photo-1508700115892-45ecd05ae2ad?w=300&q=80",
     spotifyUri: "",
-    duration: "7:05",
-    durationMs: 425000,
+    duration: "4:12",
+    durationMs: 252000,
     previewUrl: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3"
   },
   {
     id: "curated-3",
-    title: "Aether Flow",
-    artist: "Lunar",
-    album: "Deep Ambient",
-    imageUrl: "https://images.unsplash.com/photo-1470229722913-7c0e2dbbafd3?w=300&q=80",
+    title: "Kozmic Void",
+    artist: "Aether Group",
+    album: "Deep Nebula",
+    imageUrl: "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=300&q=80",
     spotifyUri: "",
-    duration: "5:44",
-    durationMs: 344000,
+    duration: "3:20",
+    durationMs: 200000,
     previewUrl: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3"
-  },
-  {
-    id: "curated-4",
-    title: "Nebula Dream",
-    artist: "Nova",
-    album: "Nebular Waves",
-    imageUrl: "https://images.unsplash.com/photo-1518609878373-06d740f60d8b?w=300&q=80",
-    spotifyUri: "",
-    duration: "5:02",
-    durationMs: 302000,
-    previewUrl: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-4.mp3"
-  },
-  {
-    id: "curated-5",
-    title: "Cosmic Horizon",
-    artist: "Helios",
-    album: "Starlight Voyage",
-    imageUrl: "https://images.unsplash.com/photo-1465847899084-d164df4dedc6?w=300&q=80",
-    spotifyUri: "",
-    duration: "6:02",
-    durationMs: 362000,
-    previewUrl: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-5.mp3"
   }
 ];
 
-// PKCE Cryptographic Helpers
-function generateRandomString(length: number): string {
+// OAUTH SETTINGS
+const SPOTIFY_CLIENT_ID = "61726a418be24294b22c222ff13576e9";
+
+// PKCE HELPER METHODS
+function generateRandomString(length: number) {
+  let text = "";
   const possible = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-  const values = crypto.getRandomValues(new Uint8Array(length));
-  return Array.from(values).map((x) => possible[x % possible.length]).join("");
+  for (let i = 0; i < length; i++) {
+    text += possible.charAt(Math.floor(Math.random() * possible.length));
+  }
+  return text;
 }
 
-async function sha256(plain: string): Promise<ArrayBuffer> {
+async function sha256(plain: string) {
   const encoder = new TextEncoder();
   const data = encoder.encode(plain);
-  return crypto.subtle.digest("SHA-256", data);
+  return window.crypto.subtle.digest("SHA-256", data);
 }
 
-function base64urlencode(a: ArrayBuffer): string {
-  return btoa(String.fromCharCode(...new Uint8Array(a)))
+function base64urlencode(a: ArrayBuffer) {
+  return btoa(String.fromCharCode.apply(null, new Uint8Array(a) as any))
     .replace(/\+/g, "-")
     .replace(/\//g, "_")
     .replace(/=+$/, "");
 }
 
-async function generateCodeChallenge(v: string): Promise<string> {
-  const hashed = await sha256(v);
-  return base64urlencode(hashed);
-}
-
 export default function MusicHub({ portalDarkMode, themeColor }: MusicHubProps) {
-  // Auth Token States
+  // Authentication & Token States
   const [token, setToken] = useState<string | null>(() => localStorage.getItem("spotify_access_token"));
   const [refreshToken, setRefreshToken] = useState<string | null>(() => localStorage.getItem("spotify_refresh_token"));
   const [userProfile, setUserProfile] = useState<any>(null);
 
+  // Library & UI States
   const [likedTracks, setLikedTracks] = useState<SpotifyTrack[]>(() => {
     try {
       const cached = localStorage.getItem("spotify_cached_liked_tracks");
@@ -159,45 +116,25 @@ export default function MusicHub({ portalDarkMode, themeColor }: MusicHubProps) 
       return [];
     }
   });
-  const [currentTracksList, setCurrentTracksList] = useState<SpotifyTrack[]>(() => {
-    try {
-      const cached = localStorage.getItem("spotify_cached_liked_tracks");
-      if (cached) {
-        return JSON.parse(cached);
-      }
-      const t = localStorage.getItem("spotify_access_token");
-      return t ? [] : CURATED_TRACKS;
-    } catch (e) {
-      return CURATED_TRACKS;
-    }
-  });
-  
-  // Selection States
+
   const [activeTab, setActiveTab] = useState<"liked" | "search">("liked");
+  const [searchQuery, setSearchQuery] = useState<string>("");
+  const [searchResults, setSearchResults] = useState<SpotifyTrack[]>([]);
+  const [playbackQueue, setPlaybackQueue] = useState<SpotifyTrack[]>([]);
+  const [currentQueueIndex, setCurrentQueueIndex] = useState<number>(-1);
+  const [showQueue, setShowQueue] = useState<boolean>(false);
+
+  // Sync Progress Indicators
+  const [syncStatus, setSyncStatus] = useState<"idle" | "loading" | "error">("idle");
+  const [syncProgress, setSyncProgress] = useState<{ loaded: number; total: number } | null>(null);
+
+  // Player Playback States
   const [currentTrack, setCurrentTrack] = useState<SpotifyTrack | null>(null);
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
   const [volume, setVolume] = useState<number>(70);
   const [prevVolume, setPrevVolume] = useState<number>(70);
   const [currentTime, setCurrentTime] = useState<number>(0);
   const [duration, setDuration] = useState<number>(0);
-
-  // Search States
-  const [searchQuery, setSearchQuery] = useState<string>("");
-  const [searchResults, setSearchResults] = useState<SpotifyTrack[]>([]);
-  const [isSearching, setIsSearching] = useState<boolean>(false);
-
-  // UI state
-  const [activePlaybackStatus, setActivePlaybackStatus] = useState<"idle" | "loading" | "playing" | "paused" | "error">("idle");
-
-  // Playback mode states
-  const [isShuffled, setIsShuffled] = useState<boolean>(false);
-  const [repeatMode, setRepeatMode] = useState<"off" | "context" | "track">("off");
-
-  // Playback Queue States
-  const [playbackQueue, setPlaybackQueue] = useState<SpotifyTrack[]>([]);
-  const [currentQueueIndex, setCurrentQueueIndex] = useState<number>(-1);
-  const [showQueue, setShowQueue] = useState<boolean>(false);
-  const [apiError, setApiError] = useState<string | null>(null);
 
   // Web Playback SDK States
   const [spotifyPlayer, setSpotifyPlayer] = useState<any>(null);
@@ -224,36 +161,126 @@ export default function MusicHub({ portalDarkMode, themeColor }: MusicHubProps) 
     }
   }, [themeColor]);
 
-  // Native audio progress handlers
-  const handleTimeUpdate = () => {
-    if (audioRef.current) {
-      setCurrentTime(Math.floor(audioRef.current.currentTime));
+  // Unified fetchWebApi with refresh concurrency lock
+  const fetchWebApi = async (endpoint: string, method = "GET", body?: any): Promise<any> => {
+    let activeToken = localStorage.getItem("spotify_access_token") || token;
+
+    const executeRequest = async (tok: string) => {
+      return fetch(`https://api.spotify.com/${endpoint}`, {
+        headers: {
+          Authorization: `Bearer ${tok}`,
+          "Content-Type": "application/json"
+        },
+        method,
+        body: body ? JSON.stringify(body) : undefined
+      });
+    };
+
+    if (!activeToken) return null;
+    let res = await executeRequest(activeToken);
+
+    // If 401 Unauthorized, automatically handle token refresh
+    if (res.status === 401) {
+      if (refreshToken) {
+        try {
+          // If a refresh is already in progress, reuse the same promise
+          if (!refreshPromiseRef.current) {
+            refreshPromiseRef.current = (async () => {
+              const refreshRes = await fetch("https://accounts.spotify.com/api/token", {
+                method: "POST",
+                headers: { "Content-Type": "application/x-www-form-urlencoded" },
+                body: new URLSearchParams({
+                  client_id: SPOTIFY_CLIENT_ID,
+                  grant_type: "refresh_token",
+                  refresh_token: refreshToken
+                })
+              });
+
+              if (refreshRes.ok) {
+                const data = await refreshRes.json();
+                const newToken = data.access_token;
+                setToken(newToken);
+                localStorage.setItem("spotify_access_token", newToken);
+                if (data.refresh_token) {
+                  setRefreshToken(data.refresh_token);
+                  localStorage.setItem("spotify_refresh_token", data.refresh_token);
+                }
+                return newToken;
+              } else {
+                handleDisconnect();
+                return null;
+              }
+            })();
+          }
+
+          const newToken = await refreshPromiseRef.current;
+          refreshPromiseRef.current = null; // Clear lock
+
+          if (newToken) {
+            res = await executeRequest(newToken);
+          } else {
+            return null;
+          }
+        } catch (e) {
+          refreshPromiseRef.current = null;
+          console.error("Token refresh lock fail:", e);
+          handleDisconnect();
+          return null;
+        }
+      } else {
+        handleDisconnect();
+        return null;
+      }
     }
+
+    if (!res.ok) {
+      if (res.status === 204) return null; // No Content success
+      const errText = await res.text().catch(() => "");
+      throw new Error(`Spotify API error: ${res.status} ${res.statusText} ${errText}`);
+    }
+    return res.json();
   };
 
-  const handleLoadedMetadata = () => {
-    if (audioRef.current) {
-      setDuration(Math.floor(audioRef.current.duration));
+  // Direct fetch helper that doesn't trigger refresh loops (used in catalog loading)
+  const apiFetch = async (activeToken: string, endpoint: string, method = "GET", body?: any): Promise<any> => {
+    const res = await fetch(`https://api.spotify.com/${endpoint}`, {
+      headers: {
+        Authorization: `Bearer ${activeToken}`,
+        "Content-Type": "application/json"
+      },
+      method,
+      body: body ? JSON.stringify(body) : undefined
+    });
+    if (!res.ok) {
+      if (res.status === 204) return null;
+      console.error(`apiFetch failure: ${res.status} for ${endpoint}`);
+      return null;
     }
+    return res.json();
   };
 
-  // 1. OAUTH FLOW HANDLERS
+  // Safe cached token grabber for SDK callback
+  const getOrRefreshToken = async (): Promise<string | null> => {
+    return localStorage.getItem("spotify_access_token") || token;
+  };
+
+  // Initiate OAuth flow with PKCE
   const handleConnectSpotify = async () => {
     try {
-      const verifier = generateRandomString(64);
+      const verifier = generateRandomString(128);
       localStorage.setItem("spotify_code_verifier", verifier);
 
-      const challenge = await generateCodeChallenge(verifier);
-      const scope = [
+      const hashed = await sha256(verifier);
+      const challenge = base64urlencode(hashed);
+
+      const scopes = [
         "user-read-private",
         "user-read-email",
-        "playlist-read-private",
-        "playlist-read-collaborative",
         "user-library-read",
         "user-top-read",
         "user-read-playback-state",
         "user-modify-playback-state",
-        "streaming" // Critical scope for Web Playback SDK
+        "streaming"
       ].join(" ");
 
       let redirectUri = window.location.origin + window.location.pathname;
@@ -264,7 +291,7 @@ export default function MusicHub({ portalDarkMode, themeColor }: MusicHubProps) 
       const authUrl = `https://accounts.spotify.com/authorize?` + new URLSearchParams({
         response_type: "code",
         client_id: SPOTIFY_CLIENT_ID,
-        scope: scope,
+        scope: scopes,
         redirect_uri: redirectUri,
         code_challenge_method: "S256",
         code_challenge: challenge,
@@ -273,10 +300,11 @@ export default function MusicHub({ portalDarkMode, themeColor }: MusicHubProps) 
 
       window.location.href = authUrl;
     } catch (e) {
-      console.error("Auth flow failed", e);
+      console.error("Auth start fail:", e);
     }
   };
 
+  // Clean disconnect
   const handleDisconnect = () => {
     if (spotifyPlayerRef.current) {
       try {
@@ -295,16 +323,17 @@ export default function MusicHub({ portalDarkMode, themeColor }: MusicHubProps) 
     setSpotifyPlayer(null);
     setSdkDeviceId(null);
     setIsSdkConnected(false);
+    setSyncProgress(null);
   };
 
-  // Intercept Redirect code parameters
+  // Intercept Redirect Auth parameters on mount
   useEffect(() => {
     const codeExchange = async () => {
       const params = new URLSearchParams(window.location.search);
       const code = params.get("code");
       if (!code) return;
 
-      // Clean query string immediately
+      // Wipe code parameters immediately
       window.history.replaceState({}, document.title, window.location.pathname);
 
       const verifier = localStorage.getItem("spotify_code_verifier");
@@ -336,109 +365,120 @@ export default function MusicHub({ portalDarkMode, themeColor }: MusicHubProps) 
           if (data.refresh_token) {
             localStorage.setItem("spotify_refresh_token", data.refresh_token);
           }
-        } else {
-          const text = await res.text().catch(() => "");
-          throw new Error(`Token exchange failed: ${res.status} ${res.statusText}${text ? ` - ${text}` : ""}`);
         }
-      } catch (e: any) {
-        console.error("Failed to exchange token", e);
-        setApiError(e.message || "Auth token exchange failed");
+      } catch (e) {
+        console.error("Token exchange fail:", e);
       }
     };
 
     codeExchange();
   }, []);
 
-  const getOrRefreshToken = async (): Promise<string | null> => {
-    return localStorage.getItem("spotify_access_token") || token;
-  };
-
-  const fetchWebApi = async (endpoint: string, method = "GET", body?: any): Promise<any> => {
-    let activeToken = localStorage.getItem("spotify_access_token") || token;
-    if (!activeToken) return null;
-
-    const executeRequest = async (t: string) => {
-      return fetch(`https://api.spotify.com/${endpoint}`, {
-        headers: {
-          Authorization: `Bearer ${t}`,
-          "Content-Type": "application/json"
-        },
-        method,
-        body: body ? JSON.stringify(body) : undefined
+  // Fetch user profile info
+  useEffect(() => {
+    if (!token) return;
+    fetchWebApi("v1/me")
+      .then((profile) => {
+        setUserProfile(profile);
+      })
+      .catch((e) => {
+        console.error("Profile check fail:", e);
       });
-    };
+  }, [token]);
 
-    let res = await executeRequest(activeToken);
-
-    // If 401, trigger automatic token refresh (force disconnect if no refresh possible, using a concurrency lock)
-    if (res.status === 401) {
-      if (refreshToken) {
-        try {
-          if (!refreshPromiseRef.current) {
-            refreshPromiseRef.current = (async () => {
-              const refreshRes = await fetch("https://accounts.spotify.com/api/token", {
-                method: "POST",
-                headers: { "Content-Type": "application/x-www-form-urlencoded" },
-                body: new URLSearchParams({
-                  client_id: SPOTIFY_CLIENT_ID,
-                  grant_type: "refresh_token",
-                  refresh_token: refreshToken
-                })
-              });
-
-              if (refreshRes.ok) {
-                const data = await refreshRes.json();
-                const newToken = data.access_token;
-                setToken(newToken);
-                localStorage.setItem("spotify_access_token", newToken);
-                if (data.refresh_token) {
-                  setRefreshToken(data.refresh_token);
-                  localStorage.setItem("spotify_refresh_token", data.refresh_token);
-                }
-                return newToken;
-              } else {
-                handleDisconnect();
-                return null;
-              }
-            })();
-          }
-
-          const newToken = await refreshPromiseRef.current;
-          refreshPromiseRef.current = null; // Reset lock once complete
-
-          if (newToken) {
-            // Retry initial request with new token
-            res = await executeRequest(newToken);
-          } else {
-            return null;
-          }
-        } catch (e) {
-          refreshPromiseRef.current = null;
-          console.error("Failed to refresh token", e);
-          handleDisconnect();
-          return null;
-        }
-      } else {
-        handleDisconnect();
-        return null;
+  // Load all Liked Songs sequentially to prevent 429 Rate Limits
+  const fetchAllLikedSongs = async (activeToken: string) => {
+    setSyncStatus("loading");
+    setSyncProgress(null);
+    try {
+      // 1. Fetch first page to grab total count
+      const firstPage = await apiFetch(activeToken, "v1/me/tracks?limit=50&offset=0");
+      if (!firstPage || !firstPage.items) {
+        setLikedTracks([]);
+        setSyncStatus("idle");
+        return;
       }
-    }
 
-    if (!res.ok) {
-      if (res.status === 204) return null; // No Content success
-      const errText = await res.text().catch(() => "");
-      const errMsg = `Spotify API error: ${res.status} ${res.statusText}${errText ? ` (${errText})` : ""}`;
-      setApiError(errMsg);
-      throw new Error(errMsg);
+      const total = firstPage.total;
+      let allItems = [...firstPage.items];
+      setSyncProgress({ loaded: allItems.length, total });
+
+      // 2. Fetch remaining pages sequentially
+      for (let offset = 50; offset < total; offset += 50) {
+        const pageData = await apiFetch(activeToken, `v1/me/tracks?limit=50&offset=${offset}`);
+        if (pageData && pageData.items) {
+          allItems = [...allItems, ...pageData.items];
+          setSyncProgress({ loaded: allItems.length, total });
+        }
+        // Small breathing delay to be friendly to Spotify servers
+        await new Promise((resolve) => setTimeout(resolve, 60));
+      }
+
+      // Map to SpotifyTrack structure
+      const mapped = allItems
+        .filter((item: any) => item && item.track && item.track.id)
+        .map((item: any) => ({
+          id: item.track.id,
+          title: item.track.name,
+          artist: item.track.artists.map((a: any) => a.name).join(", "),
+          album: item.track.album.name,
+          imageUrl: item.track.album.images[0]?.url || "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=300&q=80",
+          spotifyUri: item.track.uri,
+          duration: formatDuration(item.track.duration_ms),
+          durationMs: item.track.duration_ms,
+          previewUrl: item.track.preview_url
+        }));
+
+      setLikedTracks(mapped);
+      localStorage.setItem("spotify_cached_liked_tracks", JSON.stringify(mapped));
+      localStorage.setItem("spotify_last_sync_time", Date.now().toString());
+      setSyncStatus("idle");
+      setSyncProgress(null);
+    } catch (e) {
+      console.error("fetchAllLikedSongs fail:", e);
+      setSyncStatus("error");
+      setSyncProgress(null);
     }
-    return res.json();
   };
 
-  // 2. SPOTIFY WEB PLAYBACK SDK INITIALIZATION
+  // Sync / Load library on mount or token update
+  useEffect(() => {
+    if (!token) return;
+    const t = token;
+
+    const lastSync = localStorage.getItem("spotify_last_sync_time");
+    const now = Date.now();
+
+    // Bypass 10-minute sync throttle if likedTracks state is empty
+    if (likedTracks.length > 0 && lastSync && now - parseInt(lastSync, 10) < 10 * 60 * 1000) {
+      console.log("Spotify library sync loaded from cache (sync throttled)");
+      return;
+    }
+
+    fetchAllLikedSongs(t);
+  }, [token]);
+
+  // Sync catalog lists dynamically based on active tab
+  const currentTracksList = useMemo(() => {
+    return token ? likedTracks : CURATED_TRACKS;
+  }, [likedTracks, token]);
+
+  // Real-time client-side search (requires 0 API requests)
+  const filteredTracksList = useMemo(() => {
+    if (!searchQuery.trim()) return currentTracksList;
+    const q = searchQuery.toLowerCase();
+    return currentTracksList.filter(
+      (t) =>
+        t.title.toLowerCase().includes(q) ||
+        t.artist.toLowerCase().includes(q) ||
+        t.album.toLowerCase().includes(q)
+    );
+  }, [currentTracksList, searchQuery]);
+
+  // Web Playback SDK Initialization
   useEffect(() => {
     if (!token) return;
 
-    // Inject Spotify Web Playback SDK Script
     const scriptId = "spotify-player-sdk";
     let script = document.getElementById(scriptId) as HTMLScriptElement | null;
     if (!script) {
@@ -469,9 +509,9 @@ export default function MusicHub({ portalDarkMode, themeColor }: MusicHubProps) 
         console.log("Spotify Web Playback SDK ready with Device ID:", device_id);
         setSdkDeviceId(device_id);
         setIsSdkConnected(true);
-        
+
         // Auto-transfer playback directly to this browser tab device!
-        fetch(`https://api.spotify.com/v1/me/player`, {
+        fetch("https://api.spotify.com/v1/me/player", {
           method: "PUT",
           headers: {
             Authorization: `Bearer ${token}`,
@@ -489,10 +529,9 @@ export default function MusicHub({ portalDarkMode, themeColor }: MusicHubProps) 
         setSdkDeviceId(null);
       });
 
-      // Synchronize player states automatically (album art, position, playing state)
       player.addListener("player_state_changed", (state: any) => {
         if (!state) return;
-        
+
         const activeTrack = state.track_window.current_track;
         if (activeTrack) {
           setCurrentTrack({
@@ -506,7 +545,7 @@ export default function MusicHub({ portalDarkMode, themeColor }: MusicHubProps) 
             durationMs: state.duration
           });
         }
-        
+
         setIsPlaying(!state.paused);
         setDuration(Math.floor(state.duration / 1000));
         setCurrentTime(Math.floor(state.position / 1000));
@@ -533,7 +572,7 @@ export default function MusicHub({ portalDarkMode, themeColor }: MusicHubProps) 
     }
 
     return () => {
-      // Don't disconnect here on every load, keep player alive while tab persists
+      // Keep player alive while tab persists
     };
   }, [token]);
 
@@ -544,103 +583,123 @@ export default function MusicHub({ portalDarkMode, themeColor }: MusicHubProps) 
     }
   }, [volume, isSdkConnected]);
 
-  // 3. DATA FETCHERS
-  // Fetch user profile info
-  useEffect(() => {
-    if (!token) return;
-    fetchWebApi("v1/me")
-      .then((profile) => {
-        setUserProfile(profile);
-      })
-      .catch((e) => {
-        console.error(e);
-        if (e.message && e.message.includes("403")) {
-          handleDisconnect();
-        }
-      });
-  }, [token]);
-
-  // Core direct-fetch helper that accepts an explicit token (bypasses stale closure)
-  const apiFetch = async (activeToken: string, endpoint: string, method = "GET", body?: any): Promise<any> => {
-    const res = await fetch(`https://api.spotify.com/${endpoint}`, {
-      headers: {
-        Authorization: `Bearer ${activeToken}`,
-        "Content-Type": "application/json"
-      },
-      method,
-      body: body ? JSON.stringify(body) : undefined
-    });
-    if (!res.ok) {
-      if (res.status === 204) return null;
-      console.error(`apiFetch error: ${res.status} ${res.statusText} for ${endpoint}`);
-      return null;
+  // Audio Playback progress tracking
+  const handleTimeUpdate = () => {
+    if (audioRef.current && !isSdkConnected) {
+      setCurrentTime(Math.floor(audioRef.current.currentTime));
     }
-    return res.json();
   };
 
-  // Fetch Liked Songs (Saved Tracks) with rate-limit friendly parallel batching
-  const fetchAllLikedSongs = async (activeToken: string) => {
-    setActivePlaybackStatus("loading");
-    try {
-      // 1. Fetch first page to grab total count
-      const firstPage = await apiFetch(activeToken, "v1/me/tracks?limit=50");
-      if (!firstPage || !firstPage.items) {
-        setLikedTracks([]);
-        setCurrentTracksList([]);
-        setActivePlaybackStatus("idle");
-        return;
+  const handleLoadedMetadata = () => {
+    if (audioRef.current && !isSdkConnected) {
+      setDuration(Math.floor(audioRef.current.duration));
+    }
+  };
+
+  // Seek bar slide trigger
+  const handleSeekChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const time = parseInt(e.target.value, 10);
+    setCurrentTime(time);
+
+    if (isSdkConnected && spotifyPlayerRef.current) {
+      try {
+        await spotifyPlayerRef.current.seek(time * 1000);
+      } catch (err) {
+        console.error("SDK seek fail:", err);
       }
+    } else if (audioRef.current) {
+      audioRef.current.currentTime = time;
+    }
+  };
 
-      // Cap the total loaded tracks to 150 (3 pages) to prevent 429 rate limiting on large libraries
-      const totalToFetch = Math.min(firstPage.total, 150);
-      let allItems = [...firstPage.items];
+  // Playback control wrappers
+  const handlePlayTrack = async (track: SpotifyTrack, index: number, queue: SpotifyTrack[] = filteredTracksList) => {
+    setCurrentTrack(track);
+    setPlaybackQueue(queue);
+    setCurrentQueueIndex(index);
+    setShowQueue(false);
 
-      // 2. Fetch remaining pages up to 150 tracks in small concurrent batches of 3
-      if (totalToFetch > 50) {
-        const offsets: number[] = [];
-        for (let offset = 50; offset < totalToFetch; offset += 50) {
-          offsets.push(offset);
-        }
+    if (token && isSdkConnected && sdkDeviceId) {
+      try {
+        await fetchWebApi(`v1/me/player/play?device_id=${sdkDeviceId}`, "PUT", {
+          uris: [track.spotifyUri]
+        });
+        setIsPlaying(true);
+      } catch (err) {
+        console.warn("Failed to play via Spotify SDK player. Falling back to local preview:", err);
+        playLocalPreview(track);
+      }
+    } else {
+      playLocalPreview(track);
+    }
+  };
 
-        const batchSize = 3;
-        for (let i = 0; i < offsets.length; i += batchSize) {
-          const batch = offsets.slice(i, i + batchSize);
-          const promises = batch.map(offset => apiFetch(activeToken, `v1/me/tracks?offset=${offset}&limit=50`));
-          const results = await Promise.all(promises);
-          results.forEach((res) => {
-            if (res && res.items) {
-              allItems = [...allItems, ...res.items];
-            }
+  const playLocalPreview = (track: SpotifyTrack) => {
+    if (audioRef.current) {
+      audioRef.current.pause();
+      if (track.previewUrl) {
+        audioRef.current.src = track.previewUrl;
+        audioRef.current.play()
+          .then(() => {
+            setIsPlaying(true);
+          })
+          .catch((e) => {
+            console.error("Local preview failed to play", e);
+            setIsPlaying(false);
           });
-          // Small breathing room delay between batches
-          await new Promise(resolve => setTimeout(resolve, 150));
-        }
+      } else {
+        alert("This track does not have a 30-second preview available. Connect Spotify Premium to play full tracks.");
+        setIsPlaying(false);
       }
-
-      const mapped = allItems
-        .filter((item: any) => item && item.track && item.track.id)
-        .map((item: any) => ({
-          id: item.track.id,
-          title: item.track.name,
-          artist: item.track.artists.map((a: any) => a.name).join(", "),
-          album: item.track.album.name,
-          imageUrl: item.track.album.images[0]?.url || "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=300&q=80",
-          spotifyUri: item.track.uri,
-          duration: formatDuration(item.track.duration_ms),
-          durationMs: item.track.duration_ms,
-          previewUrl: item.track.preview_url
-        }));
-
-      setLikedTracks(mapped);
-      localStorage.setItem("spotify_cached_liked_tracks", JSON.stringify(mapped));
-      setActivePlaybackStatus("idle");
-    } catch (e) {
-      console.error("fetchAllLikedSongs error:", e);
-      setActivePlaybackStatus("error");
     }
   };
 
+  const handleTogglePlay = async () => {
+    if (!currentTrack) {
+      if (filteredTracksList.length > 0) {
+        handlePlayTrack(filteredTracksList[0], 0);
+      }
+      return;
+    }
 
+    if (isSdkConnected && spotifyPlayerRef.current) {
+      try {
+        await spotifyPlayerRef.current.togglePlay();
+        setIsPlaying(!isPlaying);
+      } catch (err) {
+        console.error("SDK togglePlay fail:", err);
+      }
+    } else if (audioRef.current) {
+      if (isPlaying) {
+        audioRef.current.pause();
+      } else {
+        audioRef.current.play().catch(() => {});
+      }
+      setIsPlaying(!isPlaying);
+    }
+  };
+
+  const handleSkipForward = () => {
+    if (playbackQueue.length === 0 || currentQueueIndex === -1) return;
+    const nextIndex = (currentQueueIndex + 1) % playbackQueue.length;
+    handlePlayTrack(playbackQueue[nextIndex], nextIndex, playbackQueue);
+  };
+
+  const handleSkipBackward = () => {
+    if (playbackQueue.length === 0 || currentQueueIndex === -1) return;
+    let prevIndex = currentQueueIndex - 1;
+    if (prevIndex < 0) prevIndex = playbackQueue.length - 1;
+    handlePlayTrack(playbackQueue[prevIndex], prevIndex, playbackQueue);
+  };
+
+  const handleToggleVolumeMute = () => {
+    if (volume > 0) {
+      setPrevVolume(volume);
+      setVolume(0);
+    } else {
+      setVolume(prevVolume);
+    }
+  };
 
   const handleToggleLikeTrack = async (track: SpotifyTrack, e: React.MouseEvent) => {
     e.stopPropagation(); // Avoid playing when clicking heart
@@ -649,31 +708,20 @@ export default function MusicHub({ portalDarkMode, themeColor }: MusicHubProps) 
     const isLiked = likedTracks.some(t => t.id === track.id);
     try {
       if (isLiked) {
-        // Remove from library
         await fetchWebApi(`v1/me/tracks?ids=${track.id}`, "DELETE");
         setLikedTracks(prev => prev.filter(t => t.id !== track.id));
-        if (activeTab === "liked") {
-          setCurrentTracksList(prev => prev.filter(t => t.id !== track.id));
-        }
       } else {
-        // Add to library
         await fetchWebApi(`v1/me/tracks?ids=${track.id}`, "PUT");
-        const updated = [track, ...likedTracks];
-        setLikedTracks(updated);
-        if (activeTab === "liked") {
-          setCurrentTracksList(updated);
-        }
+        setLikedTracks(prev => [track, ...prev]);
       }
     } catch (err) {
-      console.error("Failed to toggle like", err);
+      console.error("Toggle like fail:", err);
     }
   };
 
-  // Add track to Spotify Web API background queue and local state queue
   const handleAddToQueue = async (track: SpotifyTrack, e: React.MouseEvent) => {
-    e.stopPropagation(); // Avoid playing when clicking +queue button
+    e.stopPropagation(); // Avoid playing when clicking plus
     
-    // Append to local state queue
     setPlaybackQueue((prev) => {
       if (prev.length === 0) {
         setCurrentQueueIndex(0);
@@ -682,308 +730,28 @@ export default function MusicHub({ portalDarkMode, themeColor }: MusicHubProps) 
       return [...prev, track];
     });
 
-    // Send to Spotify server queue context if active SDK session is connected
     if (token && track.spotifyUri) {
       try {
         await fetchWebApi(`v1/me/player/queue?uri=${encodeURIComponent(track.spotifyUri)}`, "POST");
       } catch (err) {
-        console.warn("Failed to sync to Spotify background queue:", err);
+        console.warn("Failed to sync to Spotify queue:", err);
       }
     }
   };
 
-  // Load full library when token is available — staggered & rate-limit throttled
-  useEffect(() => {
-    if (!token) return;
-    const t = token; // capture current value
-
-    const lastSync = localStorage.getItem("spotify_last_sync_time");
-    const now = Date.now();
-    
-    // Throttle API sync requests to once every 10 minutes to bypass Spotify rate limits, unless cache is empty
-    if (likedTracks.length > 0 && lastSync && now - parseInt(lastSync, 10) < 10 * 60 * 1000) {
-      console.log("Spotify library sync loaded from localStorage cache (sync throttled)");
-      return;
-    }
-
-    const loadLibrary = async () => {
-      try {
-        await fetchAllLikedSongs(t);
-        localStorage.setItem("spotify_last_sync_time", Date.now().toString());
-      } catch (err) {
-        console.error("Library load failed:", err);
-      }
-    };
-
-    loadLibrary();
-  }, [token]);
-
-  // Sync catalog lists dynamically based on active tab
-  useEffect(() => {
-    if (activeTab === "liked") {
-      setCurrentTracksList(token ? likedTracks : CURATED_TRACKS);
-    }
-  }, [activeTab, likedTracks, token]);
-
-  // Real-time catalog search
-  useEffect(() => {
-    if (!token || !searchQuery.trim()) {
-      setSearchResults([]);
-      return;
-    }
-    const delaySearch = setTimeout(async () => {
-      setIsSearching(true);
-      try {
-        const data = await fetchWebApi(`v1/search?q=${encodeURIComponent(searchQuery)}&type=track&limit=20`);
-        if (data && data.tracks && data.tracks.items) {
-          const mapped = data.tracks.items.map((item: any) => ({
-            id: item.id,
-            title: item.name,
-            artist: item.artists.map((a: any) => a.name).join(", "),
-            album: item.album.name,
-            imageUrl: item.album.images[0]?.url || "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=300&q=80",
-            spotifyUri: item.uri,
-            duration: formatDuration(item.duration_ms),
-            durationMs: item.duration_ms,
-            previewUrl: item.preview_url
-          }));
-          setSearchResults(mapped);
-        }
-      } catch (e) {
-        console.error(e);
-      } finally {
-        setIsSearching(false);
-      }
-    }, 450);
-
-    return () => clearTimeout(delaySearch);
-  }, [searchQuery, token]);
-
-  // 4. MUSIC PLAYBACK ACTIVE DEVICE CONTROLS
-  const handlePlayTrack = async (track: SpotifyTrack, indexInList?: number, customList?: SpotifyTrack[]) => {
-    const list = customList || (activeTab === "search" ? searchResults : currentTracksList);
-    setPlaybackQueue(list);
-
-    const idx = indexInList !== undefined ? indexInList : list.findIndex(t => t.id === track.id);
-    setCurrentQueueIndex(idx);
-
-    setCurrentTrack(track);
-    setIsPlaying(false);
-    setDuration(Math.floor(track.durationMs / 1000));
-    setCurrentTime(0);
-
-    // Stop local standard audio element
-    if (audioRef.current) {
-      audioRef.current.pause();
-      audioRef.current.src = "";
-    }
-
-    // A. If Spotify Web Playback SDK is connected, play full song directly on virtual device!
-    if (isSdkConnected && sdkDeviceId && token && track.spotifyUri) {
-      try {
-        const trackUris = list.map(t => t.spotifyUri).filter(uri => uri);
-
-        if (trackUris.length > 0) {
-          const body: any = {
-            uris: trackUris,
-            offset: {
-              uri: track.spotifyUri
-            }
-          };
-
-          await fetch(`https://api.spotify.com/v1/me/player/play?device_id=${sdkDeviceId}`, {
-            method: "PUT",
-            headers: {
-              Authorization: `Bearer ${token}`,
-              "Content-Type": "application/json"
-            },
-            body: JSON.stringify(body)
-          });
-          setIsPlaying(true);
-          return;
-        }
-      } catch (e) {
-        console.warn("Failed to play on Spotify Web SDK Device, falling back to native previews...", e);
-      }
-    }
-
-    // B. Fallback Mode: Play 30-second preview URL natively using browser <audio> tag
-    if (audioRef.current) {
-      const sourceUrl = track.previewUrl || CURATED_TRACKS[0].previewUrl;
-      if (sourceUrl) {
-        audioRef.current.src = sourceUrl;
-        audioRef.current.load();
-        audioRef.current.play()
-          .then(() => setIsPlaying(true))
-          .catch((e) => console.error("Playback fallback play failed:", e));
-      }
-    }
-  };
-
-  const handlePlayToggle = async () => {
-    if (!currentTrack) return;
-    
-    // A. If Spotify Web Playback SDK is connected, toggle play/pause natively
-    if (spotifyPlayerRef.current && isSdkConnected) {
-      try {
-        await spotifyPlayerRef.current.togglePlay();
-        return;
-      } catch (e) {}
-    }
-
-    // B. Toggle local audio tag playback
-    if (audioRef.current && audioRef.current.src) {
-      if (audioRef.current.paused) {
-        audioRef.current.play()
-          .then(() => setIsPlaying(true))
-          .catch(() => {});
-      } else {
-        audioRef.current.pause();
-        setIsPlaying(false);
-      }
-    } else {
-      setIsPlaying(!isPlaying);
-    }
-  };
-
-  const handleSkipForward = async () => {
-    // SDK: let Spotify handle skip (it respects server-side shuffle/repeat)
-    if (spotifyPlayerRef.current && isSdkConnected) {
-      try {
-        await spotifyPlayerRef.current.nextTrack();
-        return;
-      } catch (e) {}
-    }
-
-    if (playbackQueue.length === 0) return;
-
-    if (repeatMode === "track" && currentTrack) {
-      handlePlayTrack(currentTrack, currentQueueIndex, playbackQueue);
-      return;
-    }
-
-    if (isShuffled) {
-      const randIdx = Math.floor(Math.random() * playbackQueue.length);
-      handlePlayTrack(playbackQueue[randIdx], randIdx, playbackQueue);
-      return;
-    }
-
-    if (currentQueueIndex !== -1 && currentQueueIndex < playbackQueue.length - 1) {
-      const nextIdx = currentQueueIndex + 1;
-      handlePlayTrack(playbackQueue[nextIdx], nextIdx, playbackQueue);
-    } else if (repeatMode === "context") {
-      handlePlayTrack(playbackQueue[0], 0, playbackQueue);
-    }
-  };
-
-  const handleSkipBackward = async () => {
-    // If more than 3 s in, restart instead of going back (Spotify-like behaviour)
-    if (currentTime > 3) {
-      if (spotifyPlayerRef.current && isSdkConnected) {
-        try { await spotifyPlayerRef.current.seek(0); return; } catch (e) {}
-      }
-      if (audioRef.current) { audioRef.current.currentTime = 0; }
-      setCurrentTime(0);
-      return;
-    }
-
-    if (spotifyPlayerRef.current && isSdkConnected) {
-      try {
-        await spotifyPlayerRef.current.previousTrack();
-        return;
-      } catch (e) {}
-    }
-
-    if (playbackQueue.length === 0) return;
-
-    if (isShuffled) {
-      const randIdx = Math.floor(Math.random() * playbackQueue.length);
-      handlePlayTrack(playbackQueue[randIdx], randIdx, playbackQueue);
-      return;
-    }
-
-    if (currentQueueIndex > 0) {
-      const prevIdx = currentQueueIndex - 1;
-      handlePlayTrack(playbackQueue[prevIdx], prevIdx, playbackQueue);
-    } else {
-      const lastIdx = playbackQueue.length - 1;
-      handlePlayTrack(playbackQueue[lastIdx], lastIdx, playbackQueue);
-    }
-  };
-
-  const handleToggleShuffle = async () => {
-    const next = !isShuffled;
-    setIsShuffled(next);
-    // Sync to Spotify API if connected
-    if (token) {
-      try {
-        await fetch(`https://api.spotify.com/v1/me/player/shuffle?state=${next}`, {
-          method: "PUT",
-          headers: { Authorization: `Bearer ${token}` }
-        });
-      } catch (e) {}
-    }
-  };
-
-  const handleCycleRepeat = async () => {
-    const next = repeatMode === "off" ? "context" : repeatMode === "context" ? "track" : "off";
-    setRepeatMode(next);
-    // Sync to Spotify API if connected
-    if (token) {
-      try {
-        await fetch(`https://api.spotify.com/v1/me/player/repeat?state=${next}`, {
-          method: "PUT",
-          headers: { Authorization: `Bearer ${token}` }
-        });
-      } catch (e) {}
-    }
-  };
-
-  const handleVolumeToggle = () => {
-    if (volume > 0) {
-      setPrevVolume(volume);
-      setVolume(0);
-    } else {
-      setVolume(prevVolume || 70);
-    }
-  };
-
-  // Sync volume with native audio element
-  useEffect(() => {
-    if (audioRef.current) {
-      audioRef.current.volume = volume / 100;
-    }
-  }, [volume]);
-
-  // Local simulated progress tick when music is active and SDK is NOT connected
-  useEffect(() => {
-    let timer: any = null;
-    if (isPlaying && duration > 0 && !isSdkConnected) {
-      timer = setInterval(() => {
-        setCurrentTime((prev) => {
-          if (prev >= duration) {
-            handleSkipForward();
-            return 0;
-          }
-          return prev + 1;
-        });
-      }, 1000);
-    }
-    return () => clearInterval(timer);
-  }, [isPlaying, duration, currentTrack, isSdkConnected]);
-
-  // Equalizer canvas drawing
+  // Visualizer Animation Hook (Sleek CSS Wave style)
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
+
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
     canvas.width = canvas.offsetWidth;
     canvas.height = canvas.offsetHeight;
 
-    const barCount = 24;
-    const barWidth = Math.max(2, canvas.width / barCount - 2);
+    const barCount = 45;
+    const barWidth = Math.floor(canvas.width / barCount) - 2;
     const barsArray: { x: number; height: number; targetHeight: number; speed: number }[] = [];
 
     for (let i = 0; i < barCount; i++) {
@@ -1034,7 +802,7 @@ export default function MusicHub({ portalDarkMode, themeColor }: MusicHubProps) 
     };
   }, [isPlaying, themeHex]);
 
-  // Duration Formatting helper
+  // Duration formatting helpers
   const formatDuration = (ms: number) => {
     const min = Math.floor(ms / 60000);
     const sec = Math.floor((ms % 60000) / 1000);
@@ -1056,15 +824,15 @@ export default function MusicHub({ portalDarkMode, themeColor }: MusicHubProps) 
         "--theme-accent": themeHex
       } as React.CSSProperties}
     >
-      {/* 1. LEFT PANEL: Library, Playlists & Connection */}
+      {/* 1. LEFT SIDEBAR: Connection & Library Selection */}
       <div className="lg:col-span-3 flex flex-col gap-5 h-[620px]">
-        {/* Connection status card */}
+        {/* Connection card */}
         <div className="bg-white/[0.02] border border-white/[0.05] rounded-2xl p-4 flex flex-col gap-3.5 shadow-inner">
           <div className="flex items-center gap-3">
             {userProfile?.images?.[0]?.url ? (
               <img
                 src={userProfile.images[0].url}
-                alt={userProfile.display_name}
+                alt="Profile"
                 className="w-10 h-10 rounded-full border border-white/10"
               />
             ) : (
@@ -1101,8 +869,8 @@ export default function MusicHub({ portalDarkMode, themeColor }: MusicHubProps) 
           )}
         </div>
 
-        {/* Tab selection links */}
-        <div className="flex-1 bg-white/[0.02] border border-white/[0.05] rounded-2xl p-3 flex flex-col gap-1.5 overflow-hidden">
+        {/* Collections Sidebar list */}
+        <div className="flex-1 bg-white/[0.02] border border-white/[0.05] rounded-2xl p-3 flex flex-col gap-2 overflow-hidden">
           <h3 className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 px-2 py-1 flex items-center gap-1.5 border-b border-white/5 mb-1.5">
             <ListMusic className="w-3.5 h-3.5 text-[var(--theme-accent)]" />
             Spotify Collections
@@ -1122,224 +890,160 @@ export default function MusicHub({ portalDarkMode, themeColor }: MusicHubProps) 
             }`}
           >
             <div className="flex items-center gap-2">
-              <Heart className="w-3.5 h-3.5" />
+              <Heart className="w-3.5 h-3.5 fill-current" />
               <span>All Liked Songs</span>
             </div>
             <span className="opacity-70 text-[10px]">{likedTracks.length}</span>
           </button>
+
+          {/* Sync status overlay */}
+          {syncStatus === "loading" && syncProgress && (
+            <div className="mt-auto bg-[var(--theme-accent)]/5 border border-[var(--theme-accent)]/10 rounded-xl p-3 flex flex-col gap-2 select-none">
+              <div className="flex items-center gap-2 text-xs font-semibold text-white">
+                <RefreshCw className="w-3.5 h-3.5 animate-spin text-[var(--theme-accent)]" />
+                <span>Syncing Library...</span>
+              </div>
+              <div className="w-full bg-white/5 h-1.5 rounded-full overflow-hidden">
+                <div
+                  className="bg-[var(--theme-accent)] h-full transition-all duration-300"
+                  style={{ width: `${(syncProgress.loaded / syncProgress.total) * 100}%` }}
+                />
+              </div>
+              <div className="flex justify-between text-[9px] text-zinc-400">
+                <span>{syncProgress.loaded} / {syncProgress.total} songs</span>
+                <span>{Math.round((syncProgress.loaded / syncProgress.total) * 100)}%</span>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
-      {/* 2. CENTER PANEL: Spinning Disc / Web Playback SDK Host */}
+      {/* 2. CENTER PANEL: Modern Spinning Player */}
       <div className="lg:col-span-5 flex flex-col gap-6 items-center justify-between h-[620px] bg-white/[0.01] border border-white/[0.03] rounded-3xl p-6 relative overflow-hidden">
-        {/* Top Header info */}
-        <div className="w-full flex items-center justify-between z-10">
-          <div className="flex items-center gap-2">
-            <Sparkles className="w-4 h-4 text-[var(--theme-accent)]" />
-            <span className="text-xs uppercase tracking-widest font-bold text-zinc-400">Spotify Connect Hub</span>
+        <div className="flex justify-between items-center w-full">
+          <span className="text-[10px] uppercase font-bold text-zinc-500 tracking-wider">Spotify Connect Hub</span>
+          <div className="flex items-center gap-1">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+            <span className="text-[9px] uppercase font-bold text-emerald-400 tracking-wider">Active</span>
           </div>
-          {isSdkConnected && (
-            <div className="flex items-center gap-1.5">
-              <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-              <span className="text-[10px] text-emerald-400 uppercase tracking-widest font-bold">Portal Player Active</span>
-            </div>
-          )}
         </div>
 
-        {/* SPINNING VINYL DISC VISUALIZER */}
-        <div className="relative my-auto flex items-center justify-center group z-10 animate-[fadeIn_0.4s_ease-out]">
-          <div
-            className={`w-64 h-64 rounded-full bg-zinc-950 border border-white/10 flex items-center justify-center shadow-[0_0_55px_rgba(0,0,0,0.85)] relative transition-transform duration-[4000ms] ease-linear ${
-              isPlaying ? "animate-[spin_10s_linear_infinite]" : "rotate-12"
-            }`}
-          >
-            {/* Record Grooves */}
-            <div className="absolute inset-2 rounded-full border border-white/[0.04] pointer-events-none" />
-            <div className="absolute inset-6 rounded-full border border-white/[0.03] pointer-events-none" />
-            <div className="absolute inset-10 rounded-full border border-white/[0.03] pointer-events-none" />
-            <div className="absolute inset-14 rounded-full border border-white/[0.03] pointer-events-none" />
-            <div className="absolute inset-20 rounded-full border border-white/[0.02] pointer-events-none" />
+        {/* Vinyl spinning album disc */}
+        <div className="relative group my-auto flex items-center justify-center">
+          <div className={`w-64 h-64 rounded-full bg-black/60 border border-white/5 flex items-center justify-center relative shadow-[0_0_50px_rgba(0,0,0,0.8)] overflow-hidden transition-all duration-500 ${
+            isPlaying ? "scale-105" : "scale-100"
+          }`}>
+            {/* Grooves */}
+            <div className="absolute inset-2 border border-white/5 rounded-full" />
+            <div className="absolute inset-6 border border-white/5 rounded-full" />
+            <div className="absolute inset-10 border border-white/5 rounded-full" />
+            <div className="absolute inset-16 border border-white/5 rounded-full" />
+            <div className="absolute inset-24 border border-white/5 rounded-full" />
 
-            {/* Glowing album art cover art center */}
-            <div
-              className="w-28 h-28 rounded-full overflow-hidden border-2 border-zinc-900 transition-all duration-300 group-hover:scale-105"
-              style={{
-                boxShadow: `0 0 25px var(--theme-glow)`
-              }}
-            >
-              {currentTrack ? (
-                <img
-                  src={currentTrack.imageUrl}
-                  alt={currentTrack.title}
-                  className="w-full h-full object-cover select-none"
-                  referrerPolicy="no-referrer"
-                />
-              ) : (
-                <div className="w-full h-full bg-zinc-900 flex items-center justify-center text-zinc-500">
-                  <Disc className="w-8 h-8" />
-                </div>
-              )}
+            <div className={`w-32 h-32 rounded-full overflow-hidden relative shadow-[0_0_20px_rgba(0,0,0,0.5)] transition-transform duration-1000 ${
+              isPlaying ? "animate-spin-slow" : ""
+            }`}>
+              <img
+                src={currentTrack?.imageUrl || "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=400&q=80"}
+                alt="Vinyl Cover"
+                className="w-full h-full object-cover"
+              />
+              <div className="absolute inset-0 bg-black/10" />
             </div>
-
-            {/* Center hole */}
-            <div className="absolute w-6 h-6 rounded-full bg-[#04020a] border-2 border-zinc-950" />
+            <div className="absolute w-6 h-6 rounded-full bg-[#0d0a1b] border-4 border-black/80 flex items-center justify-center" />
           </div>
 
-          {/* Arm Needle indicator */}
+          {/* Needle Arm */}
           <div
-            className="absolute top-0 right-0 w-24 h-24 origin-top-left transition-all duration-[800ms] pointer-events-none"
+            className="absolute top-[-25px] right-[40px] w-20 h-44 origin-top-left transition-transform duration-700 pointer-events-none"
             style={{
-              transform: isPlaying ? "rotate(15deg) translate(20px, -5px)" : "rotate(-12deg) translate(5px, -15px)"
+              transform: isPlaying ? "rotate(18deg)" : "rotate(-12deg)",
+              backgroundImage: "linear-gradient(to bottom, #4b5563 5%, #1f2937 100%)",
+              clipPath: "polygon(0 0, 8px 0, 4px 176px)"
             }}
-          >
-            <div className="w-1.5 h-16 bg-zinc-600 rounded-full shadow absolute top-0 left-0" />
-            <div className="w-4 h-4 bg-zinc-400 rounded border border-zinc-500 shadow absolute top-16 -left-1" />
-          </div>
+          />
         </div>
 
-        {/* Current track information */}
-        <div className="text-center z-10 w-full">
-          {currentTrack ? (
-            <>
-              <h2 className="text-lg font-bold text-white tracking-wide truncate flex items-center justify-center gap-1.5 px-4">
-                {currentTrack.title}
-                <a
-                  href={currentTrack.spotifyUri}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="text-zinc-500 hover:text-white transition"
-                  title="Open on Spotify client app"
-                >
-                  <ExternalLink className="w-4 h-4" />
-                </a>
-              </h2>
-              <p className="text-sm text-zinc-400 mt-1 font-medium truncate px-4">{currentTrack.artist}</p>
-              {activePlaybackStatus === "loading" && (
-                <p className="text-[10px] text-[var(--theme-accent)] uppercase tracking-wider font-bold mt-1.5 animate-pulse">Connecting API...</p>
-              )}
-            </>
-          ) : (
-            <>
-              <h2 className="text-lg font-bold text-zinc-500 italic">No Song Loaded</h2>
-              <p className="text-sm text-zinc-600 mt-1">Select a track from the list</p>
-            </>
-          )}
+        {/* Current song details */}
+        <div className="w-full text-center flex flex-col gap-1 z-10">
+          <h2 className="text-lg font-bold text-white truncate max-w-full px-4">
+            {currentTrack ? currentTrack.title : "Ready to Play"}
+          </h2>
+          <p className="text-xs text-zinc-400 truncate max-w-full px-4">
+            {currentTrack ? currentTrack.artist : "Select a Liked Song to start syncing"}
+          </p>
         </div>
 
-        {/* Playback Progress Slider */}
-        <div className="w-full flex flex-col gap-1 z-10">
-          <div className="flex items-center gap-3 w-full">
-            <span className="text-[10px] text-zinc-500 tabular-nums w-8 text-right">
-              {formatSeconds(currentTime)}
-            </span>
+        {/* Playback Controls & Progress bar */}
+        <div className="w-full flex flex-col gap-4">
+          <div className="flex flex-col gap-1">
             <input
               type="range"
               min={0}
               max={duration || 100}
               value={currentTime}
-              onChange={async (e) => {
-                const newPosSec = parseInt(e.target.value, 10);
-                setCurrentTime(newPosSec);
-                if (spotifyPlayerRef.current && isSdkConnected) {
-                  spotifyPlayerRef.current.seek(newPosSec * 1000).catch(() => {});
-                } else if (audioRef.current && audioRef.current.src) {
-                  audioRef.current.currentTime = newPosSec;
-                }
-              }}
-              disabled={!currentTrack}
-              className="flex-1 h-[3px] bg-white/10 appearance-none rounded-full cursor-pointer focus:outline-none accent-[var(--theme-accent)]"
+              onChange={handleSeekChange}
+              className="w-full h-1 bg-white/5 appearance-none rounded-full cursor-pointer accent-[var(--theme-accent)] transition hover:h-1.5"
             />
-            <span className="text-[10px] text-zinc-500 tabular-nums w-8 text-left">
-              {formatSeconds(duration)}
-            </span>
-          </div>
-        </div>
-
-        {/* Bottom player controls */}
-        <div className="flex flex-col items-center gap-3 w-full z-10 pt-4 border-t border-white/5">
-
-          {/* Main transport row: Shuffle | SkipBack | Play | SkipForward | Repeat */}
-          <div className="flex items-center gap-4 justify-center w-full">
-            {/* Shuffle */}
-            <button
-              onClick={handleToggleShuffle}
-              title={isShuffled ? "Shuffle On" : "Shuffle Off"}
-              className={`p-2 rounded-xl border transition cursor-pointer ${
-                isShuffled
-                  ? "bg-[var(--theme-accent)]/20 border-[var(--theme-accent)]/40 text-[var(--theme-accent)]"
-                  : "bg-white/5 border-white/10 text-zinc-500 hover:text-white"
-              }`}
-            >
-              <Shuffle className="w-4 h-4" />
-            </button>
-
-            {/* Skip Back */}
-            <button
-              onClick={handleSkipBackward}
-              disabled={!currentTrack}
-              className="p-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl transition text-white disabled:opacity-20 disabled:pointer-events-none cursor-pointer"
-            >
-              <SkipBack className="w-4 h-4 fill-current" />
-            </button>
-
-            {/* Play / Pause */}
-            <button
-              onClick={handlePlayToggle}
-              disabled={!currentTrack}
-              className="w-14 h-14 bg-[var(--theme-accent)] hover:scale-105 text-white flex items-center justify-center rounded-full transition shadow-[0_0_20px_var(--theme-glow)] cursor-pointer disabled:opacity-40 disabled:pointer-events-none"
-            >
-              {isPlaying ? <Pause className="w-6 h-6 fill-current" /> : <Play className="w-6 h-6 fill-current translate-x-0.5" />}
-            </button>
-
-            {/* Skip Forward */}
-            <button
-              onClick={handleSkipForward}
-              disabled={!currentTrack}
-              className="p-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl transition text-white disabled:opacity-20 disabled:pointer-events-none cursor-pointer"
-            >
-              <SkipForward className="w-4 h-4 fill-current" />
-            </button>
-
-            {/* Repeat cycle: off → context (playlist) → track */}
-            <button
-              onClick={handleCycleRepeat}
-              title={repeatMode === "off" ? "Repeat Off" : repeatMode === "context" ? "Repeat Playlist" : "Repeat Track"}
-              className={`p-2 rounded-xl border transition cursor-pointer ${
-                repeatMode !== "off"
-                  ? "bg-[var(--theme-accent)]/20 border-[var(--theme-accent)]/40 text-[var(--theme-accent)]"
-                  : "bg-white/5 border-white/10 text-zinc-500 hover:text-white"
-              }`}
-            >
-              {repeatMode === "track" ? <Repeat1 className="w-4 h-4" /> : <Repeat className="w-4 h-4" />}
-            </button>
+            <div className="flex justify-between text-[10px] text-zinc-500 font-medium select-none">
+              <span>{formatSeconds(currentTime)}</span>
+              <span>{currentTrack ? currentTrack.duration : "0:00"}</span>
+            </div>
           </div>
 
-          {/* Volume row */}
-          <div className="flex items-center gap-2.5 justify-center">
-            <button onClick={handleVolumeToggle} className="text-zinc-400 hover:text-white transition p-1">
-              {volume === 0 ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
-            </button>
-            <input
-              type="range"
-              min={0}
-              max={100}
-              value={volume}
-              onChange={(e) => setVolume(parseInt(e.target.value, 10))}
-              className="h-[2px] w-24 bg-white/10 appearance-none rounded-full cursor-pointer accent-[var(--theme-accent)]"
-            />
-            {/* Connect status pill */}
-            <div className="hidden sm:block text-[10px] uppercase font-bold text-zinc-500 border border-white/10 rounded-full px-2.5 py-1 tracking-wider bg-white/[0.02] ml-2">
-              {token ? (isSdkConnected ? "SDK Session" : "API Connected") : "Offline"}
+          <div className="flex justify-between items-center px-4">
+            {/* Left side volume slider */}
+            <div className="flex items-center gap-2">
+              <button
+                onClick={handleToggleVolumeMute}
+                className="p-1.5 text-zinc-500 hover:text-white transition cursor-pointer"
+              >
+                {volume === 0 ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
+              </button>
+              <input
+                type="range"
+                min={0}
+                max={100}
+                value={volume}
+                onChange={(e) => setVolume(parseInt(e.target.value, 10))}
+                className="h-[2px] w-20 bg-white/10 appearance-none rounded-full cursor-pointer accent-[var(--theme-accent)]"
+              />
+            </div>
+
+            {/* Central Controls */}
+            <div className="flex items-center gap-4">
+              <button
+                onClick={handleSkipBackward}
+                className="p-2 text-zinc-400 hover:text-white active:scale-95 transition cursor-pointer"
+              >
+                <SkipBack className="w-5 h-5 fill-current" />
+              </button>
+              <button
+                onClick={handleTogglePlay}
+                className="p-3.5 bg-white text-[#0d0a1b] rounded-full hover:scale-105 active:scale-95 transition shadow-lg cursor-pointer"
+              >
+                {isPlaying ? <Pause className="w-5 h-5 fill-current" /> : <Play className="w-5 h-5 fill-current ml-0.5" />}
+              </button>
+              <button
+                onClick={handleSkipForward}
+                className="p-2 text-zinc-400 hover:text-white active:scale-95 transition cursor-pointer"
+              >
+                <SkipForward className="w-5 h-5 fill-current" />
+              </button>
+            </div>
+
+            {/* Connection mode indicator */}
+            <div className="text-[9px] uppercase font-bold text-zinc-500 border border-white/10 rounded-full px-2.5 py-1 bg-white/[0.02]">
+              {token ? (isSdkConnected ? "SDK Session" : "Web Preview") : "Offline"}
             </div>
           </div>
         </div>
       </div>
 
-      {/* 3. RIGHT PANEL: Tracks Index / Catalog Search */}
+      {/* 3. RIGHT PANEL: Songs List Index / Search */}
       <div className="lg:col-span-4 flex flex-col gap-6 h-[620px]">
-        {/* Tracks List Card */}
         <div className="flex-1 bg-white/[0.02] border border-white/[0.05] rounded-3xl p-4 flex flex-col gap-4 overflow-hidden">
-          {/* Tab Selection: Tracks vs Play Queue */}
+          {/* Tabs header */}
           <div className="flex border-b border-white/5 pb-1 select-none">
             <button
               onClick={() => setShowQueue(false)}
@@ -1361,17 +1065,16 @@ export default function MusicHub({ portalDarkMode, themeColor }: MusicHubProps) 
             >
               Play Queue
               {playbackQueue.length > 0 && (
-                <span className="bg-white/10 px-1.5 py-0.5 rounded-full text-[9px] text-zinc-400">
+                <span className="bg-white/10 px-1.5 py-0.5 rounded-full text-[9px] text-zinc-400 font-medium">
                   {playbackQueue.length}
                 </span>
               )}
             </button>
           </div>
 
-
           {!showQueue ? (
             <>
-              {/* Search Input bar */}
+              {/* Client-side Search */}
               <div className="relative w-full">
                 <Search className="w-3.5 h-3.5 text-zinc-500 absolute left-3 top-1/2 -translate-y-1/2" />
                 <input
@@ -1387,13 +1090,13 @@ export default function MusicHub({ portalDarkMode, themeColor }: MusicHubProps) 
                 />
               </div>
 
-              {/* List area */}
+              {/* Scrollable List Area */}
               <div className="flex-1 overflow-y-auto space-y-1 pr-1 scrollbar-thin">
-                {/* RENDER TRACKS LIST (Liked or search) */}
-                {(activeTab === "search" ? searchResults : currentTracksList).map((t, idx) => (
+                {/* RENDER TRACKS LIST */}
+                {filteredTracksList.map((t, idx) => (
                   <div
                     key={t.id}
-                    onClick={() => handlePlayTrack(t, idx)}
+                    onClick={() => handlePlayTrack(t, idx, filteredTracksList)}
                     className={`w-full p-2 rounded-xl text-left text-xs flex items-center justify-between transition cursor-pointer group ${
                       currentTrack?.id === t.id
                         ? "bg-white/[0.05] border border-[var(--theme-accent)]/20"
@@ -1452,24 +1155,24 @@ export default function MusicHub({ portalDarkMode, themeColor }: MusicHubProps) 
                   </div>
                 ))}
 
-                {/* Empty displays */}
+                {/* Empty views */}
                 {!token && (
-                  <div className="text-zinc-500 text-center py-12 text-xs flex flex-col items-center gap-2">
+                  <div className="text-zinc-500 text-center py-16 text-xs flex flex-col items-center gap-2 select-none">
                     <Sliders className="w-8 h-8 opacity-40 text-[var(--theme-accent)]" />
                     <span>Connect your Spotify account to load your library details.</span>
                   </div>
                 )}
-                {token && activeTab !== "artists" && (activeTab === "search" ? searchResults : currentTracksList).length === 0 && (
-                  <div className="text-zinc-600 text-center py-12 italic text-xs">
-                    {isSearching ? "Searching catalog..." : "No tracks found in collection"}
+                {token && filteredTracksList.length === 0 && (
+                  <div className="text-zinc-600 text-center py-16 italic text-xs select-none">
+                    No tracks found in library
                   </div>
                 )}
               </div>
             </>
           ) : (
-            /* RENDER QUEUE SCREEN */
+            /* PLAY QUEUE VIEW */
             <div className="flex-1 flex flex-col gap-4 overflow-hidden animate-[fadeIn_0.3s_ease-out]">
-              {/* Now Playing Section */}
+              {/* Now Playing card */}
               {currentTrack && (
                 <div className="bg-white/[0.03] border border-white/5 rounded-2xl p-3 flex flex-col gap-2">
                   <span className="text-[9px] uppercase tracking-wider font-bold text-zinc-500">Now Playing</span>
@@ -1484,7 +1187,7 @@ export default function MusicHub({ portalDarkMode, themeColor }: MusicHubProps) 
                 </div>
               )}
 
-              {/* Next Up Section */}
+              {/* Queue items list */}
               <div className="flex-1 flex flex-col gap-2 overflow-hidden">
                 <span className="text-[9px] uppercase tracking-wider font-bold text-zinc-500 px-1">Next Up</span>
                 <div className="flex-1 overflow-y-auto space-y-1 pr-1 scrollbar-thin">
@@ -1508,8 +1211,8 @@ export default function MusicHub({ portalDarkMode, themeColor }: MusicHubProps) 
                     );
                   })}
                   {playbackQueue.length - 1 <= currentQueueIndex && (
-                    <div className="text-zinc-600 text-center py-8 italic text-xs">
-                      Queue end reached. Enable repeat context to loop.
+                    <div className="text-zinc-600 text-center py-12 italic text-xs select-none">
+                      Queue end reached
                     </div>
                   )}
                 </div>
@@ -1517,25 +1220,21 @@ export default function MusicHub({ portalDarkMode, themeColor }: MusicHubProps) 
             </div>
           )}
 
-          {/* Equalizer canvas */}
+          {/* Canvas wave visualizer */}
           <div className="h-16 shrink-0 border-t border-white/5 pt-2 flex flex-col gap-1.5">
-            <span className="text-[9px] uppercase tracking-wider font-bold text-zinc-500">Live Frequency EQ</span>
+            <span className="text-[9px] uppercase tracking-wider font-bold text-zinc-500 select-none">Live Frequency EQ</span>
             <canvas ref={canvasRef} className="w-full h-full bg-white/[0.01] rounded-lg" />
           </div>
         </div>
       </div>
 
-      {/* Native HTML5 Audio Element for previews and curated tracks */}
+      {/* HTML5 Audio Fallback Player */}
       <audio
         ref={audioRef}
         onTimeUpdate={handleTimeUpdate}
         onLoadedMetadata={handleLoadedMetadata}
         onEnded={handleSkipForward}
       />
-      {/* Build version indicator */}
-      <div className="absolute bottom-2 right-4 text-[8px] text-zinc-700 select-none pointer-events-none uppercase tracking-wider font-bold">
-        Build v1.1.2 - Staggered Lock
-      </div>
     </div>
   );
 }
