@@ -235,13 +235,24 @@ export default function MusicHub({ portalDarkMode, themeColor }: MusicHubProps) 
 
   const handlePlayToggle = () => {
     if (!currentTrack) return;
-    if (isPlaying) {
-      audioRef.current?.pause();
-      setIsPlaying(false);
-    } else {
-      audioRef.current?.play()
-        .then(() => setIsPlaying(true))
-        .catch(() => setIsPlaying(false));
+    if (audioRef.current) {
+      // If the audio element has no source loaded yet, load currentTrack url
+      if (!audioRef.current.src || audioRef.current.src === window.location.href) {
+        audioRef.current.src = currentTrack.url;
+        audioRef.current.load();
+      }
+
+      if (isPlaying) {
+        audioRef.current.pause();
+        setIsPlaying(false);
+      } else {
+        audioRef.current.play()
+          .then(() => setIsPlaying(true))
+          .catch((e) => {
+            console.error("Playback toggle failed:", e);
+            setIsPlaying(false);
+          });
+      }
     }
   };
 
