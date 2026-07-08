@@ -23,7 +23,8 @@ import {
   ExternalLink,
   Shuffle,
   Repeat,
-  Repeat1
+  Repeat1,
+  ListPlus
 } from "lucide-react";
 
 // Spotify Client Config
@@ -189,6 +190,7 @@ export default function MusicHub({ portalDarkMode, themeColor }: MusicHubProps) 
   const [playbackQueue, setPlaybackQueue] = useState<SpotifyTrack[]>([]);
   const [currentQueueIndex, setCurrentQueueIndex] = useState<number>(-1);
   const [showQueue, setShowQueue] = useState<boolean>(false);
+  const [apiError, setApiError] = useState<string | null>(null);
 
   // Web Playback SDK States
   const [spotifyPlayer, setSpotifyPlayer] = useState<any>(null);
@@ -427,7 +429,10 @@ export default function MusicHub({ portalDarkMode, themeColor }: MusicHubProps) 
 
     if (!res.ok) {
       if (res.status === 204) return null; // No Content success
-      throw new Error(`Spotify API error: ${res.statusText}`);
+      const errText = await res.text().catch(() => "");
+      const errMsg = `Spotify API error: ${res.status} ${res.statusText}${errText ? ` (${errText})` : ""}`;
+      setApiError(errMsg);
+      throw new Error(errMsg);
     }
     return res.json();
   };
@@ -603,7 +608,6 @@ export default function MusicHub({ portalDarkMode, themeColor }: MusicHubProps) 
         }));
 
       setLikedTracks(mapped);
-      setCurrentTracksList(mapped);
       setActivePlaybackStatus("idle");
     } catch (e) {
       console.error("fetchAllLikedSongs error:", e);
@@ -676,6 +680,29 @@ export default function MusicHub({ portalDarkMode, themeColor }: MusicHubProps) 
       }
     } catch (err) {
       console.error("Failed to toggle like", err);
+    }
+  };
+
+  // Add track to Spotify Web API background queue and local state queue
+  const handleAddToQueue = async (track: SpotifyTrack, e: React.MouseEvent) => {
+    e.stopPropagation(); // Avoid playing when clicking +queue button
+    
+    // Append to local state queue
+    setPlaybackQueue((prev) => {
+      if (prev.length === 0) {
+        setCurrentQueueIndex(0);
+        setCurrentTrack(track);
+      }
+      return [...prev, track];
+    });
+
+    // Send to Spotify server queue context if active SDK session is connected
+    if (token && track.spotifyUri) {
+      try {
+        await fetchWebApi(`v1/me/player/queue?uri=${encodeURIComponent(track.spotifyUri)}`, "POST");
+      } catch (err) {
+        console.warn("Failed to sync to Spotify background queue:", err);
+      }
     }
   };
 
@@ -1442,6 +1469,14 @@ export default function MusicHub({ portalDarkMode, themeColor }: MusicHubProps) 
             </button>
           </div>
 
+          {/* API Error Diagnostics Notification Banner */}
+          {apiError && (
+            <div className="bg-red-500/10 border border-red-500/20 text-red-400 p-2.5 rounded-xl text-[10px] flex justify-between items-center gap-2 select-none animate-[fadeIn_0.2s_ease-out]">
+              <span className="truncate">{apiError}</span>
+              <button onClick={() => setApiError(null)} className="font-bold hover:text-white shrink-0">✕</button>
+            </div>
+          )}
+
           {!showQueue ? (
             <>
               {/* Search Input bar */}
@@ -1515,11 +1550,20 @@ export default function MusicHub({ portalDarkMode, themeColor }: MusicHubProps) 
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-1.5">
+                        {token && t.spotifyUri && (
+                          <button
+                            onClick={(e) => handleAddToQueue(t, e)}
+                            className="p-1 text-zinc-500 hover:text-white hover:scale-110 transition cursor-pointer"
+                            title="Add to Play Queue"
+                          >
+                            <ListPlus className="w-3.5 h-3.5" />
+                          </button>
+                        )}
                         {token && t.spotifyUri && (
                           <button
                             onClick={(e) => handleToggleLikeTrack(t, e)}
-                            className="p-1.5 hover:scale-110 transition cursor-pointer"
+                            className="p-1 hover:scale-110 transition cursor-pointer"
                             title={likedTracks.some(lt => lt.id === t.id) ? "Remove from Liked Songs" : "Save to Liked Songs"}
                           >
                             <Heart
