@@ -414,20 +414,32 @@ export default function MusicHub({ portalDarkMode, themeColor }: MusicHubProps) 
         await new Promise((resolve) => setTimeout(resolve, 60));
       }
 
-      // Map to SpotifyTrack structure
+      // Map to SpotifyTrack structure defensively
       const mapped = allItems
         .filter((item: any) => item && item.track && item.track.id)
-        .map((item: any) => ({
-          id: item.track.id,
-          title: item.track.name,
-          artist: item.track.artists.map((a: any) => a.name).join(", "),
-          album: item.track.album.name,
-          imageUrl: item.track.album.images[0]?.url || "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=300&q=80",
-          spotifyUri: item.track.uri,
-          duration: formatDuration(item.track.duration_ms),
-          durationMs: item.track.duration_ms,
-          previewUrl: item.track.preview_url
-        }));
+        .map((item: any) => {
+          const t = item.track;
+          const title = t.name || "Unknown Title";
+          const artist = Array.isArray(t.artists) ? t.artists.map((a: any) => a?.name || "Unknown").join(", ") : "Unknown Artist";
+          const album = t.album?.name || "Unknown Album";
+          const imageUrl = t.album?.images?.[0]?.url || "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=300&q=80";
+          const spotifyUri = t.uri || "";
+          const durationMs = typeof t.duration_ms === "number" ? t.duration_ms : 0;
+          const duration = formatDuration(durationMs);
+          const previewUrl = t.preview_url || undefined;
+
+          return {
+            id: t.id,
+            title,
+            artist,
+            album,
+            imageUrl,
+            spotifyUri,
+            duration,
+            durationMs,
+            previewUrl
+          };
+        });
 
       setLikedTracks(mapped);
       localStorage.setItem("spotify_cached_liked_tracks", JSON.stringify(mapped));
