@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect, useRef, useMemo } from "react";
+import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import {
   Play,
   Pause,
@@ -706,9 +706,8 @@ export default function MusicHub({ portalDarkMode, themeColor }: MusicHubProps) 
     fetchTopArtists(t);
   }, [token]);
 
-  // Load tracks for selected playlist
-  const handleSelectPlaylist = async (playlistId: string) => {
-    setSelectedPlaylistId(playlistId);
+  // Load tracks for selected playlist (memoized to prevent duplicate recreation)
+  const handleSelectPlaylist = useCallback(async (playlistId: string) => {
     setActivePlaybackStatus("loading");
     try {
       const data = await fetchWebApi(`v1/playlists/${playlistId}/tracks?limit=50`);
@@ -728,20 +727,29 @@ export default function MusicHub({ portalDarkMode, themeColor }: MusicHubProps) 
       }
       setActivePlaybackStatus("idle");
     } catch (e) {
-      console.error(e);
+      console.error("handleSelectPlaylist error:", e);
       setActivePlaybackStatus("error");
     }
-  };
+  }, [token, refreshToken]);
 
-  // Sync catalog lists dynamically based on selected tabs
+  // Sync catalog lists dynamically based on selected tabs and selected playlist
   useEffect(() => {
     if (activeTab === "liked") {
       setCurrentTracksList(token ? likedTracks : CURATED_TRACKS);
       setSelectedPlaylistId(null);
-    } else if (activeTab === "playlists" && playlists.length > 0 && !selectedPlaylistId) {
-      handleSelectPlaylist(playlists[0].id);
+    } else if (activeTab === "playlists") {
+      if (selectedPlaylistId) {
+        handleSelectPlaylist(selectedPlaylistId);
+      } else if (playlists.length > 0) {
+        setSelectedPlaylistId(playlists[0].id);
+      } else {
+        setCurrentTracksList([]);
+      }
+    } else if (activeTab === "artists") {
+      setCurrentTracksList([]);
+      setSelectedPlaylistId(null);
     }
-  }, [activeTab, likedTracks, token]);
+  }, [activeTab, likedTracks, selectedPlaylistId, playlists, token, handleSelectPlaylist]);
 
   // Real-time catalog search
   useEffect(() => {
@@ -1180,7 +1188,7 @@ export default function MusicHub({ portalDarkMode, themeColor }: MusicHubProps) 
               {playlists.map((pl) => (
                 <button
                   key={pl.id}
-                  onClick={() => handleSelectPlaylist(pl.id)}
+                  onClick={() => setSelectedPlaylistId(pl.id)}
                   className={`w-full text-left px-2.5 py-2 rounded-lg text-[11px] truncate flex items-center gap-2 transition ${
                     selectedPlaylistId === pl.id
                       ? "bg-white/5 text-[var(--theme-accent)] font-semibold border-l-2 border-[var(--theme-accent)]"
