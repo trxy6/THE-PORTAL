@@ -447,6 +447,9 @@ export default function MusicHub({ portalDarkMode, themeColor }: MusicHubProps) 
       const errText = await res.text().catch(() => "");
       const errMsg = `Spotify API error: ${res.status} ${res.statusText}${errText ? ` (${errText})` : ""}`;
       setApiError(errMsg);
+      if (res.status === 403) {
+        handleDisconnect();
+      }
       throw new Error(errMsg);
     }
     return res.json();
