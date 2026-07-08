@@ -816,10 +816,10 @@ export default function MusicHub({ portalDarkMode, themeColor }: MusicHubProps) 
   const handleSelectPlaylist = useCallback(async (playlistId: string) => {
     setActivePlaybackStatus("loading");
     try {
-      const marketParam = userProfile?.country ? `&market=${userProfile.country}` : "";
-      const data = await fetchWebApi(`v1/playlists/${playlistId}/items?limit=50&additional_types=track${marketParam}`);
-      if (data && data.items) {
-        const mapped = data.items.filter((item: any) => item.track).map((item: any) => ({
+      const marketParam = userProfile?.country ? `?market=${userProfile.country}` : "";
+      const data = await fetchWebApi(`v1/playlists/${playlistId}${marketParam}`);
+      if (data && data.tracks && data.tracks.items) {
+        const mapped = data.tracks.items.filter((item: any) => item.track).map((item: any) => ({
           id: item.track.id,
           title: item.track.name,
           artist: item.track.artists.map((a: any) => a.name).join(", "),
