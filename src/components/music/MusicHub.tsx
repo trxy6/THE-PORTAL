@@ -76,7 +76,7 @@ const CURATED_TRACKS: SpotifyTrack[] = [
 ];
 
 // OAUTH SETTINGS
-const SPOTIFY_CLIENT_ID = "61726a418be24294b22c222ff13576e9";
+const SPOTIFY_CLIENT_ID = "6238dcf567664f328bde1570c68f9eae";
 
 // PKCE HELPER METHODS
 function generateRandomString(length: number) {
