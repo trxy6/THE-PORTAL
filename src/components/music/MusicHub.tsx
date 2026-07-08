@@ -248,7 +248,10 @@ export default function MusicHub({ portalDarkMode, themeColor }: MusicHubProps) 
         "streaming" // Critical scope for Web Playback SDK
       ].join(" ");
 
-      const redirectUri = window.location.origin + window.location.pathname;
+      let redirectUri = window.location.origin + window.location.pathname;
+      if (redirectUri.includes("trxy6.github.io/THE-PORTAL") && !redirectUri.endsWith("/")) {
+        redirectUri += "/";
+      }
 
       const authUrl = `https://accounts.spotify.com/authorize?` + new URLSearchParams({
         response_type: "code",
@@ -298,7 +301,10 @@ export default function MusicHub({ portalDarkMode, themeColor }: MusicHubProps) 
       const verifier = localStorage.getItem("spotify_code_verifier");
       if (!verifier) return;
 
-      const redirectUri = window.location.origin + window.location.pathname;
+      let redirectUri = window.location.origin + window.location.pathname;
+      if (redirectUri.includes("trxy6.github.io/THE-PORTAL") && !redirectUri.endsWith("/")) {
+        redirectUri += "/";
+      }
 
       try {
         const res = await fetch("https://accounts.spotify.com/api/token", {
@@ -321,9 +327,13 @@ export default function MusicHub({ portalDarkMode, themeColor }: MusicHubProps) 
           if (data.refresh_token) {
             localStorage.setItem("spotify_refresh_token", data.refresh_token);
           }
+        } else {
+          const text = await res.text().catch(() => "");
+          throw new Error(`Token exchange failed: ${res.status} ${res.statusText}${text ? ` - ${text}` : ""}`);
         }
-      } catch (e) {
+      } catch (e: any) {
         console.error("Failed to exchange token", e);
+        setApiError(e.message || "Auth token exchange failed");
       }
     };
 
