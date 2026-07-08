@@ -816,7 +816,7 @@ export default function MusicHub({ portalDarkMode, themeColor }: MusicHubProps) 
   const handleSelectPlaylist = useCallback(async (playlistId: string) => {
     setActivePlaybackStatus("loading");
     try {
-      const data = await fetchWebApi(`v1/playlists/${playlistId}/tracks?limit=50`);
+      const data = await fetchWebApi(`v1/playlists/${playlistId}/items?limit=50`);
       if (data && data.items) {
         const mapped = data.items.filter((item: any) => item.track).map((item: any) => ({
           id: item.track.id,
