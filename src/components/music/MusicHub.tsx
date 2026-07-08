@@ -427,8 +427,13 @@ export default function MusicHub({ portalDarkMode, themeColor }: MusicHubProps) 
       document.body.appendChild(script);
     }
 
-    // Set callback window handler
-    (window as any).onSpotifyWebPlaybackSDKReady = () => {
+    const initPlayer = () => {
+      if (spotifyPlayerRef.current) {
+        try {
+          spotifyPlayerRef.current.disconnect();
+        } catch (e) {}
+      }
+
       const player = new (window as any).Spotify.Player({
         name: "The Portal Player",
         getOAuthToken: async (cb: any) => {
@@ -496,6 +501,14 @@ export default function MusicHub({ portalDarkMode, themeColor }: MusicHubProps) 
       setSpotifyPlayer(player);
       spotifyPlayerRef.current = player;
     };
+
+    if ((window as any).Spotify) {
+      initPlayer();
+    } else {
+      (window as any).onSpotifyWebPlaybackSDKReady = () => {
+        initPlayer();
+      };
+    }
 
     return () => {
       // Don't disconnect here on every load, keep player alive while tab persists
