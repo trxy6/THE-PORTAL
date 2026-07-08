@@ -459,18 +459,7 @@ export default function MusicHub({ portalDarkMode, themeColor }: MusicHubProps) 
   // Sync / Load library on mount or token update
   useEffect(() => {
     if (!token) return;
-    const t = token;
-
-    const lastSync = localStorage.getItem("spotify_last_sync_time");
-    const now = Date.now();
-
-    // Bypass 10-minute sync throttle if likedTracks state is empty
-    if (likedTracks.length > 0 && lastSync && now - parseInt(lastSync, 10) < 10 * 60 * 1000) {
-      console.log("Spotify library sync loaded from cache (sync throttled)");
-      return;
-    }
-
-    fetchAllLikedSongs(t);
+    fetchAllLikedSongs(token);
   }, [token]);
 
   // Sync catalog lists dynamically based on active tab
