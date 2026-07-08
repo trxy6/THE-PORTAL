@@ -37,7 +37,66 @@ interface SpotifyTrack {
   spotifyUri: string;
   duration: string;
   durationMs: number;
+  previewUrl?: string | null;
 }
+
+const CURATED_TRACKS: SpotifyTrack[] = [
+  {
+    id: "curated-1",
+    title: "Lumina Chillwave",
+    artist: "Aether",
+    album: "Solar Wind",
+    imageUrl: "https://images.unsplash.com/photo-1508700115892-45ecd05ae2ad?w=300&q=80",
+    spotifyUri: "",
+    duration: "6:12",
+    durationMs: 372000,
+    previewUrl: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3"
+  },
+  {
+    id: "curated-2",
+    title: "Midnight Drive",
+    artist: "Kozmic",
+    album: "Synth Wave",
+    imageUrl: "https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?w=300&q=80",
+    spotifyUri: "",
+    duration: "7:05",
+    durationMs: 425000,
+    previewUrl: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3"
+  },
+  {
+    id: "curated-3",
+    title: "Aether Flow",
+    artist: "Lunar",
+    album: "Deep Ambient",
+    imageUrl: "https://images.unsplash.com/photo-1470229722913-7c0e2dbbafd3?w=300&q=80",
+    spotifyUri: "",
+    duration: "5:44",
+    durationMs: 344000,
+    previewUrl: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3"
+  },
+  {
+    id: "curated-4",
+    title: "Nebula Dream",
+    artist: "Nova",
+    album: "Nebular Waves",
+    imageUrl: "https://images.unsplash.com/photo-1518609878373-06d740f60d8b?w=300&q=80",
+    spotifyUri: "",
+    duration: "5:02",
+    durationMs: 302000,
+    previewUrl: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-4.mp3"
+  },
+  {
+    id: "curated-5",
+    title: "Cosmic Horizon",
+    artist: "Helios",
+    album: "Starlight Voyage",
+    imageUrl: "https://images.unsplash.com/photo-1465847899084-d164df4dedc6?w=300&q=80",
+    spotifyUri: "",
+    duration: "6:02",
+    durationMs: 362000,
+    previewUrl: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-5.mp3"
+  }
+];
 
 interface SpotifyPlaylist {
   id: string;
@@ -94,7 +153,14 @@ export default function MusicHub({ portalDarkMode, themeColor }: MusicHubProps) 
   const [playlists, setPlaylists] = useState<SpotifyPlaylist[]>([]);
   const [likedTracks, setLikedTracks] = useState<SpotifyTrack[]>([]);
   const [topArtists, setTopArtists] = useState<SpotifyArtist[]>([]);
-  const [currentTracksList, setCurrentTracksList] = useState<SpotifyTrack[]>([]);
+  const [currentTracksList, setCurrentTracksList] = useState<SpotifyTrack[]>(() => {
+    try {
+      const t = localStorage.getItem("spotify_access_token");
+      return t ? [] : CURATED_TRACKS;
+    } catch (e) {
+      return CURATED_TRACKS;
+    }
+  });
   
   // Selection States
   const [activeTab, setActiveTab] = useState<"liked" | "playlists" | "artists" | "search">("liked");
@@ -116,8 +182,22 @@ export default function MusicHub({ portalDarkMode, themeColor }: MusicHubProps) 
   const [showEmbedOnly, setShowEmbedOnly] = useState<boolean>(false);
 
   // Refs
+  const audioRef = useRef<HTMLAudioElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const animationRef = useRef<number | null>(null);
+
+  // Native audio progress handlers
+  const handleTimeUpdate = () => {
+    if (audioRef.current) {
+      setCurrentTime(Math.floor(audioRef.current.currentTime));
+    }
+  };
+
+  const handleLoadedMetadata = () => {
+    if (audioRef.current) {
+      setDuration(Math.floor(audioRef.current.duration));
+    }
+  };
 
   // Theme Helpers
   const themeHex = useMemo(() => {
@@ -311,7 +391,8 @@ export default function MusicHub({ portalDarkMode, themeColor }: MusicHubProps) 
           imageUrl: item.track.album.images[0]?.url || "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=300&q=80",
           spotifyUri: item.track.uri,
           duration: formatDuration(item.track.duration_ms),
-          durationMs: item.track.duration_ms
+          durationMs: item.track.duration_ms,
+          previewUrl: item.track.preview_url
         }));
         setLikedTracks(mapped);
         if (activeTab === "liked") {
@@ -388,7 +469,8 @@ export default function MusicHub({ portalDarkMode, themeColor }: MusicHubProps) 
           imageUrl: item.track.album.images[0]?.url || "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=300&q=80",
           spotifyUri: item.track.uri,
           duration: formatDuration(item.track.duration_ms),
-          durationMs: item.track.duration_ms
+          durationMs: item.track.duration_ms,
+          previewUrl: item.track.preview_url
         }));
         setCurrentTracksList(mapped);
       }
@@ -402,12 +484,12 @@ export default function MusicHub({ portalDarkMode, themeColor }: MusicHubProps) 
   // Sync catalog lists dynamically based on selected tabs
   useEffect(() => {
     if (activeTab === "liked") {
-      setCurrentTracksList(likedTracks);
+      setCurrentTracksList(token ? likedTracks : CURATED_TRACKS);
       setSelectedPlaylistId(null);
     } else if (activeTab === "playlists" && playlists.length > 0 && !selectedPlaylistId) {
       handleSelectPlaylist(playlists[0].id);
     }
-  }, [activeTab]);
+  }, [activeTab, likedTracks, token]);
 
   // Real-time catalog search
   useEffect(() => {
@@ -428,7 +510,8 @@ export default function MusicHub({ portalDarkMode, themeColor }: MusicHubProps) 
             imageUrl: item.album.images[0]?.url || "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=300&q=80",
             spotifyUri: item.uri,
             duration: formatDuration(item.duration_ms),
-            durationMs: item.duration_ms
+            durationMs: item.duration_ms,
+            previewUrl: item.preview_url
           }));
           setSearchResults(mapped);
         }
@@ -445,34 +528,74 @@ export default function MusicHub({ portalDarkMode, themeColor }: MusicHubProps) 
   // 3. MUSIC PLAYBACK ACTIVE DEVICE CONTROLS
   const handlePlayTrack = async (track: SpotifyTrack) => {
     setCurrentTrack(track);
-    setIsPlaying(true);
+    setIsPlaying(false);
     setDuration(Math.floor(track.durationMs / 1000));
     setCurrentTime(0);
-    setShowEmbedOnly(true); // Switch display in middle tab to direct iframe preview card
 
-    // Sync state with active Spotify Connect Player session if available
-    try {
-      await fetchWebApi("v1/me/player/play", "PUT", {
-        uris: [track.spotifyUri]
-      });
-    } catch (e) {
-      console.warn("No active playback session found to push Spotify Connect play.", e);
+    // 1. Play preview audio natively if present
+    if (audioRef.current) {
+      if (track.previewUrl) {
+        audioRef.current.src = track.previewUrl;
+        audioRef.current.load();
+        audioRef.current.play()
+          .then(() => {
+            setIsPlaying(true);
+            setShowEmbedOnly(false); // Keep vinyl visualizer active
+          })
+          .catch((e) => {
+            console.warn("Autoplay block or native play error, showing Embed card:", e);
+            setShowEmbedOnly(true); // Fallback to Iframe embed
+            setIsPlaying(true);
+          });
+      } else {
+        // No preview available, stop native playback and mount Iframe Embed
+        audioRef.current.src = "";
+        setShowEmbedOnly(true);
+        setIsPlaying(true);
+      }
+    }
+
+    // 2. Sync state with active Spotify Connect Player session if available
+    if (token && track.spotifyUri) {
+      try {
+        await fetchWebApi("v1/me/player/play", "PUT", {
+          uris: [track.spotifyUri]
+        });
+      } catch (e) {
+        console.warn("No active Spotify Connect device detected.", e);
+      }
     }
   };
 
   const handlePlayToggle = async () => {
     if (!currentTrack) return;
-    try {
-      if (isPlaying) {
-        await fetchWebApi("v1/me/player/pause", "PUT");
-        setIsPlaying(false);
+    
+    // Toggle native audio playback
+    if (audioRef.current && audioRef.current.src) {
+      if (audioRef.current.paused) {
+        audioRef.current.play()
+          .then(() => setIsPlaying(true))
+          .catch(() => {});
       } else {
-        await fetchWebApi("v1/me/player/play", "PUT");
-        setIsPlaying(true);
+        audioRef.current.pause();
+        setIsPlaying(false);
       }
-    } catch (e) {
-      // If direct active device command fails, toggle local UI state anyway
+    } else {
+      // Toggle local state
       setIsPlaying(!isPlaying);
+    }
+
+    // Also try to toggle Spotify Connect active device
+    if (token) {
+      try {
+        if (isPlaying) {
+          await fetchWebApi("v1/me/player/pause", "PUT");
+        } else {
+          await fetchWebApi("v1/me/player/play", "PUT");
+        }
+      } catch (e) {
+        console.warn("Failed to toggle remote Spotify player state:", e);
+      }
     }
   };
 
@@ -515,6 +638,13 @@ export default function MusicHub({ portalDarkMode, themeColor }: MusicHubProps) 
         .catch(() => {});
     }, 250);
     return () => clearTimeout(timer);
+  }, [volume]);
+
+  // Sync volume with native audio element
+  useEffect(() => {
+    if (audioRef.current) {
+      audioRef.current.volume = volume / 100;
+    }
   }, [volume]);
 
   // Local simulated progress tick when music is active
@@ -1046,6 +1176,13 @@ export default function MusicHub({ portalDarkMode, themeColor }: MusicHubProps) 
           </div>
         </div>
       </div>
+      {/* Native HTML5 Audio Element for previews and curated tracks */}
+      <audio
+        ref={audioRef}
+        onTimeUpdate={handleTimeUpdate}
+        onLoadedMetadata={handleLoadedMetadata}
+        onEnded={handleSkipForward}
+      />
     </div>
   );
 }
