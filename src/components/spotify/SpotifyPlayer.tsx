@@ -269,8 +269,45 @@ export default function SpotifyPlayer({ portalDarkMode, themeColor }: SpotifyPla
     localStorage.removeItem("spotify_refresh_token");
   };
 
-  // Initiate Spotify OAuth Login Flow using client-side PKCE redirection
+  // Initiate Spotify OAuth Login Flow using client-side PKCE redirection or local server popup
   const handleConnectSpotify = async () => {
+    const isLocal = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
+
+    if (isLocal) {
+      // Local Server Popup Flow (exchanges code securely via backend)
+      try {
+        const origin = window.location.origin;
+        const res = await fetch(`/api/auth/spotify/url?origin=${encodeURIComponent(origin)}`);
+        const data = await res.json();
+        if (!res.ok) {
+          throw new Error(data.error || "Failed to generate auth url");
+        }
+
+        const width = 500;
+        const height = 650;
+        const left = window.screen.width / 2 - width / 2;
+        const top = window.screen.height / 2 - height / 2;
+
+        const authWindow = window.open(
+          data.url,
+          "spotify_auth_popup",
+          `width=${width},height=${height},left=${left},top=${top},menubar=no,toolbar=no,location=no`
+        );
+
+        if (!authWindow) {
+          alert("Please enable popups to connect to Spotify.");
+        }
+      } catch (err: any) {
+        console.error("Local Spotify Auth initiation failed, falling back to PKCE:", err);
+        runClientPKCEFlow();
+      }
+    } else {
+      // GitHub Pages / Static Host PKCE Redirect Flow
+      runClientPKCEFlow();
+    }
+  };
+
+  const runClientPKCEFlow = async () => {
     try {
       const codeVerifier = generateRandomString(64);
       localStorage.setItem("spotify_code_verifier", codeVerifier);
@@ -303,7 +340,7 @@ export default function SpotifyPlayer({ portalDarkMode, themeColor }: SpotifyPla
 
       window.location.href = authUrl;
     } catch (err: any) {
-      console.error("Spotify Auth initiation failed:", err);
+      console.error("Spotify PKCE initiation failed:", err);
       alert(`Connection failed: ${err.message}`);
     }
   };

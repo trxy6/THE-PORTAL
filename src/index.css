@@ -501,3 +501,54 @@ body {
   box-shadow: 0 0 18px rgba(139, 92, 246, 0.4) !important;
 }
 
+/* Spotify Player Color Theme Syncing Overrides */
+#spotify-player-root,
+#spotify-player-root aside,
+#spotify-player-root main,
+#spotify-player-root footer {
+  background-color: var(--theme-bg-panel) !important;
+  color: var(--theme-text-main) !important;
+  border-color: var(--theme-border, rgba(139, 92, 246, 0.15)) !important;
+}
+
+#spotify-player-root .text-\[\#c5a059\],
+#spotify-player-root .text-emerald-500,
+#spotify-player-root .text-emerald-400 {
+  color: var(--theme-accent) !important;
+}
+
+#spotify-player-root .bg-\[\#c5a059\],
+#spotify-player-root .bg-emerald-500 {
+  background-color: var(--theme-accent) !important;
+  color: #ffffff !important;
+}
+
+#spotify-player-root .bg-\[\#c5a059\/15\],
+#spotify-player-root .bg-emerald-500\/15 {
+  background-color: rgba(139, 92, 246, 0.15) !important;
+  color: var(--theme-accent) !important;
+}
+
+#spotify-player-root .border-\[\#c5a059\],
+#spotify-player-root .border-emerald-500 {
+  border-color: var(--theme-accent) !important;
+}
+
+#spotify-player-root input[type="range"] {
+  accent-color: var(--theme-accent) !important;
+}
+
+#spotify-player-root #playback-play-toggle-btn {
+  border-color: var(--theme-accent) !important;
+  color: var(--theme-accent) !important;
+}
+
+#spotify-player-root #playback-play-toggle-btn:hover {
+  background-color: var(--theme-accent) !important;
+  color: #ffffff !important;
+}
+
+#spotify-player-root button:hover {
+  color: var(--theme-accent) !important;
+}
+
