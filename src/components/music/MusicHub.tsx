@@ -127,6 +127,7 @@ export default function MusicHub({ portalDarkMode, themeColor }: MusicHubProps) 
   // Sync Progress Indicators
   const [syncStatus, setSyncStatus] = useState<"idle" | "loading" | "error">("idle");
   const [syncProgress, setSyncProgress] = useState<{ loaded: number; total: number } | null>(null);
+  const [syncErrorMsg, setSyncErrorMsg] = useState<string | null>(null);
 
   // Player Playback States
   const [currentTrack, setCurrentTrack] = useState<SpotifyTrack | null>(null);
@@ -253,8 +254,8 @@ export default function MusicHub({ portalDarkMode, themeColor }: MusicHubProps) 
     });
     if (!res.ok) {
       if (res.status === 204) return null;
-      console.error(`apiFetch failure: ${res.status} for ${endpoint}`);
-      return null;
+      const errText = await res.text().catch(() => "");
+      throw new Error(`Spotify API error: ${res.status} ${res.statusText} ${errText}`);
     }
     return res.json();
   };
@@ -390,6 +391,7 @@ export default function MusicHub({ portalDarkMode, themeColor }: MusicHubProps) 
   const fetchAllLikedSongs = async (activeToken: string) => {
     setSyncStatus("loading");
     setSyncProgress(null);
+    setSyncErrorMsg(null);
     try {
       // 1. Fetch first page to grab total count
       const firstPage = await apiFetch(activeToken, "v1/me/tracks?limit=50&offset=0");
@@ -446,9 +448,10 @@ export default function MusicHub({ portalDarkMode, themeColor }: MusicHubProps) 
       localStorage.setItem("spotify_last_sync_time", Date.now().toString());
       setSyncStatus("idle");
       setSyncProgress(null);
-    } catch (e) {
+    } catch (e: any) {
       console.error("fetchAllLikedSongs fail:", e);
       setSyncStatus("error");
+      setSyncErrorMsg(e.message || "Library sync failed");
       setSyncProgress(null);
     }
   };
@@ -925,6 +928,14 @@ export default function MusicHub({ portalDarkMode, themeColor }: MusicHubProps) 
                 <span>{syncProgress.loaded} / {syncProgress.total} songs</span>
                 <span>{Math.round((syncProgress.loaded / syncProgress.total) * 100)}%</span>
               </div>
+            </div>
+          )}
+
+          {/* Sync error display */}
+          {syncStatus === "error" && syncErrorMsg && (
+            <div className="mt-auto bg-red-500/5 border border-red-500/10 rounded-xl p-2.5 flex flex-col gap-1 select-none">
+              <span className="text-[10px] font-bold text-red-400">Sync Failed:</span>
+              <p className="text-[9px] text-zinc-400 break-words leading-tight">{syncErrorMsg}</p>
             </div>
           )}
         </div>
