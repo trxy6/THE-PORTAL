@@ -151,26 +151,9 @@ export default function MusicHub({ portalDarkMode, themeColor }: MusicHubProps) 
   const [refreshToken, setRefreshToken] = useState<string | null>(() => localStorage.getItem("spotify_refresh_token"));
   const [userProfile, setUserProfile] = useState<any>(null);
 
-  // Library Data States
-  const [playlists, setPlaylists] = useState<SpotifyPlaylist[]>(() => {
-    try {
-      const cached = localStorage.getItem("spotify_cached_playlists");
-      return cached ? JSON.parse(cached) : [];
-    } catch (e) {
-      return [];
-    }
-  });
   const [likedTracks, setLikedTracks] = useState<SpotifyTrack[]>(() => {
     try {
       const cached = localStorage.getItem("spotify_cached_liked_tracks");
-      return cached ? JSON.parse(cached) : [];
-    } catch (e) {
-      return [];
-    }
-  });
-  const [topArtists, setTopArtists] = useState<SpotifyArtist[]>(() => {
-    try {
-      const cached = localStorage.getItem("spotify_cached_top_artists");
       return cached ? JSON.parse(cached) : [];
     } catch (e) {
       return [];
@@ -190,8 +173,7 @@ export default function MusicHub({ portalDarkMode, themeColor }: MusicHubProps) 
   });
   
   // Selection States
-  const [activeTab, setActiveTab] = useState<"liked" | "playlists" | "artists" | "search">("liked");
-  const [selectedPlaylistId, setSelectedPlaylistId] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<"liked" | "search">("liked");
   const [currentTrack, setCurrentTrack] = useState<SpotifyTrack | null>(null);
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
   const [volume, setVolume] = useState<number>(70);
@@ -303,16 +285,12 @@ export default function MusicHub({ portalDarkMode, themeColor }: MusicHubProps) 
     }
     localStorage.removeItem("spotify_access_token");
     localStorage.removeItem("spotify_refresh_token");
-    localStorage.removeItem("spotify_cached_playlists");
     localStorage.removeItem("spotify_cached_liked_tracks");
-    localStorage.removeItem("spotify_cached_top_artists");
     localStorage.removeItem("spotify_last_sync_time");
     setToken(null);
     setRefreshToken(null);
     setUserProfile(null);
-    setPlaylists([]);
     setLikedTracks([]);
-    setTopArtists([]);
     setCurrentTrack(null);
     setSpotifyPlayer(null);
     setSdkDeviceId(null);
@@ -662,56 +640,7 @@ export default function MusicHub({ portalDarkMode, themeColor }: MusicHubProps) 
     }
   };
 
-  // Fetch ALL playlists with rate-limit friendly parallel batching
-  const fetchAllPlaylists = async (activeToken: string) => {
-    try {
-      // 1. Fetch first page to grab total count
-      const firstPage = await apiFetch(activeToken, "v1/me/playlists?limit=50");
-      if (!firstPage || !firstPage.items) {
-        setPlaylists([]);
-        return;
-      }
 
-      // Cap playlists to 150 (3 pages) to avoid 429 rate limiting on massive profiles
-      const totalToFetch = Math.min(firstPage.total, 150);
-      let allItems = [...firstPage.items];
-
-      // 2. Fetch remaining pages up to 150 playlists in small concurrent batches of 3
-      if (totalToFetch > 50) {
-        const offsets: number[] = [];
-        for (let offset = 50; offset < totalToFetch; offset += 50) {
-          offsets.push(offset);
-        }
-
-        const batchSize = 3;
-        for (let i = 0; i < offsets.length; i += batchSize) {
-          const batch = offsets.slice(i, i + batchSize);
-          const promises = batch.map(offset => apiFetch(activeToken, `v1/me/playlists?offset=${offset}&limit=50`));
-          const results = await Promise.all(promises);
-          results.forEach((res) => {
-            if (res && res.items) {
-              allItems = [...allItems, ...res.items];
-            }
-          });
-          // Small breathing room delay between batches
-          await new Promise(resolve => setTimeout(resolve, 150));
-        }
-      }
-
-      const mapped = allItems.map((item: any) => ({
-        id: item.id,
-        name: item.name,
-        description: item.description || "Spotify Playlist",
-        imageUrl: item.images?.[0]?.url || "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=300",
-        trackCount: item.tracks?.total ?? 0
-      }));
-
-      setPlaylists(mapped);
-      localStorage.setItem("spotify_cached_playlists", JSON.stringify(mapped));
-    } catch (e) {
-      console.error("fetchAllPlaylists error:", e);
-    }
-  };
 
   const handleToggleLikeTrack = async (track: SpotifyTrack, e: React.MouseEvent) => {
     e.stopPropagation(); // Avoid playing when clicking heart
@@ -763,25 +692,6 @@ export default function MusicHub({ portalDarkMode, themeColor }: MusicHubProps) 
     }
   };
 
-  // Fetch Top/Followed Artists
-  const fetchTopArtists = async (activeToken: string) => {
-    try {
-      const data = await apiFetch(activeToken, "v1/me/top/artists?limit=50");
-      if (data && data.items) {
-        const mapped = data.items.map((item: any) => ({
-          id: item.id,
-          name: item.name,
-          imageUrl: item.images[0]?.url || "https://images.unsplash.com/photo-1501386761578-eac5c94b800a?w=300",
-          genres: item.genres
-        }));
-        setTopArtists(mapped);
-        localStorage.setItem("spotify_cached_top_artists", JSON.stringify(mapped));
-      }
-    } catch (e) {
-      console.error("fetchTopArtists error:", e);
-    }
-  };
-
   // Load full library when token is available — staggered & rate-limit throttled
   useEffect(() => {
     if (!token) return;
@@ -790,8 +700,8 @@ export default function MusicHub({ portalDarkMode, themeColor }: MusicHubProps) 
     const lastSync = localStorage.getItem("spotify_last_sync_time");
     const now = Date.now();
     
-    // Throtle API sync requests to once every 10 minutes to bypass Spotify rate limits
-    if (lastSync && now - parseInt(lastSync, 10) < 10 * 60 * 1000) {
+    // Throttle API sync requests to once every 10 minutes to bypass Spotify rate limits, unless cache is empty
+    if (likedTracks.length > 0 && lastSync && now - parseInt(lastSync, 10) < 10 * 60 * 1000) {
       console.log("Spotify library sync loaded from localStorage cache (sync throttled)");
       return;
     }
@@ -799,10 +709,6 @@ export default function MusicHub({ portalDarkMode, themeColor }: MusicHubProps) 
     const loadLibrary = async () => {
       try {
         await fetchAllLikedSongs(t);
-        await new Promise((resolve) => setTimeout(resolve, 500));
-        await fetchAllPlaylists(t);
-        await new Promise((resolve) => setTimeout(resolve, 500));
-        await fetchTopArtists(t);
         localStorage.setItem("spotify_last_sync_time", Date.now().toString());
       } catch (err) {
         console.error("Library load failed:", err);
@@ -812,51 +718,12 @@ export default function MusicHub({ portalDarkMode, themeColor }: MusicHubProps) 
     loadLibrary();
   }, [token]);
 
-  // Load tracks for selected playlist (memoized to prevent duplicate recreation)
-  const handleSelectPlaylist = useCallback(async (playlistId: string) => {
-    setActivePlaybackStatus("loading");
-    try {
-      const marketParam = userProfile?.country ? `?market=${userProfile.country}` : "";
-      const data = await fetchWebApi(`v1/playlists/${playlistId}${marketParam}`);
-      if (data && data.tracks && data.tracks.items) {
-        const mapped = data.tracks.items.filter((item: any) => item.track).map((item: any) => ({
-          id: item.track.id,
-          title: item.track.name,
-          artist: item.track.artists.map((a: any) => a.name).join(", "),
-          album: item.track.album.name,
-          imageUrl: item.track.album.images[0]?.url || "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=300&q=80",
-          spotifyUri: item.track.uri,
-          duration: formatDuration(item.track.duration_ms),
-          durationMs: item.track.duration_ms,
-          previewUrl: item.track.preview_url
-        }));
-        setCurrentTracksList(mapped);
-      }
-      setActivePlaybackStatus("idle");
-    } catch (e) {
-      console.error("handleSelectPlaylist error:", e);
-      setActivePlaybackStatus("error");
-    }
-  }, [token, refreshToken, userProfile]);
-
-  // Sync catalog lists dynamically based on selected tabs and selected playlist
+  // Sync catalog lists dynamically based on active tab
   useEffect(() => {
     if (activeTab === "liked") {
       setCurrentTracksList(token ? likedTracks : CURATED_TRACKS);
-      setSelectedPlaylistId(null);
-    } else if (activeTab === "playlists") {
-      if (selectedPlaylistId) {
-        handleSelectPlaylist(selectedPlaylistId);
-      } else if (playlists.length > 0) {
-        setSelectedPlaylistId(playlists[0].id);
-      } else {
-        setCurrentTracksList([]);
-      }
-    } else if (activeTab === "artists") {
-      setCurrentTracksList([]);
-      setSelectedPlaylistId(null);
     }
-  }, [activeTab, likedTracks, selectedPlaylistId, playlists, token, handleSelectPlaylist]);
+  }, [activeTab, likedTracks, token]);
 
   // Real-time catalog search
   useEffect(() => {
@@ -1260,71 +1127,6 @@ export default function MusicHub({ portalDarkMode, themeColor }: MusicHubProps) 
             </div>
             <span className="opacity-70 text-[10px]">{likedTracks.length}</span>
           </button>
-
-          <button
-            onClick={() => {
-              setActiveTab("playlists");
-              setShowQueue(false);
-              setSearchQuery("");
-            }}
-            disabled={!token}
-            className={`w-full text-left px-3 py-2.5 rounded-xl text-xs font-semibold flex items-center justify-between transition disabled:opacity-20 disabled:pointer-events-none ${
-              activeTab === "playlists"
-                ? "bg-[var(--theme-accent)] text-white shadow-[0_0_15px_var(--theme-glow)]"
-                : "bg-white/[0.01] hover:bg-white/5 text-zinc-300"
-            }`}
-          >
-            <div className="flex items-center gap-2">
-              <Music className="w-3.5 h-3.5" />
-              <span>Playlists</span>
-            </div>
-            <span className="opacity-70 text-[10px]">{playlists.length}</span>
-          </button>
-
-          <button
-            onClick={() => {
-              setActiveTab("artists");
-              setShowQueue(false);
-              setSearchQuery("");
-            }}
-            disabled={!token}
-            className={`w-full text-left px-3 py-2.5 rounded-xl text-xs font-semibold flex items-center justify-between transition disabled:opacity-20 disabled:pointer-events-none ${
-              activeTab === "artists"
-                ? "bg-[var(--theme-accent)] text-white shadow-[0_0_15px_var(--theme-glow)]"
-                : "bg-white/[0.01] hover:bg-white/5 text-zinc-300"
-            }`}
-          >
-            <div className="flex items-center gap-2">
-              <User className="w-3.5 h-3.5" />
-              <span>Top Artists</span>
-            </div>
-            <span className="opacity-70 text-[10px]">{topArtists.length}</span>
-          </button>
-
-          {/* Dynamic list of playlists underneath if tab is selected */}
-          {activeTab === "playlists" && playlists.length > 0 && (
-            <div className="flex-1 overflow-y-auto mt-2 border-t border-white/5 pt-2 space-y-1 pr-0.5 scrollbar-thin">
-              {playlists.map((pl) => (
-                <button
-                  key={pl.id}
-                  onClick={() => {
-                    setSelectedPlaylistId(pl.id);
-                    setActiveTab("playlists");
-                    setShowQueue(false);
-                    setSearchQuery("");
-                  }}
-                  className={`w-full text-left px-2.5 py-2 rounded-lg text-[11px] truncate flex items-center gap-2 transition ${
-                    selectedPlaylistId === pl.id
-                      ? "bg-white/5 text-[var(--theme-accent)] font-semibold border-l-2 border-[var(--theme-accent)]"
-                      : "text-zinc-400 hover:text-white"
-                  }`}
-                >
-                  <ListMusic className="w-3.5 h-3.5 shrink-0 opacity-60" />
-                  <span className="truncate">{pl.name}</span>
-                </button>
-              ))}
-            </div>
-          )}
         </div>
       </div>
 
@@ -1587,95 +1389,68 @@ export default function MusicHub({ portalDarkMode, themeColor }: MusicHubProps) 
 
               {/* List area */}
               <div className="flex-1 overflow-y-auto space-y-1 pr-1 scrollbar-thin">
-                {activeTab === "artists" ? (
-                  topArtists.length === 0 ? (
-                    <div className="text-center py-12 text-zinc-500 text-xs">
-                      No top artists found. Play more music on Spotify to populate your top artists list!
-                    </div>
-                  ) : (
-                    /* RENDER ARTISTS LIST */
-                    topArtists.map((artist) => (
-                      <div
-                        key={artist.id}
-                        className="w-full p-2.5 rounded-xl text-left text-xs flex items-center gap-3 border border-transparent bg-white/[0.01]"
-                      >
+                {/* RENDER TRACKS LIST (Liked or search) */}
+                {(activeTab === "search" ? searchResults : currentTracksList).map((t, idx) => (
+                  <div
+                    key={t.id}
+                    onClick={() => handlePlayTrack(t, idx)}
+                    className={`w-full p-2 rounded-xl text-left text-xs flex items-center justify-between transition cursor-pointer group ${
+                      currentTrack?.id === t.id
+                        ? "bg-white/[0.05] border border-[var(--theme-accent)]/20"
+                        : "hover:bg-white/[0.02] border border-transparent"
+                    }`}
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="w-8 h-8 rounded overflow-hidden bg-white/5 shrink-0 flex items-center justify-center text-zinc-600 relative">
                         <img
-                          src={artist.imageUrl}
-                          alt={artist.name}
-                          className="w-10 h-10 rounded-full object-cover shrink-0"
+                          src={t.imageUrl}
+                          alt={t.title}
+                          className="w-full h-full object-cover"
                           referrerPolicy="no-referrer"
                         />
-                        <div className="min-w-0">
-                          <p className="font-semibold text-white truncate">{artist.name}</p>
-                          <p className="text-[10px] text-zinc-500 truncate mt-0.5 uppercase tracking-wider">{artist.genres.slice(0, 2).join(", ") || "Artist"}</p>
-                        </div>
-                      </div>
-                    ))
-                  )
-                ) : (
-                  /* RENDER TRACKS LIST (Liked, playlists or search) */
-                  (activeTab === "search" ? searchResults : currentTracksList).map((t, idx) => (
-                    <div
-                      key={t.id}
-                      onClick={() => handlePlayTrack(t, idx)}
-                      className={`w-full p-2 rounded-xl text-left text-xs flex items-center justify-between transition cursor-pointer group ${
-                        currentTrack?.id === t.id
-                          ? "bg-white/[0.05] border border-[var(--theme-accent)]/20"
-                          : "hover:bg-white/[0.02] border border-transparent"
-                      }`}
-                    >
-                      <div className="flex items-center gap-3 min-w-0">
-                        <div className="w-8 h-8 rounded overflow-hidden bg-white/5 shrink-0 flex items-center justify-center text-zinc-600 relative">
-                          <img
-                            src={t.imageUrl}
-                            alt={t.title}
-                            className="w-full h-full object-cover"
-                            referrerPolicy="no-referrer"
-                          />
-                          {currentTrack?.id === t.id && isPlaying && (
-                            <div className="absolute inset-0 bg-black/40 flex items-center justify-center text-[var(--theme-accent)]">
-                              <Disc className="w-4 h-4 animate-spin-slow" />
-                            </div>
-                          )}
-                        </div>
-                        <div className="truncate">
-                          <p className={`font-semibold truncate ${currentTrack?.id === t.id ? "text-[var(--theme-accent)]" : "text-white"}`}>
-                            {t.title}
-                          </p>
-                          <p className="text-[10px] text-zinc-500 truncate mt-0.5">{t.artist}</p>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-1.5">
-                        {token && t.spotifyUri && (
-                          <button
-                            onClick={(e) => handleAddToQueue(t, e)}
-                            className="p-1 text-zinc-500 hover:text-white hover:scale-110 transition cursor-pointer"
-                            title="Add to Play Queue"
-                          >
-                            <ListPlus className="w-3.5 h-3.5" />
-                          </button>
+                        {currentTrack?.id === t.id && isPlaying && (
+                          <div className="absolute inset-0 bg-black/40 flex items-center justify-center text-[var(--theme-accent)]">
+                            <Disc className="w-4 h-4 animate-spin-slow" />
+                          </div>
                         )}
-                        {token && t.spotifyUri && (
-                          <button
-                            onClick={(e) => handleToggleLikeTrack(t, e)}
-                            className="p-1 hover:scale-110 transition cursor-pointer"
-                            title={likedTracks.some(lt => lt.id === t.id) ? "Remove from Liked Songs" : "Save to Liked Songs"}
-                          >
-                            <Heart
-                              className={`w-3.5 h-3.5 ${
-                                likedTracks.some(lt => lt.id === t.id)
-                                  ? "text-pink-500 fill-current"
-                                  : "text-zinc-500 hover:text-white"
-                              }`}
-                            />
-                          </button>
-                        )}
-                        <span className="text-[10px] text-zinc-500 tabular-nums shrink-0">{t.duration}</span>
+                      </div>
+                      <div className="truncate">
+                        <p className={`font-semibold truncate ${currentTrack?.id === t.id ? "text-[var(--theme-accent)]" : "text-white"}`}>
+                          {t.title}
+                        </p>
+                        <p className="text-[10px] text-zinc-500 truncate mt-0.5">{t.artist}</p>
                       </div>
                     </div>
-                  ))
-                )}
+
+                    <div className="flex items-center gap-1.5">
+                      {token && t.spotifyUri && (
+                        <button
+                          onClick={(e) => handleAddToQueue(t, e)}
+                          className="p-1 text-zinc-500 hover:text-white hover:scale-110 transition cursor-pointer"
+                          title="Add to Play Queue"
+                        >
+                          <ListPlus className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                      {token && t.spotifyUri && (
+                        <button
+                          onClick={(e) => handleToggleLikeTrack(t, e)}
+                          className="p-1 hover:scale-110 transition cursor-pointer"
+                          title={likedTracks.some(lt => lt.id === t.id) ? "Remove from Liked Songs" : "Save to Liked Songs"}
+                        >
+                          <Heart
+                            className={`w-3.5 h-3.5 ${
+                              likedTracks.some(lt => lt.id === t.id)
+                                ? "text-pink-500 fill-current"
+                                : "text-zinc-500 hover:text-white"
+                            }`}
+                          />
+                        </button>
+                      )}
+                      <span className="text-[10px] text-zinc-500 tabular-nums shrink-0">{t.duration}</span>
+                    </div>
+                  </div>
+                ))}
 
                 {/* Empty displays */}
                 {!token && (
