@@ -342,48 +342,7 @@ export default function MusicHub({ portalDarkMode, themeColor }: MusicHubProps) 
   }, []);
 
   const getOrRefreshToken = async (): Promise<string | null> => {
-    let activeToken = localStorage.getItem("spotify_access_token") || token;
-    const activeRefresh = localStorage.getItem("spotify_refresh_token") || refreshToken;
-
-    if (!activeToken) return null;
-
-    try {
-      const checkRes = await fetch("https://api.spotify.com/v1/me", {
-        headers: { Authorization: `Bearer ${activeToken}` }
-      });
-      if (checkRes.ok) {
-        return activeToken;
-      }
-    } catch (e) {}
-
-    if (activeRefresh) {
-      try {
-        const refreshRes = await fetch("https://accounts.spotify.com/api/token", {
-          method: "POST",
-          headers: { "Content-Type": "application/x-www-form-urlencoded" },
-          body: new URLSearchParams({
-            client_id: SPOTIFY_CLIENT_ID,
-            grant_type: "refresh_token",
-            refresh_token: activeRefresh
-          })
-        });
-
-        if (refreshRes.ok) {
-          const data = await refreshRes.json();
-          const newToken = data.access_token;
-          setToken(newToken);
-          localStorage.setItem("spotify_access_token", newToken);
-          if (data.refresh_token) {
-            setRefreshToken(data.refresh_token);
-            localStorage.setItem("spotify_refresh_token", data.refresh_token);
-          }
-          return newToken;
-        }
-      } catch (e) {
-        console.error("SDK token auto-refresh failed", e);
-      }
-    }
-    return null;
+    return localStorage.getItem("spotify_access_token") || token;
   };
 
   const fetchWebApi = async (endpoint: string, method = "GET", body?: any): Promise<any> => {
