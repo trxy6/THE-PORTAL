@@ -578,7 +578,7 @@ export default function MusicHub({ portalDarkMode, themeColor }: MusicHubProps) 
     return res.json();
   };
 
-  // Fetch Liked Songs (Saved Tracks) with full parallel pagination
+  // Fetch Liked Songs (Saved Tracks) with rate-limit friendly parallel batching
   const fetchAllLikedSongs = async (activeToken: string) => {
     setActivePlaybackStatus("loading");
     try {
@@ -594,18 +594,26 @@ export default function MusicHub({ portalDarkMode, themeColor }: MusicHubProps) 
       const total = firstPage.total;
       let allItems = [...firstPage.items];
 
-      // 2. Fetch all remaining pages concurrently
+      // 2. Fetch remaining pages in small concurrent batches of 5 to avoid 429 rate limits
       if (total > 50) {
-        const promises = [];
+        const offsets: number[] = [];
         for (let offset = 50; offset < total; offset += 50) {
-          promises.push(apiFetch(activeToken, `v1/me/tracks?offset=${offset}&limit=50`));
+          offsets.push(offset);
         }
-        const results = await Promise.all(promises);
-        results.forEach((res) => {
-          if (res && res.items) {
-            allItems = [...allItems, ...res.items];
-          }
-        });
+
+        const batchSize = 5;
+        for (let i = 0; i < offsets.length; i += batchSize) {
+          const batch = offsets.slice(i, i + batchSize);
+          const promises = batch.map(offset => apiFetch(activeToken, `v1/me/tracks?offset=${offset}&limit=50`));
+          const results = await Promise.all(promises);
+          results.forEach((res) => {
+            if (res && res.items) {
+              allItems = [...allItems, ...res.items];
+            }
+          });
+          // Small breathing room delay between batches
+          await new Promise(resolve => setTimeout(resolve, 100));
+        }
       }
 
       const mapped = allItems
@@ -630,7 +638,7 @@ export default function MusicHub({ portalDarkMode, themeColor }: MusicHubProps) 
     }
   };
 
-  // Fetch ALL playlists with full parallel pagination
+  // Fetch ALL playlists with rate-limit friendly parallel batching
   const fetchAllPlaylists = async (activeToken: string) => {
     try {
       // 1. Fetch first page to grab total count
@@ -643,18 +651,26 @@ export default function MusicHub({ portalDarkMode, themeColor }: MusicHubProps) 
       const total = firstPage.total;
       let allItems = [...firstPage.items];
 
-      // 2. Fetch all remaining pages concurrently
+      // 2. Fetch remaining pages in small concurrent batches of 5 to avoid 429 rate limits
       if (total > 50) {
-        const promises = [];
+        const offsets: number[] = [];
         for (let offset = 50; offset < total; offset += 50) {
-          promises.push(apiFetch(activeToken, `v1/me/playlists?offset=${offset}&limit=50`));
+          offsets.push(offset);
         }
-        const results = await Promise.all(promises);
-        results.forEach((res) => {
-          if (res && res.items) {
-            allItems = [...allItems, ...res.items];
-          }
-        });
+
+        const batchSize = 5;
+        for (let i = 0; i < offsets.length; i += batchSize) {
+          const batch = offsets.slice(i, i + batchSize);
+          const promises = batch.map(offset => apiFetch(activeToken, `v1/me/playlists?offset=${offset}&limit=50`));
+          const results = await Promise.all(promises);
+          results.forEach((res) => {
+            if (res && res.items) {
+              allItems = [...allItems, ...res.items];
+            }
+          });
+          // Small breathing room delay between batches
+          await new Promise(resolve => setTimeout(resolve, 100));
+        }
       }
 
       const mapped = allItems.map((item: any) => ({
