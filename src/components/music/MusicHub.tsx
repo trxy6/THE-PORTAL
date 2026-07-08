@@ -1396,7 +1396,13 @@ export default function MusicHub({ portalDarkMode, themeColor }: MusicHubProps) 
             <div className="flex items-center gap-1.5 select-none">
               <Sliders className="w-3.5 h-3.5 text-[var(--theme-accent)]" />
               <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-400">
-                {activeTab === "liked" ? "Liked Tracks" : activeTab === "artists" ? "Top Artists" : activeTab === "search" ? "Search Results" : "Playlist Index"}
+                {activeTab === "liked"
+                  ? "Liked Tracks"
+                  : activeTab === "artists"
+                  ? "Top Artists"
+                  : activeTab === "search"
+                  ? "Search Results"
+                  : playlists.find((p) => p.id === selectedPlaylistId)?.name || "Playlist Tracks"}
               </h3>
             </div>
           </div>
