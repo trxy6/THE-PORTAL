@@ -152,11 +152,36 @@ export default function MusicHub({ portalDarkMode, themeColor }: MusicHubProps) 
   const [userProfile, setUserProfile] = useState<any>(null);
 
   // Library Data States
-  const [playlists, setPlaylists] = useState<SpotifyPlaylist[]>([]);
-  const [likedTracks, setLikedTracks] = useState<SpotifyTrack[]>([]);
-  const [topArtists, setTopArtists] = useState<SpotifyArtist[]>([]);
+  const [playlists, setPlaylists] = useState<SpotifyPlaylist[]>(() => {
+    try {
+      const cached = localStorage.getItem("spotify_cached_playlists");
+      return cached ? JSON.parse(cached) : [];
+    } catch (e) {
+      return [];
+    }
+  });
+  const [likedTracks, setLikedTracks] = useState<SpotifyTrack[]>(() => {
+    try {
+      const cached = localStorage.getItem("spotify_cached_liked_tracks");
+      return cached ? JSON.parse(cached) : [];
+    } catch (e) {
+      return [];
+    }
+  });
+  const [topArtists, setTopArtists] = useState<SpotifyArtist[]>(() => {
+    try {
+      const cached = localStorage.getItem("spotify_cached_top_artists");
+      return cached ? JSON.parse(cached) : [];
+    } catch (e) {
+      return [];
+    }
+  });
   const [currentTracksList, setCurrentTracksList] = useState<SpotifyTrack[]>(() => {
     try {
+      const cached = localStorage.getItem("spotify_cached_liked_tracks");
+      if (cached) {
+        return JSON.parse(cached);
+      }
       const t = localStorage.getItem("spotify_access_token");
       return t ? [] : CURATED_TRACKS;
     } catch (e) {
@@ -278,6 +303,10 @@ export default function MusicHub({ portalDarkMode, themeColor }: MusicHubProps) 
     }
     localStorage.removeItem("spotify_access_token");
     localStorage.removeItem("spotify_refresh_token");
+    localStorage.removeItem("spotify_cached_playlists");
+    localStorage.removeItem("spotify_cached_liked_tracks");
+    localStorage.removeItem("spotify_cached_top_artists");
+    localStorage.removeItem("spotify_last_sync_time");
     setToken(null);
     setRefreshToken(null);
     setUserProfile(null);
@@ -625,6 +654,7 @@ export default function MusicHub({ portalDarkMode, themeColor }: MusicHubProps) 
         }));
 
       setLikedTracks(mapped);
+      localStorage.setItem("spotify_cached_liked_tracks", JSON.stringify(mapped));
       setActivePlaybackStatus("idle");
     } catch (e) {
       console.error("fetchAllLikedSongs error:", e);
@@ -677,6 +707,7 @@ export default function MusicHub({ portalDarkMode, themeColor }: MusicHubProps) 
       }));
 
       setPlaylists(mapped);
+      localStorage.setItem("spotify_cached_playlists", JSON.stringify(mapped));
     } catch (e) {
       console.error("fetchAllPlaylists error:", e);
     }
@@ -744,24 +775,35 @@ export default function MusicHub({ portalDarkMode, themeColor }: MusicHubProps) 
           genres: item.genres
         }));
         setTopArtists(mapped);
+        localStorage.setItem("spotify_cached_top_artists", JSON.stringify(mapped));
       }
     } catch (e) {
       console.error("fetchTopArtists error:", e);
     }
   };
 
-  // Load full library when token is available — staggered to avoid rate limits
+  // Load full library when token is available — staggered & rate-limit throttled
   useEffect(() => {
     if (!token) return;
     const t = token; // capture current value
 
+    const lastSync = localStorage.getItem("spotify_last_sync_time");
+    const now = Date.now();
+    
+    // Throtle API sync requests to once every 10 minutes to bypass Spotify rate limits
+    if (lastSync && now - parseInt(lastSync, 10) < 10 * 60 * 1000) {
+      console.log("Spotify library sync loaded from localStorage cache (sync throttled)");
+      return;
+    }
+
     const loadLibrary = async () => {
       try {
         await fetchAllLikedSongs(t);
-        await new Promise((resolve) => setTimeout(resolve, 300));
+        await new Promise((resolve) => setTimeout(resolve, 500));
         await fetchAllPlaylists(t);
-        await new Promise((resolve) => setTimeout(resolve, 300));
+        await new Promise((resolve) => setTimeout(resolve, 500));
         await fetchTopArtists(t);
+        localStorage.setItem("spotify_last_sync_time", Date.now().toString());
       } catch (err) {
         console.error("Library load failed:", err);
       }
