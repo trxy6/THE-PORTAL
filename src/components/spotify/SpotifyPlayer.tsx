@@ -105,6 +105,7 @@ export default function SpotifyPlayer({ portalDarkMode, themeColor }: SpotifyPla
   } | null>(null);
   const [spotifyPlaylists, setSpotifyPlaylists] = useState<Playlist[]>([]);
   const [spotifyError, setSpotifyError] = useState<string | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
 
   // Helper: map a raw Spotify track to our internal Track type
   const mapSpotifyTrackToTrack = (t: any): Track => {
@@ -592,12 +593,34 @@ export default function SpotifyPlayer({ portalDarkMode, themeColor }: SpotifyPla
   // Trigger track playing
   const handlePlayTrack = (track: Track) => {
     setCurrentTrack(track);
-    setEmbedType("track");
-    setEmbedId(track.spotifyId);
-    setIsPlaying(true);
-    setCurrentTime(0);
-    setDuration(parseDurationToSeconds(track.duration));
     setIsLiked(false);
+
+    if (track.url) {
+      // Play natively via HTML5 Audio
+      setEmbedId("");
+      if (audioRef.current) {
+        audioRef.current.src = track.url;
+        audioRef.current.load();
+        audioRef.current.play()
+          .then(() => {
+            setIsPlaying(true);
+          })
+          .catch((e) => {
+            console.error("Native playback failed:", e);
+            setIsPlaying(false);
+          });
+      }
+    } else {
+      // Play via Spotify Embed Iframe
+      if (audioRef.current) {
+        audioRef.current.pause();
+      }
+      setEmbedType("track");
+      setEmbedId(track.spotifyId);
+      setIsPlaying(true);
+      setCurrentTime(0);
+      setDuration(parseDurationToSeconds(track.duration));
+    }
   };
 
   // Append track to a custom user playlist
@@ -671,16 +694,53 @@ export default function SpotifyPlayer({ portalDarkMode, themeColor }: SpotifyPla
     if (volume > 0) {
       setPrevVolume(volume);
       setVolume(0);
+      if (audioRef.current) audioRef.current.volume = 0;
     } else {
-      setVolume(prevVolume || 80);
+      const newVol = prevVolume || 80;
+      setVolume(newVol);
+      if (audioRef.current) audioRef.current.volume = newVol / 100;
     }
   };
 
-  // Play/pause simulated state toggles
+  // Play/pause toggles
   const handlePlayToggle = () => {
-    if (currentTrack) {
+    if (!currentTrack) return;
+
+    if (currentTrack.url && audioRef.current) {
+      if (isPlaying) {
+        audioRef.current.pause();
+        setIsPlaying(false);
+      } else {
+        audioRef.current.play()
+          .then(() => setIsPlaying(true))
+          .catch((e) => console.error(e));
+      }
+    } else {
       setIsPlaying(!isPlaying);
     }
+  };
+
+  const handleSeekChange = (value: number) => {
+    setCurrentTime(value);
+    if (currentTrack?.url && audioRef.current) {
+      audioRef.current.currentTime = value;
+    }
+  };
+
+  const handleTimeUpdate = () => {
+    if (audioRef.current && currentTrack?.url) {
+      setCurrentTime(audioRef.current.currentTime);
+    }
+  };
+
+  const handleDurationChange = () => {
+    if (audioRef.current && currentTrack?.url) {
+      setDuration(audioRef.current.duration || 180);
+    }
+  };
+
+  const handleTrackEnded = () => {
+    handleSkipForward();
   };
 
   const isDark = portalDarkMode;
@@ -753,7 +813,15 @@ export default function SpotifyPlayer({ portalDarkMode, themeColor }: SpotifyPla
 
             {/* Audio Visualizer */}
             <div className="shrink-0 h-20">
-              <AudioVisualizer isPlaying={isPlaying} />
+              <AudioVisualizer
+                isPlaying={isPlaying}
+                color={
+                  themeColor === "cyan" ? "#06b6d4" :
+                  themeColor === "pink" ? "#ec4899" :
+                  themeColor === "emerald" ? "#10b981" :
+                  themeColor === "amber" ? "#f59e0b" : "#8b5cf6"
+                }
+              />
             </div>
 
             {/* Timed scrolling lyrics */}
@@ -848,7 +916,7 @@ export default function SpotifyPlayer({ portalDarkMode, themeColor }: SpotifyPla
                 max={duration}
                 value={currentTime}
                 disabled={!currentTrack}
-                onChange={(e) => setCurrentTime(parseInt(e.target.value, 10))}
+                onChange={(e) => handleSeekChange(parseInt(e.target.value, 10))}
                 className="w-full h-[2px] bg-white/10 appearance-none cursor-pointer focus:outline-none accent-[#c5a059] transition rounded-full"
               />
             </div>
@@ -893,6 +961,12 @@ export default function SpotifyPlayer({ portalDarkMode, themeColor }: SpotifyPla
           </div>
         </div>
       </footer>
+      <audio
+        ref={audioRef}
+        onTimeUpdate={handleTimeUpdate}
+        onDurationChange={handleDurationChange}
+        onEnded={handleTrackEnded}
+      />
     </div>
   );
 }

@@ -81,8 +81,7 @@ export default function AudioVisualizer({
         // Render sleek rounded bar gradients
         const gradient = ctx.createLinearGradient(x, y, x, h);
         gradient.addColorStop(0, color);
-        gradient.addColorStop(0.5, "#8a6d3b"); // Bronze gold
-        gradient.addColorStop(1, "rgba(138, 109, 59, 0.05)");
+        gradient.addColorStop(1, "rgba(255, 255, 255, 0.02)");
 
         ctx.fillStyle = gradient;
         

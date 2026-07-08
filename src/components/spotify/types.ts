@@ -13,6 +13,7 @@ export interface Track {
   imageUrl?: string;   // Album artwork
   duration?: string;   // E.g., "3:45"
   genre?: string;      // Genre tag
+  url?: string;        // Optional direct MP3 audio stream link
 }
 
 export interface Playlist {
