@@ -7,7 +7,14 @@ import { createServer as createViteServer } from 'vite';
 import { GoogleGenAI } from '@google/genai';
 import { spawn, ChildProcess } from 'child_process';
 import dotenv from 'dotenv';
-import { FALLBACK_TRACKS, CURATED_PLAYLISTS } from './src/components/spotify/curatedTracks';
+const FALLBACK_TRACKS: any[] = [
+  { id: 'lumina-chill', title: 'Lumina Chillwave', artist: 'Aether Pilot', spotifyId: 'lumina-chill' },
+  { id: 'midnight-drive', title: 'Midnight Drive', artist: 'Synth Runner', spotifyId: 'midnight-drive' },
+];
+
+const CURATED_PLAYLISTS: any[] = [
+  { id: 'curated-chillwave', name: 'Lumina Chillwave', description: 'Relaxing retro atmospheric waves', tracks: FALLBACK_TRACKS },
+];
 
 // Load environment variables from .env.local first, then fallback to .env
 if (fs.existsSync('.env.local')) {

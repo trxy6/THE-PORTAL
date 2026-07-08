@@ -16,7 +16,7 @@ import DiceTrayCanvas from './components/DiceTrayCanvas';
 import D20War from './components/D20War';
 import CosmicWords from './components/CosmicWords';
 import TenGamesArena from './components/TenGamesArena';
-import SpotifyPlayer from './components/spotify/SpotifyPlayer';
+import MusicHub from './components/music/MusicHub';
 
 const SPORTS_LEAGUES = {
   mlb: {
@@ -5092,9 +5092,9 @@ export default function App() {
             </div>
           )}
 
-          {/* MUSIC WORKSPACE (SPOTIFY LITE PLAYER) */}
+          {/* MUSIC WORKSPACE (IMMERSIVE MUSIC HUB) */}
           {activeTab === 'music' && (
-            <SpotifyPlayer portalDarkMode={portalDarkMode} themeColor={themeColor} />
+            <MusicHub portalDarkMode={portalDarkMode} themeColor={themeColor} />
           )}
 
           {/* CODE WORKSPACE COMPILER */}
