@@ -179,6 +179,7 @@ export default function MusicHub({ portalDarkMode, themeColor }: MusicHubProps) 
 
   // UI state
   const [activePlaybackStatus, setActivePlaybackStatus] = useState<"idle" | "loading" | "playing" | "paused" | "error">("idle");
+  const [showEmbedOnly, setShowEmbedOnly] = useState<boolean>(false);
 
   // Refs
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -537,16 +538,20 @@ export default function MusicHub({ portalDarkMode, themeColor }: MusicHubProps) 
         audioRef.current.src = track.previewUrl;
         audioRef.current.load();
         audioRef.current.play()
-          .then(() => setIsPlaying(true))
-          .catch(() => setIsPlaying(true));
+          .then(() => {
+            setIsPlaying(true);
+            setShowEmbedOnly(false); // Default to vinyl visualizer
+          })
+          .catch((e) => {
+            console.warn("Autoplay block, showing Embed:", e);
+            setShowEmbedOnly(true);
+            setIsPlaying(true);
+          });
       } else {
-        // Fallback: load a random curated track's preview URL so audio still plays!
-        const fallbackTrack = CURATED_TRACKS[Math.floor(Math.random() * CURATED_TRACKS.length)];
-        audioRef.current.src = fallbackTrack.previewUrl || "";
-        audioRef.current.load();
-        audioRef.current.play()
-          .then(() => setIsPlaying(true))
-          .catch(() => setIsPlaying(true));
+        // No preview URL, stop native playback and show Spotify Iframe Embed for full song
+        audioRef.current.src = "";
+        setShowEmbedOnly(true);
+        setIsPlaying(true);
       }
     }
 
@@ -869,62 +874,91 @@ export default function MusicHub({ portalDarkMode, themeColor }: MusicHubProps) 
       <div className="lg:col-span-5 flex flex-col gap-6 items-center justify-between h-[620px] bg-white/[0.01] border border-white/[0.03] rounded-3xl p-6 relative overflow-hidden">
         {/* Top Header info */}
         <div className="w-full flex items-center justify-between z-10">
-          <div className="flex items-center gap-2">
-            <Sparkles className="w-4 h-4 text-[var(--theme-accent)]" />
-            <span className="text-xs uppercase tracking-widest font-bold text-zinc-400">Spotify Connect Hub</span>
-          </div>
+          {currentTrack && (
+            <button
+              onClick={() => setShowEmbedOnly(!showEmbedOnly)}
+              className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 transition text-[10px] font-bold flex items-center gap-1 cursor-pointer"
+              title="Toggle Embed Playback / Vinyl visualizer"
+            >
+              <Sliders className="w-3 h-3 text-[var(--theme-accent)]" />
+              {showEmbedOnly ? "Show Vinyl" : "Show Play Card"}
+            </button>
+          )}
         </div>
 
-        {/* SPINNING VINYL DISC VISUALIZER */}
-        <div className="relative my-auto flex items-center justify-center group z-10 animate-[fadeIn_0.4s_ease-out]">
-          <div
-            className={`w-64 h-64 rounded-full bg-zinc-950 border border-white/10 flex items-center justify-center shadow-[0_0_55px_rgba(0,0,0,0.85)] relative transition-transform duration-[4000ms] ease-linear ${
-              isPlaying ? "animate-[spin_10s_linear_infinite]" : "rotate-12"
-            }`}
-          >
-            {/* Record Grooves */}
-            <div className="absolute inset-2 rounded-full border border-white/[0.04] pointer-events-none" />
-            <div className="absolute inset-6 rounded-full border border-white/[0.03] pointer-events-none" />
-            <div className="absolute inset-10 rounded-full border border-white/[0.03] pointer-events-none" />
-            <div className="absolute inset-14 rounded-full border border-white/[0.03] pointer-events-none" />
-            <div className="absolute inset-20 rounded-full border border-white/[0.02] pointer-events-none" />
-
-            {/* Glowing album art cover art center */}
+        {/* Dynamic Inner Component container */}
+        {showEmbedOnly && currentTrack ? (
+          /* EMBEDDED PLAYER IFRAME (Full browser playback) */
+          <div className="w-full my-auto flex items-center justify-center z-10 animate-[fadeIn_0.4s_ease-out]">
             <div
-              className="w-28 h-28 rounded-full overflow-hidden border-2 border-zinc-900 transition-all duration-300 group-hover:scale-105"
+              className="w-full max-w-sm rounded-3xl overflow-hidden border-2 border-white/10 shadow-2xl relative"
               style={{
-                boxShadow: `0 0 25px var(--theme-glow)`
+                boxShadow: `0 0 35px var(--theme-glow)`
               }}
             >
-              {currentTrack ? (
-                <img
-                  src={currentTrack.imageUrl}
-                  alt={currentTrack.title}
-                  className="w-full h-full object-cover select-none"
-                  referrerPolicy="no-referrer"
-                />
-              ) : (
-                <div className="w-full h-full bg-zinc-900 flex items-center justify-center text-zinc-500">
-                  <Disc className="w-8 h-8" />
-                </div>
-              )}
+              <iframe
+                src={`https://open.spotify.com/embed/track/${currentTrack.id}`}
+                width="100%"
+                height="352"
+                frameBorder="0"
+                allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+                loading="lazy"
+                className="block"
+              />
+            </div>
+          </div>
+        ) : (
+          /* SPINNING VINYL DISC VISUALIZER */
+          <div className="relative my-auto flex items-center justify-center group z-10 animate-[fadeIn_0.4s_ease-out]">
+            <div
+              className={`w-64 h-64 rounded-full bg-zinc-950 border border-white/10 flex items-center justify-center shadow-[0_0_55px_rgba(0,0,0,0.85)] relative transition-transform duration-[4000ms] ease-linear ${
+                isPlaying ? "animate-[spin_10s_linear_infinite]" : "rotate-12"
+              }`}
+            >
+              {/* Record Grooves */}
+              <div className="absolute inset-2 rounded-full border border-white/[0.04] pointer-events-none" />
+              <div className="absolute inset-6 rounded-full border border-white/[0.03] pointer-events-none" />
+              <div className="absolute inset-10 rounded-full border border-white/[0.03] pointer-events-none" />
+              <div className="absolute inset-14 rounded-full border border-white/[0.03] pointer-events-none" />
+              <div className="absolute inset-20 rounded-full border border-white/[0.02] pointer-events-none" />
+
+              {/* Glowing album art cover art center */}
+              <div
+                className="w-28 h-28 rounded-full overflow-hidden border-2 border-zinc-900 transition-all duration-300 group-hover:scale-105"
+                style={{
+                  boxShadow: `0 0 25px var(--theme-glow)`
+                }}
+              >
+                {currentTrack ? (
+                  <img
+                    src={currentTrack.imageUrl}
+                    alt={currentTrack.title}
+                    className="w-full h-full object-cover select-none"
+                    referrerPolicy="no-referrer"
+                  />
+                ) : (
+                  <div className="w-full h-full bg-zinc-900 flex items-center justify-center text-zinc-500">
+                    <Disc className="w-8 h-8" />
+                  </div>
+                )}
+              </div>
+
+              {/* Center hole */}
+              <div className="absolute w-6 h-6 rounded-full bg-[#04020a] border-2 border-zinc-950" />
             </div>
 
-            {/* Center hole */}
-            <div className="absolute w-6 h-6 rounded-full bg-[#04020a] border-2 border-zinc-950" />
+            {/* Arm Needle indicator */}
+            <div
+              className="absolute top-0 right-0 w-24 h-24 origin-top-left transition-all duration-[800ms] pointer-events-none"
+              style={{
+                transform: isPlaying ? "rotate(15deg) translate(20px, -5px)" : "rotate(-12deg) translate(5px, -15px)"
+              }}
+            >
+              <div className="w-1.5 h-16 bg-zinc-600 rounded-full shadow absolute top-0 left-0" />
+              <div className="w-4 h-4 bg-zinc-400 rounded border border-zinc-500 shadow absolute top-16 -left-1" />
+            </div>
           </div>
-
-          {/* Arm Needle indicator */}
-          <div
-            className="absolute top-0 right-0 w-24 h-24 origin-top-left transition-all duration-[800ms] pointer-events-none"
-            style={{
-              transform: isPlaying ? "rotate(15deg) translate(20px, -5px)" : "rotate(-12deg) translate(5px, -15px)"
-            }}
-          >
-            <div className="w-1.5 h-16 bg-zinc-600 rounded-full shadow absolute top-0 left-0" />
-            <div className="w-4 h-4 bg-zinc-400 rounded border border-zinc-500 shadow absolute top-16 -left-1" />
-          </div>
-        </div>
+        )}
 
         {/* Current track information */}
         <div className="text-center z-10 w-full">
@@ -956,25 +990,27 @@ export default function MusicHub({ portalDarkMode, themeColor }: MusicHubProps) 
         </div>
 
         {/* Simulated Playback Progress Slider */}
-        <div className="w-full flex flex-col gap-1 z-10">
-          <div className="flex items-center gap-3 w-full">
-            <span className="text-[10px] text-zinc-500 tabular-nums w-8 text-right">
-              {formatSeconds(currentTime)}
-            </span>
-            <input
-              type="range"
-              min={0}
-              max={duration || 100}
-              value={currentTime}
-              onChange={(e) => setCurrentTime(parseInt(e.target.value, 10))}
-              disabled={!currentTrack}
-              className="flex-1 h-[3px] bg-white/10 appearance-none rounded-full cursor-pointer focus:outline-none accent-[var(--theme-accent)]"
-            />
-            <span className="text-[10px] text-zinc-500 tabular-nums w-8 text-left">
-              {formatSeconds(duration)}
-            </span>
+        {!showEmbedOnly && (
+          <div className="w-full flex flex-col gap-1 z-10 animate-[fadeIn_0.3s_ease-out]">
+            <div className="flex items-center gap-3 w-full">
+              <span className="text-[10px] text-zinc-500 tabular-nums w-8 text-right">
+                {formatSeconds(currentTime)}
+              </span>
+              <input
+                type="range"
+                min={0}
+                max={duration || 100}
+                value={currentTime}
+                onChange={(e) => setCurrentTime(parseInt(e.target.value, 10))}
+                disabled={!currentTrack}
+                className="flex-1 h-[3px] bg-white/10 appearance-none rounded-full cursor-pointer focus:outline-none accent-[var(--theme-accent)]"
+              />
+              <span className="text-[10px] text-zinc-500 tabular-nums w-8 text-left">
+                {formatSeconds(duration)}
+              </span>
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Bottom player controls */}
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4 w-full z-10 pt-4 border-t border-white/5">
@@ -997,29 +1033,31 @@ export default function MusicHub({ portalDarkMode, themeColor }: MusicHubProps) 
           </div>
 
           {/* Main playback control buttons */}
-          <div className="flex items-center gap-6 justify-center">
-            <button
-              onClick={handleSkipBackward}
-              disabled={!currentTrack}
-              className="p-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl transition text-white disabled:opacity-20 disabled:pointer-events-none"
-            >
-              <SkipBack className="w-4 h-4 fill-current" />
-            </button>
-            <button
-              onClick={handlePlayToggle}
-              disabled={!currentTrack}
-              className="w-14 h-14 bg-[var(--theme-accent)] hover:scale-105 text-white flex items-center justify-center rounded-full transition shadow-[0_0_20px_var(--theme-glow)] cursor-pointer"
-            >
-              {isPlaying ? <Pause className="w-6 h-6 fill-current" /> : <Play className="w-6 h-6 fill-current translate-x-0.5" />}
-            </button>
-            <button
-              onClick={handleSkipForward}
-              disabled={!currentTrack}
-              className="p-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl transition text-white disabled:opacity-20 disabled:pointer-events-none"
-            >
-              <SkipForward className="w-4 h-4 fill-current" />
-            </button>
-          </div>
+          {!showEmbedOnly && (
+            <div className="flex items-center gap-6 justify-center animate-[fadeIn_0.3s_ease-out]">
+              <button
+                onClick={handleSkipBackward}
+                disabled={!currentTrack}
+                className="p-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl transition text-white disabled:opacity-20 disabled:pointer-events-none"
+              >
+                <SkipBack className="w-4 h-4 fill-current" />
+              </button>
+              <button
+                onClick={handlePlayToggle}
+                disabled={!currentTrack}
+                className="w-14 h-14 bg-[var(--theme-accent)] hover:scale-105 text-white flex items-center justify-center rounded-full transition shadow-[0_0_20px_var(--theme-glow)] cursor-pointer"
+              >
+                {isPlaying ? <Pause className="w-6 h-6 fill-current" /> : <Play className="w-6 h-6 fill-current translate-x-0.5" />}
+              </button>
+              <button
+                onClick={handleSkipForward}
+                disabled={!currentTrack}
+                className="p-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl transition text-white disabled:opacity-20 disabled:pointer-events-none"
+              >
+                <SkipForward className="w-4 h-4 fill-current" />
+              </button>
+            </div>
+          )}
 
           {/* Connect status label */}
           <div className="hidden sm:block text-[10px] uppercase font-bold text-zinc-500 border border-white/10 rounded-full px-2.5 py-1 tracking-wider bg-white/[0.02]">
