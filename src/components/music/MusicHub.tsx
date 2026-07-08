@@ -11,34 +11,47 @@ import {
   SkipBack,
   Volume2,
   VolumeX,
-  Plus,
   Search,
   Music,
   Heart,
   ListMusic,
-  Trash2,
   Sparkles,
   Link2,
   Disc,
-  Info
+  User,
+  Power,
+  RotateCcw,
+  Sliders,
+  ExternalLink
 } from "lucide-react";
 
-interface Track {
+// Spotify Client Config
+const SPOTIFY_CLIENT_ID = "6238dcf567664f328bde1570c68f9eae";
+
+interface SpotifyTrack {
   id: string;
   title: string;
   artist: string;
   album: string;
   imageUrl: string;
-  url: string;
+  spotifyUri: string;
   duration: string;
-  genre: string;
+  durationMs: number;
 }
 
-interface Playlist {
+interface SpotifyPlaylist {
   id: string;
   name: string;
   description: string;
-  tracks: Track[];
+  imageUrl: string;
+  trackCount: number;
+}
+
+interface SpotifyArtist {
+  id: string;
+  name: string;
+  imageUrl: string;
+  genres: string[];
 }
 
 interface MusicHubProps {
@@ -46,115 +59,67 @@ interface MusicHubProps {
   themeColor: string;
 }
 
-// Ultra-premium built-in royalty-free audio streams
-const CURATED_TRACKS: Track[] = [
-  {
-    id: "lumina-chill",
-    title: "Lumina Chillwave",
-    artist: "Aether Pilot",
-    album: "Atmospheric Pulse",
-    imageUrl: "https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?w=300&q=80",
-    url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3",
-    duration: "6:12",
-    genre: "Chillwave"
-  },
-  {
-    id: "midnight-drive",
-    title: "Midnight Drive",
-    artist: "Synth Runner",
-    album: "Neon Horizons",
-    imageUrl: "https://images.unsplash.com/photo-1508700115892-45ecd05ae2ad?w=300&q=80",
-    url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3",
-    duration: "7:05",
-    genre: "Synthwave"
-  },
-  {
-    id: "aether-flow",
-    title: "Aether Flow",
-    artist: "Solaris",
-    album: "Solar Wind",
-    imageUrl: "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=300&q=80",
-    url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3",
-    duration: "5:44",
-    genre: "Lofi Ambient"
-  },
-  {
-    id: "nebula-dream",
-    title: "Nebula Dream",
-    artist: "Lofi Dreamer",
-    album: "Cozy Space Beats",
-    imageUrl: "https://images.unsplash.com/photo-1518609878373-06d740f60d8b?w=300&q=80",
-    url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-4.mp3",
-    duration: "5:02",
-    genre: "Lofi Hip Hop"
-  },
-  {
-    id: "cosmic-horizon",
-    title: "Cosmic Horizon",
-    artist: "Aura Ambient",
-    album: "Nebular Waves",
-    imageUrl: "https://images.unsplash.com/photo-1501386761578-eac5c94b800a?w=300&q=80",
-    url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-5.mp3",
-    duration: "6:03",
-    genre: "Ambient"
-  }
-];
+// PKCE Cryptographic Helpers
+function generateRandomString(length: number): string {
+  const possible = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+  const values = crypto.getRandomValues(new Uint8Array(length));
+  return Array.from(values).map((x) => possible[x % possible.length]).join("");
+}
+
+async function sha256(plain: string): Promise<ArrayBuffer> {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(plain);
+  return crypto.subtle.digest("SHA-256", data);
+}
+
+function base64urlencode(a: ArrayBuffer): string {
+  return btoa(String.fromCharCode(...new Uint8Array(a)))
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=+$/, "");
+}
+
+async function generateCodeChallenge(v: string): Promise<string> {
+  const hashed = await sha256(v);
+  return base64urlencode(hashed);
+}
 
 export default function MusicHub({ portalDarkMode, themeColor }: MusicHubProps) {
-  // Audio state
-  const [tracks, setTracks] = useState<Track[]>(() => {
-    const saved = localStorage.getItem("portal_music_custom_tracks");
-    if (saved) {
-      try {
-        return [...CURATED_TRACKS, ...JSON.parse(saved)];
-      } catch (e) {
-        return CURATED_TRACKS;
-      }
-    }
-    return CURATED_TRACKS;
-  });
+  // Auth Token States
+  const [token, setToken] = useState<string | null>(() => localStorage.getItem("spotify_access_token"));
+  const [refreshToken, setRefreshToken] = useState<string | null>(() => localStorage.getItem("spotify_refresh_token"));
+  const [userProfile, setUserProfile] = useState<any>(null);
 
-  const [playlists, setPlaylists] = useState<Playlist[]>(() => {
-    const saved = localStorage.getItem("portal_music_playlists");
-    if (saved) {
-      try {
-        return JSON.parse(saved);
-      } catch (e) {
-        return [];
-      }
-    }
-    return [
-      {
-        id: "all-songs",
-        name: "All Songs",
-        description: "Your entire music library",
-        tracks: CURATED_TRACKS
-      }
-    ];
-  });
-
-  const [activePlaylistId, setActivePlaylistId] = useState<string>("all-songs");
-  const [currentTrack, setCurrentTrack] = useState<Track | null>(CURATED_TRACKS[0] || null);
-  const [isPlaying, setIsPlaying] = useState<boolean>(false);
-  const [volume, setVolume] = useState<number>(60);
-  const [prevVolume, setPrevVolume] = useState<number>(60);
-  const [currentTime, setCurrentTime] = useState<number>(0);
-  const [duration, setDuration] = useState<number>(372); // Default to track 1 duration
-  const [searchQuery, setSearchQuery] = useState<string>("");
-  const [isLiked, setIsLiked] = useState<boolean>(false);
-
-  // New item inputs
-  const [newPlaylistName, setNewPlaylistName] = useState<string>("");
-  const [customTrackUrl, setCustomTrackUrl] = useState<string>("");
-  const [customTrackTitle, setCustomTrackTitle] = useState<string>("");
-  const [customTrackArtist, setCustomTrackArtist] = useState<string>("");
+  // Library Data States
+  const [playlists, setPlaylists] = useState<SpotifyPlaylist[]>([]);
+  const [likedTracks, setLikedTracks] = useState<SpotifyTrack[]>([]);
+  const [topArtists, setTopArtists] = useState<SpotifyArtist[]>([]);
+  const [currentTracksList, setCurrentTracksList] = useState<SpotifyTrack[]>([]);
   
+  // Selection States
+  const [activeTab, setActiveTab] = useState<"liked" | "playlists" | "artists" | "search">("liked");
+  const [selectedPlaylistId, setSelectedPlaylistId] = useState<string | null>(null);
+  const [currentTrack, setCurrentTrack] = useState<SpotifyTrack | null>(null);
+  const [isPlaying, setIsPlaying] = useState<boolean>(false);
+  const [volume, setVolume] = useState<number>(70);
+  const [prevVolume, setPrevVolume] = useState<number>(70);
+  const [currentTime, setCurrentTime] = useState<number>(0);
+  const [duration, setDuration] = useState<number>(0);
+
+  // Search States
+  const [searchQuery, setSearchQuery] = useState<string>("");
+  const [searchResults, setSearchResults] = useState<SpotifyTrack[]>([]);
+  const [isSearching, setIsSearching] = useState<boolean>(false);
+
+  // UI state
+  const [activePlaybackStatus, setActivePlaybackStatus] = useState<"idle" | "loading" | "playing" | "paused" | "error">("idle");
+  const [showEmbedOnly, setShowEmbedOnly] = useState<boolean>(false);
+
   // Refs
-  const audioRef = useRef<HTMLAudioElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const animationRef = useRef<number | null>(null);
 
-  // Get matching theme color variables
+  // Theme Helpers
   const themeHex = useMemo(() => {
     switch (themeColor) {
       case "cyan": return "#06b6d4";
@@ -167,202 +132,400 @@ export default function MusicHub({ portalDarkMode, themeColor }: MusicHubProps) 
     }
   }, [themeColor]);
 
-  // Sync volume with audio element
-  useEffect(() => {
-    if (audioRef.current) {
-      audioRef.current.volume = volume / 100;
-    }
-  }, [volume]);
+  // 1. OAUTH FLOW HANDLERS
+  const handleConnectSpotify = async () => {
+    try {
+      const verifier = generateRandomString(64);
+      localStorage.setItem("spotify_code_verifier", verifier);
 
-  // Load custom tracks into main playlist
-  useEffect(() => {
-    const custom = tracks.filter(t => !CURATED_TRACKS.some(c => c.id === t.id));
-    localStorage.setItem("portal_music_custom_tracks", JSON.stringify(custom));
+      const challenge = await generateCodeChallenge(verifier);
+      const scope = [
+        "user-read-private",
+        "user-read-email",
+        "playlist-read-private",
+        "playlist-read-collaborative",
+        "user-library-read",
+        "user-top-read",
+        "user-read-playback-state",
+        "user-modify-playback-state"
+      ].join(" ");
 
-    // Keep "All Songs" playlist updated
-    setPlaylists(prev => prev.map(p => {
-      if (p.id === "all-songs") {
-        return { ...p, tracks };
-      }
-      return p;
-    }));
-  }, [tracks]);
+      const redirectUri = window.location.origin + window.location.pathname;
 
-  // Persist playlists
-  useEffect(() => {
-    localStorage.setItem("portal_music_playlists", JSON.stringify(playlists));
-  }, [playlists]);
+      const authUrl = `https://accounts.spotify.com/authorize?` + new URLSearchParams({
+        response_type: "code",
+        client_id: SPOTIFY_CLIENT_ID,
+        scope: scope,
+        redirect_uri: redirectUri,
+        code_challenge_method: "S256",
+        code_challenge: challenge,
+      }).toString();
 
-  // Selected playlist tracks
-  const activePlaylist = useMemo(() => {
-    if (activePlaylistId === "all-songs") {
-      return {
-        id: "all-songs",
-        name: "All Songs",
-        description: "Your entire music library",
-        tracks
-      };
-    }
-    return playlists.find(p => p.id === activePlaylistId) || {
-      id: "all-songs",
-      name: "All Songs",
-      description: "Your entire music library",
-      tracks
-    };
-  }, [activePlaylistId, playlists, tracks]);
-
-  // Filtered tracks based on search query
-  const filteredTracks = useMemo(() => {
-    if (!searchQuery.trim()) return activePlaylist.tracks;
-    const q = searchQuery.toLowerCase();
-    return activePlaylist.tracks.filter(
-      t => t.title.toLowerCase().includes(q) || t.artist.toLowerCase().includes(q)
-    );
-  }, [activePlaylist.tracks, searchQuery]);
-
-  // Playback control functions
-  const handlePlayTrack = (track: Track) => {
-    setCurrentTrack(track);
-    setIsPlaying(true);
-    if (audioRef.current) {
-      audioRef.current.src = track.url;
-      audioRef.current.load();
-      audioRef.current.play()
-        .then(() => setIsPlaying(true))
-        .catch(() => setIsPlaying(false));
+      window.location.href = authUrl;
+    } catch (e) {
+      console.error("Auth flow failed", e);
     }
   };
 
-  const handlePlayToggle = () => {
-    if (!currentTrack) return;
-    if (audioRef.current) {
-      // If the audio element has no source loaded yet, load currentTrack url
-      if (!audioRef.current.src || audioRef.current.src === window.location.href) {
-        audioRef.current.src = currentTrack.url;
-        audioRef.current.load();
-      }
+  const handleDisconnect = () => {
+    localStorage.removeItem("spotify_access_token");
+    localStorage.removeItem("spotify_refresh_token");
+    setToken(null);
+    setRefreshToken(null);
+    setUserProfile(null);
+    setPlaylists([]);
+    setLikedTracks([]);
+    setTopArtists([]);
+    setCurrentTrack(null);
+  };
 
+  // Intercept Redirect code parameters
+  useEffect(() => {
+    const codeExchange = async () => {
+      const params = new URLSearchParams(window.location.search);
+      const code = params.get("code");
+      if (!code) return;
+
+      // Clean query string immediately
+      window.history.replaceState({}, document.title, window.location.pathname);
+
+      const verifier = localStorage.getItem("spotify_code_verifier");
+      if (!verifier) return;
+
+      const redirectUri = window.location.origin + window.location.pathname;
+
+      try {
+        const res = await fetch("https://accounts.spotify.com/api/token", {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body: new URLSearchParams({
+            client_id: SPOTIFY_CLIENT_ID,
+            grant_type: "authorization_code",
+            code: code,
+            redirect_uri: redirectUri,
+            code_verifier: verifier
+          })
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          setToken(data.access_token);
+          setRefreshToken(data.refresh_token);
+          localStorage.setItem("spotify_access_token", data.access_token);
+          if (data.refresh_token) {
+            localStorage.setItem("spotify_refresh_token", data.refresh_token);
+          }
+        }
+      } catch (e) {
+        console.error("Failed to exchange token", e);
+      }
+    };
+
+    codeExchange();
+  }, []);
+
+  // Fetch API with Auth Header and Auto Refresh
+  const fetchWebApi = async (endpoint: string, method = "GET", body?: any): Promise<any> => {
+    let activeToken = token;
+    if (!activeToken) return null;
+
+    const executeRequest = async (t: string) => {
+      return fetch(`https://api.spotify.com/${endpoint}`, {
+        headers: {
+          Authorization: `Bearer ${t}`,
+          "Content-Type": "application/json"
+        },
+        method,
+        body: body ? JSON.stringify(body) : undefined
+      });
+    };
+
+    let res = await executeRequest(activeToken);
+
+    // If 401, trigger automatic token refresh
+    if (res.status === 401 && refreshToken) {
+      try {
+        const refreshRes = await fetch("https://accounts.spotify.com/api/token", {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body: new URLSearchParams({
+            client_id: SPOTIFY_CLIENT_ID,
+            grant_type: "refresh_token",
+            refresh_token: refreshToken
+          })
+        });
+
+        if (refreshRes.ok) {
+          const data = await refreshRes.json();
+          activeToken = data.access_token;
+          setToken(activeToken);
+          localStorage.setItem("spotify_access_token", data.access_token);
+          if (data.refresh_token) {
+            setRefreshToken(data.refresh_token);
+            localStorage.setItem("spotify_refresh_token", data.refresh_token);
+          }
+          // Retry initial request with new token
+          res = await executeRequest(activeToken);
+        } else {
+          handleDisconnect();
+          return null;
+        }
+      } catch (e) {
+        console.error("Failed to refresh token", e);
+        handleDisconnect();
+        return null;
+      }
+    }
+
+    if (!res.ok) {
+      if (res.status === 204) return null; // No Content success
+      throw new Error(`Spotify API error: ${res.statusText}`);
+    }
+    return res.json();
+  };
+
+  // 2. DATA FETCHERS
+  // Fetch user profile info
+  useEffect(() => {
+    if (!token) return;
+    fetchWebApi("v1/me")
+      .then((profile) => {
+        setUserProfile(profile);
+      })
+      .catch((e) => console.error(e));
+  }, [token]);
+
+  // Fetch Liked Songs (Saved Tracks)
+  const fetchAllLikedSongs = async () => {
+    if (!token) return;
+    setActivePlaybackStatus("loading");
+    try {
+      // Fetch up to 50 songs
+      const data = await fetchWebApi("v1/me/tracks?limit=50");
+      if (data && data.items) {
+        const mapped = data.items.map((item: any) => ({
+          id: item.track.id,
+          title: item.track.name,
+          artist: item.track.artists.map((a: any) => a.name).join(", "),
+          album: item.track.album.name,
+          imageUrl: item.track.album.images[0]?.url || "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=300&q=80",
+          spotifyUri: item.track.uri,
+          duration: formatDuration(item.track.duration_ms),
+          durationMs: item.track.duration_ms
+        }));
+        setLikedTracks(mapped);
+        if (activeTab === "liked") {
+          setCurrentTracksList(mapped);
+        }
+      }
+      setActivePlaybackStatus("idle");
+    } catch (e) {
+      console.error(e);
+      setActivePlaybackStatus("error");
+    }
+  };
+
+  // Fetch Playlists
+  const fetchAllPlaylists = async () => {
+    if (!token) return;
+    try {
+      const data = await fetchWebApi("v1/me/playlists?limit=50");
+      if (data && data.items) {
+        const mapped = data.items.map((item: any) => ({
+          id: item.id,
+          name: item.name,
+          description: item.description || "Spotify Playlist",
+          imageUrl: item.images[0]?.url || "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=300",
+          trackCount: item.tracks.total
+        }));
+        setPlaylists(mapped);
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  // Fetch Top/Followed Artists
+  const fetchTopArtists = async () => {
+    if (!token) return;
+    try {
+      const data = await fetchWebApi("v1/me/top/artists?limit=50");
+      if (data && data.items) {
+        const mapped = data.items.map((item: any) => ({
+          id: item.id,
+          name: item.name,
+          imageUrl: item.images[0]?.url || "https://images.unsplash.com/photo-1501386761578-eac5c94b800a?w=300",
+          genres: item.genres
+        }));
+        setTopArtists(mapped);
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  // Load playlists, top artists, and liked songs on successful connection
+  useEffect(() => {
+    if (token) {
+      fetchAllLikedSongs();
+      fetchAllPlaylists();
+      fetchTopArtists();
+    }
+  }, [token]);
+
+  // Load tracks for selected playlist
+  const handleSelectPlaylist = async (playlistId: string) => {
+    setSelectedPlaylistId(playlistId);
+    setActivePlaybackStatus("loading");
+    try {
+      const data = await fetchWebApi(`v1/playlists/${playlistId}/tracks?limit=50`);
+      if (data && data.items) {
+        const mapped = data.items.filter((item: any) => item.track).map((item: any) => ({
+          id: item.track.id,
+          title: item.track.name,
+          artist: item.track.artists.map((a: any) => a.name).join(", "),
+          album: item.track.album.name,
+          imageUrl: item.track.album.images[0]?.url || "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=300&q=80",
+          spotifyUri: item.track.uri,
+          duration: formatDuration(item.track.duration_ms),
+          durationMs: item.track.duration_ms
+        }));
+        setCurrentTracksList(mapped);
+      }
+      setActivePlaybackStatus("idle");
+    } catch (e) {
+      console.error(e);
+      setActivePlaybackStatus("error");
+    }
+  };
+
+  // Sync catalog lists dynamically based on selected tabs
+  useEffect(() => {
+    if (activeTab === "liked") {
+      setCurrentTracksList(likedTracks);
+      setSelectedPlaylistId(null);
+    } else if (activeTab === "playlists" && playlists.length > 0 && !selectedPlaylistId) {
+      handleSelectPlaylist(playlists[0].id);
+    }
+  }, [activeTab]);
+
+  // Real-time catalog search
+  useEffect(() => {
+    if (!token || !searchQuery.trim()) {
+      setSearchResults([]);
+      return;
+    }
+    const delaySearch = setTimeout(async () => {
+      setIsSearching(true);
+      try {
+        const data = await fetchWebApi(`v1/search?q=${encodeURIComponent(searchQuery)}&type=track&limit=20`);
+        if (data && data.tracks && data.tracks.items) {
+          const mapped = data.tracks.items.map((item: any) => ({
+            id: item.id,
+            title: item.name,
+            artist: item.artists.map((a: any) => a.name).join(", "),
+            album: item.album.name,
+            imageUrl: item.album.images[0]?.url || "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=300&q=80",
+            spotifyUri: item.uri,
+            duration: formatDuration(item.duration_ms),
+            durationMs: item.duration_ms
+          }));
+          setSearchResults(mapped);
+        }
+      } catch (e) {
+        console.error(e);
+      } finally {
+        setIsSearching(false);
+      }
+    }, 450);
+
+    return () => clearTimeout(delaySearch);
+  }, [searchQuery, token]);
+
+  // 3. MUSIC PLAYBACK ACTIVE DEVICE CONTROLS
+  const handlePlayTrack = async (track: SpotifyTrack) => {
+    setCurrentTrack(track);
+    setIsPlaying(true);
+    setDuration(Math.floor(track.durationMs / 1000));
+    setCurrentTime(0);
+    setShowEmbedOnly(true); // Switch display in middle tab to direct iframe preview card
+
+    // Sync state with active Spotify Connect Player session if available
+    try {
+      await fetchWebApi("v1/me/player/play", "PUT", {
+        uris: [track.spotifyUri]
+      });
+    } catch (e) {
+      console.warn("No active playback session found to push Spotify Connect play.", e);
+    }
+  };
+
+  const handlePlayToggle = async () => {
+    if (!currentTrack) return;
+    try {
       if (isPlaying) {
-        audioRef.current.pause();
+        await fetchWebApi("v1/me/player/pause", "PUT");
         setIsPlaying(false);
       } else {
-        audioRef.current.play()
-          .then(() => setIsPlaying(true))
-          .catch((e) => {
-            console.error("Playback toggle failed:", e);
-            setIsPlaying(false);
-          });
+        await fetchWebApi("v1/me/player/play", "PUT");
+        setIsPlaying(true);
       }
+    } catch (e) {
+      // If direct active device command fails, toggle local UI state anyway
+      setIsPlaying(!isPlaying);
     }
   };
 
   const handleSkipForward = () => {
-    if (!currentTrack || activePlaylist.tracks.length === 0) return;
-    const currentIndex = activePlaylist.tracks.findIndex(t => t.id === currentTrack.id);
-    if (currentIndex !== -1 && currentIndex < activePlaylist.tracks.length - 1) {
-      handlePlayTrack(activePlaylist.tracks[currentIndex + 1]);
+    const list = activeTab === "search" ? searchResults : currentTracksList;
+    if (!currentTrack || list.length === 0) return;
+    const idx = list.findIndex(t => t.id === currentTrack.id);
+    if (idx !== -1 && idx < list.length - 1) {
+      handlePlayTrack(list[idx + 1]);
     } else {
-      handlePlayTrack(activePlaylist.tracks[0]); // Loop to beginning
+      handlePlayTrack(list[0]);
     }
   };
 
   const handleSkipBackward = () => {
-    if (!currentTrack || activePlaylist.tracks.length === 0) return;
-    const currentIndex = activePlaylist.tracks.findIndex(t => t.id === currentTrack.id);
-    if (currentIndex > 0) {
-      handlePlayTrack(activePlaylist.tracks[currentIndex - 1]);
+    const list = activeTab === "search" ? searchResults : currentTracksList;
+    if (!currentTrack || list.length === 0) return;
+    const idx = list.findIndex(t => t.id === currentTrack.id);
+    if (idx > 0) {
+      handlePlayTrack(list[idx - 1]);
     } else {
-      handlePlayTrack(activePlaylist.tracks[activePlaylist.tracks.length - 1]); // Loop to end
+      handlePlayTrack(list[list.length - 1]);
     }
   };
 
-  const handleSeekChange = (value: number) => {
-    setCurrentTime(value);
-    if (audioRef.current) {
-      audioRef.current.currentTime = value;
+  // Sync volume changes with Spotify Connect active device
+  useEffect(() => {
+    if (!token) return;
+    const timer = setTimeout(() => {
+      fetchWebApi(`v1/me/player/volume?volume_percent=${volume}`, "PUT")
+        .catch(() => {});
+    }, 250);
+    return () => clearTimeout(timer);
+  }, [volume]);
+
+  // Local simulated progress tick when music is active
+  useEffect(() => {
+    let timer: any = null;
+    if (isPlaying && duration > 0) {
+      timer = setInterval(() => {
+        setCurrentTime((prev) => {
+          if (prev >= duration) {
+            handleSkipForward();
+            return 0;
+          }
+          return prev + 1;
+        });
+      }, 1000);
     }
-  };
+    return () => clearInterval(timer);
+  }, [isPlaying, duration, currentTrack]);
 
-  const handleVolumeToggle = () => {
-    if (volume > 0) {
-      setPrevVolume(volume);
-      setVolume(0);
-    } else {
-      setVolume(prevVolume || 60);
-    }
-  };
-
-  // Create new custom playlist
-  const handleCreatePlaylist = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newPlaylistName.trim()) return;
-    const newPlaylist: Playlist = {
-      id: `playlist-${Date.now()}`,
-      name: newPlaylistName,
-      description: "Custom user playlist",
-      tracks: []
-    };
-    setPlaylists(prev => [...prev, newPlaylist]);
-    setNewPlaylistName("");
-  };
-
-  // Add song to playlist
-  const handleAddSongToPlaylist = (track: Track, playlistId: string) => {
-    setPlaylists(prev => prev.map(p => {
-      if (p.id === playlistId) {
-        if (p.tracks.some(t => t.id === track.id)) return p;
-        return { ...p, tracks: [...p.tracks, track] };
-      }
-      return p;
-    }));
-  };
-
-  // Delete playlist
-  const handleDeletePlaylist = (id: string, e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (id === "all-songs") return;
-    setPlaylists(prev => prev.filter(p => p.id !== id));
-    if (activePlaylistId === id) {
-      setActivePlaylistId("all-songs");
-    }
-  };
-
-  // Add custom URL stream track
-  const handleAddCustomTrack = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!customTrackUrl.trim() || !customTrackTitle.trim()) return;
-
-    const newTrack: Track = {
-      id: `custom-${Date.now()}`,
-      title: customTrackTitle,
-      artist: customTrackArtist.trim() || "Independent Creator",
-      album: "Local Upload",
-      imageUrl: "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=300&q=80",
-      url: customTrackUrl,
-      duration: "Stream",
-      genre: "Streaming Audio"
-    };
-
-    setTracks(prev => [...prev, newTrack]);
-    setCustomTrackUrl("");
-    setCustomTrackTitle("");
-    setCustomTrackArtist("");
-  };
-
-  // Audio elements handlers
-  const handleTimeUpdate = () => {
-    if (audioRef.current) {
-      setCurrentTime(audioRef.current.currentTime);
-    }
-  };
-
-  const handleLoadedMetadata = () => {
-    if (audioRef.current) {
-      setDuration(audioRef.current.duration || 180);
-    }
-  };
-
-  // Canvas Realtime Equalizer Drawing
+  // Equalizer canvas drawing
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -372,7 +535,7 @@ export default function MusicHub({ portalDarkMode, themeColor }: MusicHubProps) 
     canvas.width = canvas.offsetWidth;
     canvas.height = canvas.offsetHeight;
 
-    const barCount = 20;
+    const barCount = 24;
     const barWidth = canvas.width / barCount - 2;
     const barsArray: { x: number; height: number; targetHeight: number; speed: number }[] = [];
 
@@ -390,24 +553,20 @@ export default function MusicHub({ portalDarkMode, themeColor }: MusicHubProps) 
 
       barsArray.forEach((bar, index) => {
         if (isPlaying) {
-          // React dynamically to mock frequencies with randomized peaks
           const peak = Math.sin(Date.now() * 0.005 + index) * 0.5 + 0.5;
           bar.targetHeight = peak * (canvas.height - 10) + 5;
         } else {
           bar.targetHeight = 3;
         }
 
-        // Interpolate height for buttery smooth movements
         bar.height += (bar.targetHeight - bar.height) * bar.speed;
 
-        // Draw visualizer bar gradients
         const gradient = ctx.createLinearGradient(bar.x, canvas.height - bar.height, bar.x, canvas.height);
         gradient.addColorStop(0, themeHex);
-        gradient.addColorStop(1, "rgba(255, 255, 255, 0.05)");
+        gradient.addColorStop(1, "rgba(255, 255, 255, 0.03)");
 
         ctx.fillStyle = gradient;
         
-        // Draw round bars
         ctx.beginPath();
         if (ctx.roundRect) {
           ctx.roundRect(bar.x, canvas.height - bar.height, barWidth, bar.height, [barWidth / 2, barWidth / 2, 0, 0]);
@@ -427,11 +586,17 @@ export default function MusicHub({ portalDarkMode, themeColor }: MusicHubProps) 
     };
   }, [isPlaying, themeHex]);
 
-  const formatTime = (secs: number) => {
-    if (isNaN(secs)) return "00:00";
-    const minutes = Math.floor(secs / 60);
-    const seconds = Math.floor(secs % 60);
-    return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+  // Duration Formatting helper
+  const formatDuration = (ms: number) => {
+    const min = Math.floor(ms / 60000);
+    const sec = Math.floor((ms % 60000) / 1000);
+    return `${min}:${String(sec).padStart(2, "0")}`;
+  };
+
+  const formatSeconds = (secs: number) => {
+    const min = Math.floor(secs / 60);
+    const sec = Math.floor(secs % 60);
+    return `${String(min).padStart(2, "0")}:${String(sec).padStart(2, "0")}`;
   };
 
   return (
@@ -443,191 +608,273 @@ export default function MusicHub({ portalDarkMode, themeColor }: MusicHubProps) 
         "--theme-accent": themeHex
       } as React.CSSProperties}
     >
-      {/* LEFT COLUMN: Library & Playlists */}
-      <div className="lg:col-span-3 flex flex-col gap-6 h-[600px]">
-        {/* Playlists card */}
-        <div className="flex-1 bg-white/[0.02] border border-white/[0.05] rounded-2xl p-4 flex flex-col gap-4 overflow-hidden shadow-inner">
-          <div className="flex items-center justify-between border-b border-white/5 pb-2">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-400 flex items-center gap-1.5">
-              <ListMusic className="w-4 h-4 text-[var(--theme-accent)]" />
-              Library Hub
-            </h3>
-          </div>
-
-          {/* Playlist list */}
-          <div className="flex-1 overflow-y-auto space-y-1.5 pr-1 scrollbar-thin">
-            {/* All Songs Static Selection */}
-            <button
-              onClick={() => setActivePlaylistId("all-songs")}
-              className={`w-full text-left px-3 py-2.5 rounded-xl text-xs font-semibold flex items-center justify-between transition-all ${
-                activePlaylistId === "all-songs"
-                  ? "bg-[var(--theme-accent)] text-white shadow-[0_0_15px_var(--theme-glow)]"
-                  : "bg-white/[0.02] hover:bg-white/5 text-zinc-300"
-              }`}
-            >
-              <div className="flex items-center gap-2">
-                <Music className="w-4 h-4" />
-                <span>All Tracks</span>
-              </div>
-              <span className="opacity-70">{tracks.length}</span>
-            </button>
-
-            {/* Custom Playlists */}
-            {playlists.map((pl) => (
-              <button
-                key={pl.id}
-                onClick={() => setActivePlaylistId(pl.id)}
-                className={`w-full text-left px-3 py-2.5 rounded-xl text-xs font-semibold flex items-center justify-between transition-all group ${
-                  activePlaylistId === pl.id
-                    ? "bg-[var(--theme-accent)] text-white shadow-[0_0_15px_var(--theme-glow)]"
-                    : "bg-white/[0.02] hover:bg-white/5 text-zinc-300"
-                }`}
-              >
-                <div className="flex items-center gap-2 truncate">
-                  <ListMusic className="w-4 h-4 shrink-0" />
-                  <span className="truncate">{pl.name}</span>
-                </div>
-                <div className="flex items-center gap-1.5 shrink-0">
-                  <span className="opacity-70 group-hover:hidden">{pl.tracks.length}</span>
-                  <button
-                    onClick={(e) => handleDeletePlaylist(pl.id, e)}
-                    className="p-1 hover:bg-black/20 rounded hidden group-hover:block transition"
-                    title="Delete Playlist"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              </button>
-            ))}
-          </div>
-
-          {/* Create new playlist form */}
-          <form onSubmit={handleCreatePlaylist} className="mt-auto border-t border-white/5 pt-3">
-            <div className="flex items-center gap-2">
-              <input
-                type="text"
-                placeholder="New Playlist Name..."
-                value={newPlaylistName}
-                onChange={(e) => setNewPlaylistName(e.target.value)}
-                className="flex-1 bg-white/[0.03] border border-white/5 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-[var(--theme-accent)] transition text-white"
+      {/* 1. LEFT PANEL: Library, Playlists & Connection */}
+      <div className="lg:col-span-3 flex flex-col gap-5 h-[620px]">
+        {/* Connection status card */}
+        <div className="bg-white/[0.02] border border-white/[0.05] rounded-2xl p-4 flex flex-col gap-3.5 shadow-inner">
+          <div className="flex items-center gap-3">
+            {userProfile?.images?.[0]?.url ? (
+              <img
+                src={userProfile.images[0].url}
+                alt={userProfile.display_name}
+                className="w-10 h-10 rounded-full border border-white/10"
               />
-              <button
-                type="submit"
-                className="p-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl transition text-[var(--theme-accent)] cursor-pointer"
-              >
-                <Plus className="w-4 h-4" />
-              </button>
+            ) : (
+              <div className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-zinc-400">
+                <User className="w-5 h-5" />
+              </div>
+            )}
+            <div className="min-w-0">
+              <h4 className="text-xs font-bold text-white truncate">
+                {userProfile ? userProfile.display_name : "Spotify Sync"}
+              </h4>
+              <p className="text-[10px] text-zinc-400 truncate mt-0.5">
+                {userProfile ? `Linked: ${userProfile.email}` : "Offline"}
+              </p>
             </div>
-          </form>
+          </div>
+
+          {token ? (
+            <button
+              onClick={handleDisconnect}
+              className="w-full py-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 cursor-pointer"
+            >
+              <Power className="w-3.5 h-3.5" />
+              Disconnect Spotify
+            </button>
+          ) : (
+            <button
+              onClick={handleConnectSpotify}
+              className="w-full py-2 bg-[var(--theme-accent)] hover:scale-[1.02] text-white rounded-xl text-xs font-bold transition shadow-[0_0_15px_var(--theme-glow)] flex items-center justify-center gap-2 cursor-pointer"
+            >
+              <Disc className="w-4 h-4 animate-spin-slow" />
+              Connect Spotify
+            </button>
+          )}
+        </div>
+
+        {/* Tab selection links */}
+        <div className="flex-1 bg-white/[0.02] border border-white/[0.05] rounded-2xl p-3 flex flex-col gap-1.5 overflow-hidden">
+          <h3 className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 px-2 py-1 flex items-center gap-1.5 border-b border-white/5 mb-1.5">
+            <ListMusic className="w-3.5 h-3.5 text-[var(--theme-accent)]" />
+            Spotify Collections
+          </h3>
+
+          <button
+            onClick={() => setActiveTab("liked")}
+            disabled={!token}
+            className={`w-full text-left px-3 py-2.5 rounded-xl text-xs font-semibold flex items-center justify-between transition disabled:opacity-20 disabled:pointer-events-none ${
+              activeTab === "liked"
+                ? "bg-[var(--theme-accent)] text-white shadow-[0_0_15px_var(--theme-glow)]"
+                : "bg-white/[0.01] hover:bg-white/5 text-zinc-300"
+            }`}
+          >
+            <div className="flex items-center gap-2">
+              <Heart className="w-3.5 h-3.5" />
+              <span>All Liked Songs</span>
+            </div>
+            <span className="opacity-70 text-[10px]">{likedTracks.length}</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab("playlists")}
+            disabled={!token}
+            className={`w-full text-left px-3 py-2.5 rounded-xl text-xs font-semibold flex items-center justify-between transition disabled:opacity-20 disabled:pointer-events-none ${
+              activeTab === "playlists"
+                ? "bg-[var(--theme-accent)] text-white shadow-[0_0_15px_var(--theme-glow)]"
+                : "bg-white/[0.01] hover:bg-white/5 text-zinc-300"
+            }`}
+          >
+            <div className="flex items-center gap-2">
+              <Music className="w-3.5 h-3.5" />
+              <span>Playlists</span>
+            </div>
+            <span className="opacity-70 text-[10px]">{playlists.length}</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab("artists")}
+            disabled={!token}
+            className={`w-full text-left px-3 py-2.5 rounded-xl text-xs font-semibold flex items-center justify-between transition disabled:opacity-20 disabled:pointer-events-none ${
+              activeTab === "artists"
+                ? "bg-[var(--theme-accent)] text-white shadow-[0_0_15px_var(--theme-glow)]"
+                : "bg-white/[0.01] hover:bg-white/5 text-zinc-300"
+            }`}
+          >
+            <div className="flex items-center gap-2">
+              <User className="w-3.5 h-3.5" />
+              <span>Top Artists</span>
+            </div>
+            <span className="opacity-70 text-[10px]">{topArtists.length}</span>
+          </button>
+
+          {/* Dynamic list of playlists underneath if tab is selected */}
+          {activeTab === "playlists" && playlists.length > 0 && (
+            <div className="flex-1 overflow-y-auto mt-2 border-t border-white/5 pt-2 space-y-1 pr-0.5 scrollbar-thin">
+              {playlists.map((pl) => (
+                <button
+                  key={pl.id}
+                  onClick={() => handleSelectPlaylist(pl.id)}
+                  className={`w-full text-left px-2.5 py-2 rounded-lg text-[11px] truncate flex items-center gap-2 transition ${
+                    selectedPlaylistId === pl.id
+                      ? "bg-white/5 text-[var(--theme-accent)] font-semibold border-l-2 border-[var(--theme-accent)]"
+                      : "text-zinc-400 hover:text-white"
+                  }`}
+                >
+                  <ListMusic className="w-3.5 h-3.5 shrink-0 opacity-60" />
+                  <span className="truncate">{pl.name}</span>
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
-      {/* CENTER COLUMN: Spin Vinyl & Player Controls */}
-      <div className="lg:col-span-5 flex flex-col gap-6 items-center justify-between h-[600px] bg-white/[0.01] border border-white/[0.03] rounded-3xl p-6 relative overflow-hidden">
-        {/* Top Now Playing header */}
+      {/* 2. CENTER PANEL: Spinning Disc / Interactive Iframe Player */}
+      <div className="lg:col-span-5 flex flex-col gap-6 items-center justify-between h-[620px] bg-white/[0.01] border border-white/[0.03] rounded-3xl p-6 relative overflow-hidden">
+        {/* Top Header info */}
         <div className="w-full flex items-center justify-between z-10">
           <div className="flex items-center gap-2">
             <Sparkles className="w-4 h-4 text-[var(--theme-accent)]" />
-            <span className="text-xs uppercase tracking-widest font-bold text-zinc-400">Immersive Audio</span>
+            <span className="text-xs uppercase tracking-widest font-bold text-zinc-400">Spotify Connect Hub</span>
           </div>
-          <button
-            onClick={() => setIsLiked(!isLiked)}
-            className={`p-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 transition ${
-              isLiked ? "text-[var(--theme-accent)]" : "text-zinc-400"
-            }`}
-          >
-            <Heart className={`w-4 h-4 ${isLiked ? "fill-[var(--theme-accent)]" : ""}`} />
-          </button>
+          {currentTrack && (
+            <button
+              onClick={() => setShowEmbedOnly(!showEmbedOnly)}
+              className={`p-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 transition text-xs font-bold flex items-center gap-1 cursor-pointer`}
+              title="Toggle Embed Playback / Vinyl visualizer"
+            >
+              <Sliders className="w-3.5 h-3.5 text-[var(--theme-accent)]" />
+              {showEmbedOnly ? "Show Vinyl" : "Show Play Card"}
+            </button>
+          )}
         </div>
 
-        {/* Dynamic Spinning Vinyl Disc */}
-        <div className="relative my-auto flex items-center justify-center group z-10">
-          <div
-            className={`w-64 h-64 rounded-full bg-zinc-950 border border-white/10 flex items-center justify-center shadow-[0_0_50px_rgba(0,0,0,0.8)] relative transition-transform duration-[4000ms] ease-linear ${
-              isPlaying ? "animate-[spin_10s_linear_infinite]" : "rotate-12"
-            }`}
-          >
-            {/* Grooves */}
-            <div className="absolute inset-2 rounded-full border border-white/[0.04] pointer-events-none" />
-            <div className="absolute inset-6 rounded-full border border-white/[0.03] pointer-events-none" />
-            <div className="absolute inset-10 rounded-full border border-white/[0.03] pointer-events-none" />
-            <div className="absolute inset-14 rounded-full border border-white/[0.03] pointer-events-none" />
-            <div className="absolute inset-20 rounded-full border border-white/[0.02] pointer-events-none" />
-
-            {/* Glowing theme center album art ring */}
+        {/* Dynamic Inner Component container */}
+        {showEmbedOnly && currentTrack ? (
+          /* EMBEDDED PLAYER IFRAME (Full browser playback) */
+          <div className="w-full my-auto flex items-center justify-center z-10 animate-[fadeIn_0.4s_ease-out]">
             <div
-              className="w-28 h-28 rounded-full overflow-hidden border-2 border-zinc-900 transition-all duration-300 group-hover:scale-105"
+              className="w-full max-w-sm rounded-3xl overflow-hidden border-2 border-white/10 shadow-2xl relative"
               style={{
-                boxShadow: `0 0 25px var(--theme-glow)`
+                boxShadow: `0 0 35px var(--theme-glow)`
               }}
             >
-              {currentTrack ? (
-                <img
-                  src={currentTrack.imageUrl}
-                  alt={currentTrack.title}
-                  className="w-full h-full object-cover select-none"
-                  referrerPolicy="no-referrer"
-                />
-              ) : (
-                <div className="w-full h-full bg-zinc-900 flex items-center justify-center text-zinc-500">
-                  <Disc className="w-8 h-8" />
-                </div>
-              )}
+              <iframe
+                src={`https://open.spotify.com/embed/track/${currentTrack.id}`}
+                width="100%"
+                height="352"
+                frameBorder="0"
+                allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+                loading="lazy"
+                className="block"
+              />
+            </div>
+          </div>
+        ) : (
+          /* SPINNING VINYL DISC VISUALIZER */
+          <div className="relative my-auto flex items-center justify-center group z-10 animate-[fadeIn_0.4s_ease-out]">
+            <div
+              className={`w-64 h-64 rounded-full bg-zinc-950 border border-white/10 flex items-center justify-center shadow-[0_0_55px_rgba(0,0,0,0.85)] relative transition-transform duration-[4000ms] ease-linear ${
+                isPlaying ? "animate-[spin_10s_linear_infinite]" : "rotate-12"
+              }`}
+            >
+              {/* Record Grooves */}
+              <div className="absolute inset-2 rounded-full border border-white/[0.04] pointer-events-none" />
+              <div className="absolute inset-6 rounded-full border border-white/[0.03] pointer-events-none" />
+              <div className="absolute inset-10 rounded-full border border-white/[0.03] pointer-events-none" />
+              <div className="absolute inset-14 rounded-full border border-white/[0.03] pointer-events-none" />
+              <div className="absolute inset-20 rounded-full border border-white/[0.02] pointer-events-none" />
+
+              {/* Glowing album art cover art center */}
+              <div
+                className="w-28 h-28 rounded-full overflow-hidden border-2 border-zinc-900 transition-all duration-300 group-hover:scale-105"
+                style={{
+                  boxShadow: `0 0 25px var(--theme-glow)`
+                }}
+              >
+                {currentTrack ? (
+                  <img
+                    src={currentTrack.imageUrl}
+                    alt={currentTrack.title}
+                    className="w-full h-full object-cover select-none"
+                    referrerPolicy="no-referrer"
+                  />
+                ) : (
+                  <div className="w-full h-full bg-zinc-900 flex items-center justify-center text-zinc-500">
+                    <Disc className="w-8 h-8" />
+                  </div>
+                )}
+              </div>
+
+              {/* Center hole */}
+              <div className="absolute w-6 h-6 rounded-full bg-[#04020a] border-2 border-zinc-950" />
             </div>
 
-            {/* Middle hole */}
-            <div className="absolute w-6 h-6 rounded-full bg-[#04020a] border-2 border-zinc-950" />
+            {/* Arm Needle indicator */}
+            <div
+              className="absolute top-0 right-0 w-24 h-24 origin-top-left transition-all duration-[800ms] pointer-events-none"
+              style={{
+                transform: isPlaying ? "rotate(15deg) translate(20px, -5px)" : "rotate(-12deg) translate(5px, -15px)"
+              }}
+            >
+              <div className="w-1.5 h-16 bg-zinc-600 rounded-full shadow absolute top-0 left-0" />
+              <div className="w-4 h-4 bg-zinc-400 rounded border border-zinc-500 shadow absolute top-16 -left-1" />
+            </div>
           </div>
-
-          {/* Vinyl Arm indicator */}
-          <div
-            className="absolute top-0 right-0 w-24 h-24 origin-top-left transition-all duration-[800ms] pointer-events-none"
-            style={{
-              transform: isPlaying ? "rotate(15deg) translate(20px, -5px)" : "rotate(-12deg) translate(5px, -15px)"
-            }}
-          >
-            <div className="w-1.5 h-16 bg-zinc-600 rounded-full shadow absolute top-0 left-0" />
-            <div className="w-4 h-4 bg-zinc-400 rounded border border-zinc-500 shadow absolute top-16 -left-1" />
-          </div>
-        </div>
+        )}
 
         {/* Current track information */}
         <div className="text-center z-10 w-full">
           {currentTrack ? (
             <>
-              <h2 className="text-lg font-bold text-white tracking-wide truncate">{currentTrack.title}</h2>
-              <p className="text-sm text-zinc-400 mt-1 font-medium truncate">{currentTrack.artist}</p>
+              <h2 className="text-lg font-bold text-white tracking-wide truncate flex items-center justify-center gap-1.5 px-4">
+                {currentTrack.title}
+                <a
+                  href={currentTrack.spotifyUri}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-zinc-500 hover:text-white transition"
+                  title="Open on Spotify client app"
+                >
+                  <ExternalLink className="w-4 h-4" />
+                </a>
+              </h2>
+              <p className="text-sm text-zinc-400 mt-1 font-medium truncate px-4">{currentTrack.artist}</p>
+              {activePlaybackStatus === "loading" && (
+                <p className="text-[10px] text-[var(--theme-accent)] uppercase tracking-wider font-bold mt-1.5 animate-pulse">Connecting API...</p>
+              )}
             </>
           ) : (
             <>
               <h2 className="text-lg font-bold text-zinc-500 italic">No Song Loaded</h2>
-              <p className="text-sm text-zinc-600 mt-1">Select a track from the library</p>
+              <p className="text-sm text-zinc-600 mt-1">Select a track from the list</p>
             </>
           )}
         </div>
 
-        {/* Playback Progress Slider */}
+        {/* Simulated Playback Progress Slider */}
         <div className="w-full flex flex-col gap-1 z-10">
           <div className="flex items-center gap-3 w-full">
             <span className="text-[10px] text-zinc-500 tabular-nums w-8 text-right">
-              {formatTime(currentTime)}
+              {formatSeconds(currentTime)}
             </span>
             <input
               type="range"
               min={0}
               max={duration || 100}
               value={currentTime}
-              onChange={(e) => handleSeekChange(parseFloat(e.target.value))}
+              onChange={(e) => setCurrentTime(parseInt(e.target.value, 10))}
               disabled={!currentTrack}
               className="flex-1 h-[3px] bg-white/10 appearance-none rounded-full cursor-pointer focus:outline-none accent-[var(--theme-accent)]"
             />
             <span className="text-[10px] text-zinc-500 tabular-nums w-8 text-left">
-              {formatTime(duration)}
+              {formatSeconds(duration)}
             </span>
           </div>
         </div>
 
-        {/* Controls Hub */}
+        {/* Bottom player controls */}
         <div className="flex items-center justify-between w-full z-10 pt-2 border-t border-white/5">
           {/* Mute/Volume slider */}
           <div className="flex items-center gap-2 w-28">
@@ -647,7 +894,7 @@ export default function MusicHub({ portalDarkMode, themeColor }: MusicHubProps) 
             />
           </div>
 
-          {/* Main playback skip buttons */}
+          {/* Main playback control buttons */}
           <div className="flex items-center gap-6">
             <button
               onClick={handleSkipBackward}
@@ -672,156 +919,123 @@ export default function MusicHub({ portalDarkMode, themeColor }: MusicHubProps) 
             </button>
           </div>
 
-          {/* Custom Genre pill */}
+          {/* Connect status label */}
           <div className="text-[10px] uppercase font-bold text-zinc-500 border border-white/10 rounded-full px-2.5 py-1 tracking-wider bg-white/[0.02]">
-            {currentTrack?.genre || "Lofi Beats"}
+            {token ? "Active Session" : "Offline"}
           </div>
         </div>
       </div>
 
-      {/* RIGHT COLUMN: Tracks Index & Custom Links */}
-      <div className="lg:col-span-4 flex flex-col gap-6 h-[600px]">
+      {/* 3. RIGHT PANEL: Tracks Index / Catalog Search */}
+      <div className="lg:col-span-4 flex flex-col gap-6 h-[620px]">
         {/* Tracks List Card */}
         <div className="flex-1 bg-white/[0.02] border border-white/[0.05] rounded-3xl p-4 flex flex-col gap-4 overflow-hidden">
           <div className="flex items-center justify-between">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-400">
-              {activePlaylist.name} Index
-            </h3>
-            {/* Search Input */}
-            <div className="relative w-36">
-              <Search className="w-3.5 h-3.5 text-zinc-500 absolute left-2.5 top-1/2 -translate-y-1/2" />
-              <input
-                type="text"
-                placeholder="Search..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full bg-white/[0.03] border border-white/5 rounded-xl pl-8 pr-2 py-1 text-xs focus:outline-none focus:border-[var(--theme-accent)] transition text-white"
-              />
+            <div className="flex items-center gap-1.5 select-none">
+              <Sliders className="w-3.5 h-3.5 text-[var(--theme-accent)]" />
+              <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-400">
+                {activeTab === "liked" ? "Liked Tracks" : activeTab === "artists" ? "Top Artists" : activeTab === "search" ? "Search Results" : "Playlist Index"}
+              </h3>
             </div>
           </div>
 
-          {/* Tracks list */}
-          <div className="flex-1 overflow-y-auto space-y-1 pr-1 scrollbar-thin">
-            {filteredTracks.map((t, idx) => (
-              <div
-                key={t.id}
-                onClick={() => handlePlayTrack(t)}
-                className={`w-full p-2 rounded-xl text-left text-xs flex items-center justify-between transition cursor-pointer group ${
-                  currentTrack?.id === t.id
-                    ? "bg-white/[0.05] border border-[var(--theme-accent)]/20"
-                    : "hover:bg-white/[0.02] border border-transparent"
-                }`}
-              >
-                <div className="flex items-center gap-3 min-w-0">
-                  <div className="w-8 h-8 rounded overflow-hidden bg-white/5 shrink-0 flex items-center justify-center text-zinc-600 relative">
-                    <img
-                      src={t.imageUrl}
-                      alt={t.title}
-                      className="w-full h-full object-cover"
-                      referrerPolicy="no-referrer"
-                    />
-                    {currentTrack?.id === t.id && isPlaying && (
-                      <div className="absolute inset-0 bg-black/40 flex items-center justify-center text-[var(--theme-accent)]">
-                        <Disc className="w-4 h-4 animate-spin" />
-                      </div>
-                    )}
-                  </div>
-                  <div className="truncate">
-                    <p className={`font-semibold truncate ${currentTrack?.id === t.id ? "text-[var(--theme-accent)]" : "text-white"}`}>
-                      {t.title}
-                    </p>
-                    <p className="text-[10px] text-zinc-500 truncate mt-0.5">{t.artist}</p>
-                  </div>
-                </div>
+          {/* Search Input bar */}
+          <div className="relative w-full">
+            <Search className="w-3.5 h-3.5 text-zinc-500 absolute left-3 top-1/2 -translate-y-1/2" />
+            <input
+              type="text"
+              placeholder="Search artists, songs..."
+              value={searchQuery}
+              onChange={(e) => {
+                setSearchQuery(e.target.value);
+                if (activeTab !== "search") setActiveTab("search");
+              }}
+              disabled={!token}
+              className="w-full bg-white/[0.03] border border-white/5 rounded-xl pl-9 pr-3 py-2 text-xs focus:outline-none focus:border-[var(--theme-accent)] transition text-white placeholder-zinc-500"
+            />
+          </div>
 
-                <div className="flex items-center gap-2">
-                  <span className="text-[10px] text-zinc-500 tabular-nums">{t.duration}</span>
-                  {/* Playlist add buttons */}
-                  {activePlaylistId === "all-songs" && playlists.length > 0 && (
-                    <div className="opacity-0 group-hover:opacity-100 transition relative">
-                      <select
-                        onChange={(e) => {
-                          if (e.target.value) {
-                            handleAddSongToPlaylist(t, e.target.value);
-                            e.target.value = "";
-                          }
-                        }}
-                        className="bg-zinc-900 border border-white/10 rounded px-1.5 py-0.5 text-[10px] text-zinc-300 focus:outline-none"
-                      >
-                        <option value="">Add to...</option>
-                        {playlists.map(p => (
-                          <option key={p.id} value={p.id}>{p.name}</option>
-                        ))}
-                      </select>
-                    </div>
-                  )}
+          {/* List area */}
+          <div className="flex-1 overflow-y-auto space-y-1 pr-1 scrollbar-thin">
+            {activeTab === "artists" ? (
+              /* RENDER ARTISTS LIST */
+              topArtists.map((artist) => (
+                <div
+                  key={artist.id}
+                  className="w-full p-2.5 rounded-xl text-left text-xs flex items-center gap-3 border border-transparent bg-white/[0.01]"
+                >
+                  <img
+                    src={artist.imageUrl}
+                    alt={artist.name}
+                    className="w-10 h-10 rounded-full object-cover shrink-0"
+                    referrerPolicy="no-referrer"
+                  />
+                  <div className="min-w-0">
+                    <p className="font-semibold text-white truncate">{artist.name}</p>
+                    <p className="text-[10px] text-zinc-500 truncate mt-0.5 uppercase tracking-wider">{artist.genres.slice(0, 2).join(", ") || "Artist"}</p>
+                  </div>
                 </div>
+              ))
+            ) : (
+              /* RENDER TRACKS LIST (Liked, playlists or search) */
+              (activeTab === "search" ? searchResults : currentTracksList).map((t) => (
+                <div
+                  key={t.id}
+                  onClick={() => handlePlayTrack(t)}
+                  className={`w-full p-2 rounded-xl text-left text-xs flex items-center justify-between transition cursor-pointer group ${
+                    currentTrack?.id === t.id
+                      ? "bg-white/[0.05] border border-[var(--theme-accent)]/20"
+                      : "hover:bg-white/[0.02] border border-transparent"
+                  }`}
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="w-8 h-8 rounded overflow-hidden bg-white/5 shrink-0 flex items-center justify-center text-zinc-600 relative">
+                      <img
+                        src={t.imageUrl}
+                        alt={t.title}
+                        className="w-full h-full object-cover"
+                        referrerPolicy="no-referrer"
+                      />
+                      {currentTrack?.id === t.id && isPlaying && (
+                        <div className="absolute inset-0 bg-black/40 flex items-center justify-center text-[var(--theme-accent)]">
+                          <Disc className="w-4 h-4 animate-spin-slow" />
+                        </div>
+                      )}
+                    </div>
+                    <div className="truncate">
+                      <p className={`font-semibold truncate ${currentTrack?.id === t.id ? "text-[var(--theme-accent)]" : "text-white"}`}>
+                        {t.title}
+                      </p>
+                      <p className="text-[10px] text-zinc-500 truncate mt-0.5">{t.artist}</p>
+                    </div>
+                  </div>
+
+                  <span className="text-[10px] text-zinc-500 tabular-nums shrink-0">{t.duration}</span>
+                </div>
+              ))
+            )}
+
+            {/* Empty displays */}
+            {!token && (
+              <div className="text-zinc-500 text-center py-12 text-xs flex flex-col items-center gap-2">
+                <Sliders className="w-8 h-8 opacity-40 text-[var(--theme-accent)]" />
+                <span>Connect your Spotify account to load your library details.</span>
               </div>
-            ))}
-            {filteredTracks.length === 0 && (
-              <div className="text-zinc-600 text-center italic py-8 text-xs">
-                No songs match search
+            )}
+            {token && activeTab !== "artists" && (activeTab === "search" ? searchResults : currentTracksList).length === 0 && (
+              <div className="text-zinc-600 text-center py-12 italic text-xs">
+                {isSearching ? "Searching catalog..." : "No tracks found in collection"}
               </div>
             )}
           </div>
 
           {/* Equalizer canvas */}
-          <div className="h-16 shrink-0 border-t border-white/5 pt-2 flex flex-col gap-1">
-            <span className="text-[9px] uppercase tracking-wider font-bold text-zinc-500">Live Frequency Bars</span>
+          <div className="h-16 shrink-0 border-t border-white/5 pt-2 flex flex-col gap-1.5">
+            <span className="text-[9px] uppercase tracking-wider font-bold text-zinc-500">Live Frequency EQ</span>
             <canvas ref={canvasRef} className="w-full h-full bg-white/[0.01] rounded-lg" />
           </div>
         </div>
-
-        {/* Paste Audio Stream link form */}
-        <div className="bg-white/[0.02] border border-white/[0.05] rounded-3xl p-4 flex flex-col gap-3">
-          <div className="flex items-center gap-1.5 text-zinc-400">
-            <Link2 className="w-4 h-4 text-[var(--theme-accent)]" />
-            <h4 className="text-xs font-bold uppercase tracking-wider">Paste External Stream</h4>
-          </div>
-
-          <form onSubmit={handleAddCustomTrack} className="flex flex-col gap-2">
-            <input
-              type="url"
-              placeholder="Direct MP3 Audio URL..."
-              value={customTrackUrl}
-              onChange={(e) => setCustomTrackUrl(e.target.value)}
-              className="bg-white/[0.03] border border-white/5 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-[var(--theme-accent)] transition text-white"
-              required
-            />
-            <div className="flex gap-2">
-              <input
-                type="text"
-                placeholder="Song Title..."
-                value={customTrackTitle}
-                onChange={(e) => setCustomTrackTitle(e.target.value)}
-                className="flex-1 bg-white/[0.03] border border-white/5 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-[var(--theme-accent)] transition text-white"
-                required
-              />
-              <input
-                type="text"
-                placeholder="Artist..."
-                value={customTrackArtist}
-                onChange={(e) => setCustomTrackArtist(e.target.value)}
-                className="flex-1 bg-white/[0.03] border border-white/5 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-[var(--theme-accent)] transition text-white"
-              />
-            </div>
-            <button
-              type="submit"
-              className="w-full py-2 bg-white/5 hover:bg-white/10 hover:text-[var(--theme-accent)] border border-white/10 rounded-xl text-xs transition font-semibold cursor-pointer"
-            >
-              Add Track to Library
-            </button>
-          </form>
-        </div>
       </div>
-
-      {/* Hidden standard Audio Tag */}
-      <audio
-        ref={audioRef}
-        onTimeUpdate={handleTimeUpdate}
-        onLoadedMetadata={handleLoadedMetadata}
-        onEnded={handleSkipForward}
-      />
     </div>
   );
 }
