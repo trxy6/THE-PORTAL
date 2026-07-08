@@ -3842,8 +3842,8 @@ export default function App() {
             <div className="glass-panel rounded-2xl border border-white/[0.04] p-5 h-[calc(100vh-140px)] flex flex-col justify-between text-left">
               <div className="flex items-center justify-between border-b border-white/[0.04] pb-4 mb-4">
                 <div>
-                  <h2 className="text-sm font-bold text-slate-100 uppercase tracking-widest flex items-center gap-2">
-                    <Brain className="w-4 h-4 text-purple-400" />
+                  <h2 className="text-sm font-bold text-slate-800 uppercase tracking-widest flex items-center gap-2">
+                    <Brain className="w-4 h-4 text-purple-405" />
                     NextGen Chat Sandbox
                   </h2>
                   <p className="text-[10px] text-slate-500">Live Workspace proxy to Gemini 3.5-flash LLM model</p>
@@ -3863,7 +3863,7 @@ export default function App() {
                     <div className={`max-w-[80%] rounded-xl px-4 py-2.5 text-xs ${
                       h.role === 'user' 
                         ? 'bg-purple-600 text-white rounded-br-none' 
-                        : 'bg-slate-950 border border-white/5 text-slate-200 rounded-bl-none'
+                        : 'bg-slate-50 border border-slate-200/50 text-slate-755 rounded-bl-none'
                     }`}>
                       <div className="font-bold text-[9px] text-slate-400 uppercase tracking-widest mb-1 select-none">
                         {h.role === 'user' ? 'Operator Trey' : 'NextGen AI Core'}
@@ -3874,7 +3874,7 @@ export default function App() {
                 ))}
                 {isAiLoading && (
                   <div className="flex justify-start">
-                    <div className="max-w-[80%] rounded-xl px-4 py-3 bg-slate-950 border border-white/5 text-slate-400 text-xs flex items-center gap-3">
+                    <div className="max-w-[80%] rounded-xl px-4 py-3 bg-slate-50 border border-slate-200/50 text-slate-500 text-xs flex items-center gap-3">
                       <RefreshCw className="w-3.5 h-3.5 animate-spin text-purple-400" />
                       <span>NextGen AI matrix synthesizing...</span>
                     </div>
@@ -3884,22 +3884,22 @@ export default function App() {
               </div>
 
               {/* Suggestions quick clicks */}
-              <div className="flex flex-wrap gap-2 py-3 border-t border-white/[0.04] mt-4">
+              <div className="flex flex-wrap gap-2 py-3 border-t border-slate-200/30 mt-4">
                 <button 
                   onClick={() => handleSendChatMessage(undefined, "Explain quantum physics")}
-                  className="px-2.5 py-1 rounded bg-slate-950/80 border border-white/5 text-[9px] text-slate-400 hover:text-white hover:border-purple-500/40 cursor-pointer"
+                  className="px-2.5 py-1 rounded bg-slate-55 border border-slate-200/50 text-[9px] text-slate-500 hover:text-slate-800 hover:border-purple-500/40 cursor-pointer"
                 >
                   Explain quantum physics
                 </button>
                 <button 
                   onClick={() => handleSendChatMessage(undefined, "Write Python code")}
-                  className="px-2.5 py-1 rounded bg-slate-950/80 border border-white/5 text-[9px] text-slate-400 hover:text-white hover:border-purple-500/40 cursor-pointer"
+                  className="px-2.5 py-1 rounded bg-slate-55 border border-slate-200/50 text-[9px] text-slate-500 hover:text-slate-800 hover:border-purple-500/40 cursor-pointer"
                 >
                   Write Python code
                 </button>
                 <button 
                   onClick={() => handleSendChatMessage(undefined, "Summarize this document")}
-                  className="px-2.5 py-1 rounded bg-slate-950/80 border border-white/5 text-[9px] text-slate-400 hover:text-white hover:border-purple-500/40 cursor-pointer"
+                  className="px-2.5 py-1 rounded bg-slate-55 border border-slate-200/50 text-[9px] text-slate-500 hover:text-slate-800 hover:border-purple-500/40 cursor-pointer"
                 >
                   Summarize document
                 </button>
@@ -3908,7 +3908,7 @@ export default function App() {
               {/* Chat Input form and local AI state warnings */}
               <div className="space-y-3">
                 {localAIStatus !== 'ready' && (
-                  <div className="p-3 bg-slate-950 border border-purple-500/10 rounded-xl text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div className="p-3 bg-slate-50 border border-purple-500/10 rounded-xl text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                     <div className="space-y-0.5">
                       <span className="font-bold text-purple-400">Offline AI Companion status: {localAIStatus.replace('_', ' ').toUpperCase()}</span>
                       <p className="text-[10px] text-slate-500">
@@ -4031,7 +4031,7 @@ export default function App() {
           {activeTab === 'files' && (
             <div className="glass-panel rounded-2xl border border-white/[0.04] p-6 text-left space-y-6 animate-[fadeIn_0.4s_ease-out]">
               <div>
-                <h2 className="text-sm font-bold text-slate-100 uppercase tracking-widest flex items-center gap-2">
+                <h2 className="text-sm font-bold text-slate-800 uppercase tracking-widest flex items-center gap-2">
                   <Folder className="w-4 h-4 text-cyan-400" />
                   Secure Distributed Payload Storage
                 </h2>
@@ -4041,7 +4041,7 @@ export default function App() {
               {/* Drag drop mockup area */}
               <div 
                 onClick={() => alert("Secure browser local upload window trigger.")}
-                className="border-2 border-dashed border-white/10 rounded-xl p-8 text-center hover:bg-white/[0.01] hover:border-cyan-500/40 transition-all cursor-pointer group"
+                className="border-2 border-dashed border-slate-200 rounded-xl p-8 text-center hover:bg-slate-50/50 hover:border-cyan-500/40 transition-all cursor-pointer group"
               >
                 <div className="p-3 bg-cyan-500/10 border border-cyan-500/20 rounded-full max-w-max mx-auto mb-3 group-hover:scale-110 transition-transform">
                   <Download className="w-5 h-5 text-cyan-400" />
@@ -4060,11 +4060,11 @@ export default function App() {
                     { name: 'Workout Plan', size: '4 KB', type: 'text' },
                     { name: 'NextGenPortal_Setup.exe', size: '1.2 GB', type: 'binary' }
                   ].map((file, idx) => (
-                    <div key={idx} className="flex items-center justify-between p-3 bg-slate-950 border border-white/5 rounded-lg">
+                    <div key={idx} className="flex items-center justify-between p-3 bg-slate-50 border border-slate-200/50 rounded-lg">
                       <div className="flex items-center gap-3">
                         <Folder className="w-4 h-4 text-cyan-400" />
                         <div className="flex flex-col">
-                          <span className="text-xs font-semibold text-slate-200">{file.name}</span>
+                          <span className="text-xs font-semibold text-slate-700">{file.name}</span>
                           <span className="text-[9px] text-slate-500">{file.size}</span>
                         </div>
                       </div>
@@ -4085,7 +4085,7 @@ export default function App() {
           {activeTab === 'images' && (
             <div className="glass-panel rounded-2xl border border-white/[0.04] p-6 text-left space-y-6 animate-[fadeIn_0.4s_ease-out]">
               <div>
-                <h2 className="text-sm font-bold text-slate-100 uppercase tracking-widest flex items-center gap-2">
+                <h2 className="text-sm font-bold text-slate-800 uppercase tracking-widest flex items-center gap-2">
                   <Image className="w-4 h-4 text-emerald-400" />
                   Media Engine Canvas
                 </h2>
@@ -4099,7 +4099,7 @@ export default function App() {
                     <label className="text-[10px] uppercase tracking-wider text-slate-500 font-bold">Describe generation prompt</label>
                     <textarea 
                       placeholder="e.g., Highly detailed futuristic workspace portal inside cosmic orbital station, cyberpunk, cinematic..."
-                      className="w-full bg-slate-950 border border-white/5 rounded-lg p-3 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500/60 h-28"
+                      className="w-full bg-slate-100 border border-slate-200/50 rounded-lg p-3 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-emerald-500/60 h-28"
                     />
                   </div>
                   <button 
@@ -4122,7 +4122,7 @@ export default function App() {
                       { name: 'Island Concept Art', url: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=256' },
                       { name: 'Orbit Station V1', url: 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?q=80&w=256' },
                     ].map((img, idx) => (
-                      <div key={idx} className="group relative rounded-lg overflow-hidden border border-white/5 aspect-video bg-slate-950">
+                      <div key={idx} className="group relative rounded-lg overflow-hidden border border-slate-200/50 aspect-video bg-slate-50">
                         <img src={img.url} alt={img.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                         <div className="absolute inset-0 bg-slate-950/60 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-all">
                           <span className="text-[10px] font-bold text-white bg-slate-950/80 px-2.5 py-1 rounded border border-white/10">{img.name}</span>
@@ -4137,9 +4137,9 @@ export default function App() {
 
           {/* NOTES Rich Suite */}
           {activeTab === 'notes' && (
-            <div className="glass-panel rounded-2xl border border-white/[0.04] p-6 text-left space-y-4 animate-[fadeIn_0.4s_ease-out]">
+            <div className="glass-panel rounded-2xl border border-slate-200 dark:border-white/[0.04] p-6 text-left space-y-4 animate-[fadeIn_0.4s_ease-out]">
               <div>
-                <h2 className="text-sm font-bold text-slate-100 uppercase tracking-widest flex items-center gap-2">
+                <h2 className="text-sm font-bold text-slate-800 uppercase tracking-widest flex items-center gap-2">
                   <FileText className="w-4 h-4 text-amber-400" />
                   Notes Sandbox Suite
                 </h2>
@@ -4148,15 +4148,15 @@ export default function App() {
 
               <div className="grid grid-cols-3 gap-6">
                 {/* Note list column */}
-                <div className="col-span-1 border-r border-white/5 pr-4 space-y-2">
+                <div className="col-span-1 border-r border-slate-200/50 pr-4 space-y-2">
                   <span className="text-[9px] uppercase tracking-wider text-slate-500 font-bold">Catalog</span>
                   {[
                     { title: 'Workout Plan', time: '1h ago' },
                     { title: 'Weekly Core Standup notes', time: '1d ago' },
                     { title: 'Hardware requirements', time: '4d ago' }
                   ].map((note, idx) => (
-                    <button key={idx} className="w-full text-left p-2.5 rounded-lg bg-slate-950 border border-white/5 hover:border-amber-500/40 transition-all">
-                      <div className="text-xs font-bold text-slate-200 truncate">{note.title}</div>
+                    <button key={idx} className="w-full text-left p-2.5 rounded-lg bg-slate-50 dark:bg-slate-950 border border-slate-200/50 dark:border-white/5 hover:border-amber-500/40 transition-all">
+                      <div className="text-xs font-bold text-slate-700 dark:text-slate-200 truncate">{note.title}</div>
                       <div className="text-[8px] text-slate-500 mt-0.5">{note.time}</div>
                     </button>
                   ))}
@@ -4167,11 +4167,11 @@ export default function App() {
                   <input 
                     type="text" 
                     defaultValue="Workout Plan"
-                    className="w-full bg-transparent text-slate-100 font-bold text-sm focus:outline-none border-b border-white/5 pb-2"
+                    className="w-full bg-transparent text-slate-800 dark:text-slate-100 font-bold text-sm focus:outline-none border-b border-slate-200 dark:border-white/5 pb-2"
                   />
                   <textarea 
                     defaultValue={`# Workout Plan\n- 15m warm-up stretch\n- Core routine cycle\n- Weighted dynamic squats (3 sets x 12 reps)\n- Treadmill sprint (Intervals: 20 mins)`}
-                    className="w-full bg-slate-950/40 border border-white/5 rounded-lg p-3 text-xs text-slate-200 h-48 focus:outline-none"
+                    className="w-full bg-slate-100 dark:bg-slate-950/40 border border-slate-200 dark:border-white/5 rounded-lg p-3 text-xs text-slate-800 dark:text-slate-200 h-48 focus:outline-none"
                   />
                   <div className="flex justify-end gap-2">
                     <button 
@@ -4195,22 +4195,22 @@ export default function App() {
             <div className="glass-panel rounded-2xl border border-white/[0.04] p-6 text-left space-y-6 animate-[fadeIn_0.4s_ease-out]">
               <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4 border-b border-white/5 pb-4">
                 <div>
-                  <h2 className="text-sm font-bold text-slate-100 uppercase tracking-widest flex items-center gap-2">
+                  <h2 className="text-sm font-bold text-slate-800 uppercase tracking-widest flex items-center gap-2">
                     <Sparkles className="w-4 h-4 text-purple-400" />
                     Rift Utilities & Combat Toolkit
                   </h2>
                   <p className="text-[10px] text-slate-500">Zero-latency alchemical tabletop accessories</p>
                 </div>
-                <div className="flex bg-slate-950 p-1 rounded-lg border border-white/5">
+                <div className="flex bg-slate-100 p-1 rounded-lg border border-slate-200/50">
                   <button 
                     onClick={() => { haptic(5); setUtilityTab('dice'); }}
-                    className={`px-3 py-1.5 rounded-md text-[10px] font-bold transition-all cursor-pointer ${utilityTab === 'dice' ? 'bg-purple-600 text-white' : 'text-slate-400 hover:text-slate-200'}`}
+                    className={`px-3 py-1.5 rounded-md text-[10px] font-bold transition-all cursor-pointer ${utilityTab === 'dice' ? 'bg-purple-600 text-white shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}
                   >
                     Dice Tray Field
                   </button>
                   <button 
                     onClick={() => { haptic(5); setUtilityTab('sheet'); }}
-                    className={`px-3 py-1.5 rounded-md text-[10px] font-bold transition-all cursor-pointer ${utilityTab === 'sheet' ? 'bg-purple-600 text-white' : 'text-slate-400 hover:text-slate-200'}`}
+                    className={`px-3 py-1.5 rounded-md text-[10px] font-bold transition-all cursor-pointer ${utilityTab === 'sheet' ? 'bg-purple-600 text-white shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}
                   >
                     D&D Character Codex
                   </button>
@@ -4222,7 +4222,7 @@ export default function App() {
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                   {/* Left Column: Canvas Field */}
                   <div className="lg:col-span-2 space-y-4">
-                    <div className="bg-slate-950/80 rounded-xl overflow-hidden border border-white/5 relative aspect-video flex flex-col">
+                    <div className="bg-slate-50 rounded-xl overflow-hidden border border-slate-200/50 relative aspect-video flex flex-col">
                       <div className="absolute top-3 left-3 bg-[#0d071c]/90 border border-purple-500/25 px-2.5 py-1 rounded-lg z-10 flex items-center gap-1.5 font-mono text-[9px] font-bold text-[#b4aae2] shadow-md">
                         <Dices className="w-3.5 h-3.5 text-purple-400 animate-spin-slow" />
                         <span>Interactive Rolling Field</span>
@@ -4233,12 +4233,12 @@ export default function App() {
 
                   {/* Right Column: Dice Panel controls and roll logs */}
                   <div className="space-y-4">
-                    <div className="p-4 bg-slate-950 border border-white/5 rounded-xl space-y-3">
+                    <div className="p-4 bg-slate-50 border border-slate-200/50 rounded-xl space-y-3">
                       <span className="text-[10px] uppercase tracking-wider text-slate-500 font-bold">Combat Turn Tracker</span>
-                      <div className="flex justify-between items-center bg-[#130d2b] border border-purple-500/10 p-2.5 rounded-lg">
+                      <div className="flex justify-between items-center bg-slate-100 border border-slate-200/60 p-2.5 rounded-lg">
                         <div className="flex flex-col">
                           <span className="text-[9px] text-purple-400 uppercase font-mono font-bold">Current Round</span>
-                          <span className="text-xl font-black text-slate-100">{combatRound}</span>
+                          <span className="text-xl font-black text-slate-700">{combatRound}</span>
                         </div>
                         <button 
                           onClick={handleEndTurn}
@@ -4256,26 +4256,26 @@ export default function App() {
                         {combatants.map((c, i) => (
                           <div 
                             key={i} 
-                            className={`flex items-center justify-between p-2 rounded-lg border transition-all ${i === activeCombatantIndex ? 'bg-purple-950/30 border-purple-500/40 shadow-[0_0_8px_rgba(168,85,247,0.15)]' : 'bg-transparent border-white/5'}`}
+                            className={`flex items-center justify-between p-2 rounded-lg border transition-all ${i === activeCombatantIndex ? 'bg-purple-950/30 border-purple-500/40 shadow-[0_0_8px_rgba(168,85,247,0.15)]' : 'bg-transparent border-slate-200/50'}`}
                           >
                             <div className="flex items-center gap-2">
                               <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ backgroundColor: c.color }}></span>
                               <div className="flex flex-col">
-                                <span className={`text-[10px] font-bold ${i === activeCombatantIndex ? 'text-white' : 'text-slate-300'}`}>{c.name}</span>
+                                <span className={`text-[10px] font-bold ${i === activeCombatantIndex ? 'text-slate-900' : 'text-slate-600'}`}>{c.name}</span>
                                 <span className="text-[8px] text-slate-500 font-mono">{c.class}</span>
                               </div>
                             </div>
                             <div className="flex items-center gap-1.5">
-                              <button onClick={() => handleHpChange(i, -1)} className="w-5 h-5 bg-slate-950 border border-white/10 hover:bg-rose-950/20 hover:text-rose-400 rounded flex items-center justify-center text-[10px] cursor-pointer font-bold">-</button>
-                              <span className="text-xs font-mono font-black text-slate-100 px-1">{c.hp} / {c.maxHp}</span>
-                              <button onClick={() => handleHpChange(i, 1)} className="w-5 h-5 bg-slate-950 border border-white/10 hover:bg-emerald-950/20 hover:text-emerald-400 rounded flex items-center justify-center text-[10px] cursor-pointer font-bold">+</button>
+                              <button onClick={() => handleHpChange(i, -1)} className="w-5 h-5 bg-slate-100 border border-slate-200/50 hover:bg-rose-100 hover:text-rose-600 text-slate-700 rounded flex items-center justify-center text-[10px] cursor-pointer font-bold">-</button>
+                              <span className="text-xs font-mono font-black text-slate-800 px-1">{c.hp} / {c.maxHp}</span>
+                              <button onClick={() => handleHpChange(i, 1)} className="w-5 h-5 bg-slate-100 border border-slate-200/50 hover:bg-emerald-100 hover:text-emerald-600 text-slate-700 rounded flex items-center justify-center text-[10px] cursor-pointer font-bold">+</button>
                             </div>
                           </div>
                         ))}
                       </div>
                     </div>
 
-                    <div className="p-4 bg-slate-950 border border-white/5 rounded-xl space-y-3">
+                    <div className="p-4 bg-slate-50 border border-slate-200/50 rounded-xl space-y-3">
                       <span className="text-[10px] uppercase tracking-wider text-slate-500 font-bold">Consult Alchemical Oracle</span>
                       <div className="flex gap-2">
                         <input 
@@ -4284,7 +4284,7 @@ export default function App() {
                           value={oracleQuery}
                           onChange={(e) => setOracleQuery(e.target.value)}
                           onKeyDown={(e) => e.key === 'Enter' && handleOracleConsult()}
-                          className="flex-1 bg-slate-950 border border-white/5 rounded-lg px-3 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-purple-500/60"
+                          className="flex-1 bg-slate-100 border border-slate-200/50 rounded-lg px-3 py-1.5 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-purple-500/60"
                         />
                         <button 
                           onClick={handleOracleConsult}
@@ -4299,7 +4299,7 @@ export default function App() {
                         </button>
                       </div>
                       {oracleAnswer && (
-                        <div className="p-2.5 bg-purple-950/20 border border-purple-500/20 text-[#b4aae2] text-[10px] font-semibold font-mono rounded-lg leading-relaxed whitespace-pre-line">
+                        <div className="p-2.5 bg-purple-500/5 border border-purple-500/20 text-slate-800 text-[10px] font-semibold font-mono rounded-lg leading-relaxed whitespace-pre-line">
                           {oracleAnswer}
                         </div>
                       )}
@@ -4491,15 +4491,15 @@ export default function App() {
               {/* Left sidebar info column */}
               <div className="md:w-1/3 space-y-4">
                 <div>
-                  <h2 className="text-sm font-bold text-slate-100 uppercase tracking-widest flex items-center gap-2">
+                  <h2 className="text-sm font-bold text-slate-800 uppercase tracking-widest flex items-center gap-2">
                     <Wrench className="w-4 h-4 text-cyan-400 animate-pulse" />
                     TI-84 Plus CE OS
                   </h2>
                   <p className="text-[10px] text-slate-500">Dual algebraic engine with ROM loader</p>
                 </div>
 
-                <div className="p-4 bg-slate-950 border border-white/5 rounded-xl space-y-3 font-mono text-[9px] text-slate-400">
-                  <div className="border-b border-white/5 pb-2 text-[10px] font-bold text-[#3fd9c7] uppercase">Interactive Shortcuts</div>
+                <div className="p-4 bg-slate-50 border border-slate-200/50 rounded-xl space-y-3 font-mono text-[9px] text-slate-500">
+                  <div className="border-b border-slate-200/50 pb-2 text-[10px] font-bold text-[#3fd9c7] uppercase">Interactive Shortcuts</div>
                   <div className="flex justify-between">
                     <span>LAUNCH GAME:</span>
                     <span className="text-[#cf4fe6]">PRGM Key</span>
@@ -5027,41 +5027,41 @@ export default function App() {
             <div className="glass-panel rounded-2xl border border-white/[0.04] p-6 text-left space-y-6 animate-[fadeIn_0.4s_ease-out]">
               <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
                 <div>
-                  <h2 className="text-sm font-bold text-slate-100 uppercase tracking-widest flex items-center gap-2">
+                  <h2 className="text-sm font-bold text-slate-800 uppercase tracking-widest flex items-center gap-2">
                     <Globe className="w-4 h-4 text-cyan-400" />
                     Encrypted Network Web Sandbox
                   </h2>
                   <p className="text-[10px] text-slate-500">Secure isolated volume for public research queries</p>
                 </div>
-                <div className="flex items-center gap-1.5 bg-slate-950/80 p-1.5 rounded-lg border border-white/5 font-mono text-[9px] text-slate-500">
+                <div className="flex items-center gap-1.5 bg-slate-100 p-1.5 rounded-lg border border-slate-200/50 font-mono text-[9px] text-slate-500">
                   <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
                   <span>TUNNEL ACTIVE</span>
                 </div>
               </div>
 
-              <div className="flex items-center gap-2.5 p-2 bg-slate-950 border border-white/5 rounded-xl">
+              <div className="flex items-center gap-2.5 p-2 bg-slate-100 border border-slate-200/50 rounded-xl">
                 <div className="flex gap-1.5">
-                  <button onClick={() => { haptic(5); toast('Browser history backward index blank.'); }} className="p-1.5 bg-slate-900 hover:bg-slate-800 text-slate-400 rounded-md transition-colors cursor-pointer"><ArrowLeft className="w-3.5 h-3.5" /></button>
-                  <button onClick={() => { haptic(5); toast('Browser history forward index blank.'); }} className="p-1.5 bg-slate-900 hover:bg-slate-800 text-slate-400 rounded-md transition-colors cursor-pointer"><ArrowRight className="w-3.5 h-3.5" /></button>
-                  <button onClick={() => { haptic(5); setBrowserLoading(true); setTimeout(() => setBrowserLoading(false), 800); }} className="p-1.5 bg-slate-900 hover:bg-slate-800 text-slate-400 rounded-md transition-colors cursor-pointer"><RefreshCw className={`w-3.5 h-3.5 ${browserLoading ? 'animate-spin' : ''}`} /></button>
+                  <button onClick={() => { haptic(5); toast('Browser history backward index blank.'); }} className="p-1.5 bg-slate-50 hover:bg-slate-200 text-slate-500 rounded-md transition-colors cursor-pointer"><ArrowLeft className="w-3.5 h-3.5" /></button>
+                  <button onClick={() => { haptic(5); toast('Browser history forward index blank.'); }} className="p-1.5 bg-slate-50 hover:bg-slate-200 text-slate-500 rounded-md transition-colors cursor-pointer"><ArrowRight className="w-3.5 h-3.5" /></button>
+                  <button onClick={() => { haptic(5); setBrowserLoading(true); setTimeout(() => setBrowserLoading(false), 800); }} className="p-1.5 bg-slate-50 hover:bg-slate-200 text-slate-500 rounded-md transition-colors cursor-pointer"><RefreshCw className={`w-3.5 h-3.5 ${browserLoading ? 'animate-spin' : ''}`} /></button>
                 </div>
-                <div className="flex-grow flex items-center gap-2 bg-slate-900 border border-white/5 rounded-lg px-3 py-1 text-xs text-slate-300 font-mono">
+                <div className="flex-grow flex items-center gap-2 bg-white border border-slate-200/60 rounded-lg px-3 py-1 text-xs text-slate-700 font-mono">
                   <Globe className="w-3.5 h-3.5 text-cyan-500/80" />
                   <input 
                     type="text" 
                     value={browserUrl} 
                     onChange={(e) => setBrowserUrl(e.target.value)}
-                    className="flex-grow bg-transparent border-none outline-none focus:ring-0 p-0 text-xs text-slate-200"
+                    className="flex-grow bg-transparent border-none outline-none focus:ring-0 p-0 text-xs text-slate-800"
                   />
                 </div>
               </div>
 
-              <div className="bg-slate-950 border border-white/5 rounded-xl p-8 text-center aspect-video flex flex-col justify-center items-center gap-4">
+              <div className="bg-slate-100 border border-slate-200/50 rounded-xl p-8 text-center aspect-video flex flex-col justify-center items-center gap-4">
                 <div className="p-4 bg-cyan-500/10 border border-cyan-500/20 rounded-full">
                   <Globe className="w-8 h-8 text-cyan-400 animate-pulse" />
                 </div>
                 <div className="space-y-1">
-                  <h3 className="text-xs font-bold text-slate-200">Local Cache Sync: {browserUrl}</h3>
+                  <h3 className="text-xs font-bold text-slate-700">Local Cache Sync: {browserUrl}</h3>
                   <p className="text-[10px] text-slate-500 max-w-sm mx-auto">This browser runs in a sandbox. It simulates standard web responses locally using cached datasets to prevent external tracker leaks.</p>
                 </div>
                 <button 
