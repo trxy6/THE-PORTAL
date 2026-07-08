@@ -20,6 +20,7 @@ import PlayerDashboard from "./PlayerDashboard";
 import EmbeddedSpotify from "./EmbeddedSpotify";
 import AudioVisualizer from "./AudioVisualizer";
 import LyricsDisplay from "./LyricsDisplay";
+import { CURATED_PLAYLISTS } from "./curatedTracks";
 
 // Helper: Convert time string "M:SS" to seconds
 function parseDurationToSeconds(durationStr?: string): number {
@@ -38,12 +39,38 @@ function formatSecondsToTime(secs: number): string {
   return `${m}:${s < 10 ? "0" : ""}${s}`;
 }
 
+const SPOTIFY_CLIENT_ID = "6238dcf567664f328bde1570c68f9eae";
+
+function generateRandomString(length: number): string {
+  const possible = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+  const values = crypto.getRandomValues(new Uint8Array(length));
+  return Array.from(values).map((x) => possible[x % possible.length]).join("");
+}
+
+async function sha256(plain: string): Promise<ArrayBuffer> {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(plain);
+  return crypto.subtle.digest("SHA-256", data);
+}
+
+function base64urlencode(a: ArrayBuffer): string {
+  return btoa(String.fromCharCode.apply(null, new Uint8Array(a) as any))
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=+$/, "");
+}
+
+async function generateCodeChallenge(v: string): Promise<string> {
+  const hashed = await sha256(v);
+  return base64urlencode(hashed);
+}
+
 export default function SpotifyPlayer() {
   // Playlists and Library States
-  const [curatedPlaylists, setCuratedPlaylists] = useState<Playlist[]>([]);
+  const [curatedPlaylists, setCuratedPlaylists] = useState<Playlist[]>(CURATED_PLAYLISTS);
   const [userPlaylists, setUserPlaylists] = useState<Playlist[]>([]);
-  const [activePlaylist, setActivePlaylist] = useState<Playlist | null>(null);
-  const [activePlaylistId, setActivePlaylistId] = useState<string>("");
+  const [activePlaylist, setActivePlaylist] = useState<Playlist | null>(CURATED_PLAYLISTS[0] || null);
+  const [activePlaylistId, setActivePlaylistId] = useState<string>(CURATED_PLAYLISTS[0]?.id || "");
 
   // Playback Control States
   const [currentTrack, setCurrentTrack] = useState<Track | null>(null);
@@ -132,24 +159,95 @@ export default function SpotifyPlayer() {
     }
   };
 
-  // Refresh token using the server-side proxy
+  // Exchange code for access token client-side using PKCE
+  const exchangeCodeForToken = async (code: string) => {
+    try {
+      const codeVerifier = localStorage.getItem("spotify_code_verifier") || "";
+      const client_id = SPOTIFY_CLIENT_ID;
+      const redirect_uri = window.location.origin + window.location.pathname;
+
+      const res = await fetch("https://accounts.spotify.com/api/token", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+        body: new URLSearchParams({
+          client_id: client_id,
+          grant_type: "authorization_code",
+          code: code,
+          redirect_uri: redirect_uri,
+          code_verifier: codeVerifier,
+        }),
+      });
+
+      if (!res.ok) {
+        const errorText = await res.text();
+        throw new Error(`Token exchange failed: ${res.statusText} (${errorText})`);
+      }
+
+      const data = await res.json();
+      const accessToken = data.access_token;
+      const refreshToken = data.refresh_token;
+
+      setSpotifyToken(accessToken);
+      setSpotifyRefreshToken(refreshToken);
+      localStorage.setItem("spotify_access_token", accessToken);
+      if (refreshToken) {
+        localStorage.setItem("spotify_refresh_token", refreshToken);
+      }
+      fetchSpotifyData(accessToken);
+    } catch (err: any) {
+      console.error("Token exchange failed:", err);
+      setSpotifyError(err.message);
+    }
+  };
+
+  // Refresh token using the client-side PKCE refresh flow (falls back to server if refresh fails)
   const handleSpotifyTokenRefresh = async () => {
     const refresh = localStorage.getItem("spotify_refresh_token");
     if (!refresh) return;
 
     try {
-      const res = await fetch("/api/auth/spotify/refresh", {
+      const client_id = SPOTIFY_CLIENT_ID;
+      const res = await fetch("https://accounts.spotify.com/api/token", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ refreshToken: refresh }),
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+        body: new URLSearchParams({
+          client_id: client_id,
+          grant_type: "refresh_token",
+          refresh_token: refresh,
+        }),
       });
+
       if (res.ok) {
         const data = await res.json();
-        setSpotifyToken(data.accessToken);
-        localStorage.setItem("spotify_access_token", data.accessToken);
-        fetchSpotifyData(data.accessToken);
+        const accessToken = data.access_token;
+        const newRefreshToken = data.refresh_token;
+
+        setSpotifyToken(accessToken);
+        localStorage.setItem("spotify_access_token", accessToken);
+        if (newRefreshToken) {
+          localStorage.setItem("spotify_refresh_token", newRefreshToken);
+          setSpotifyRefreshToken(newRefreshToken);
+        }
+        fetchSpotifyData(accessToken);
       } else {
-        handleDisconnectSpotify();
+        // Fallback to server-side refresh if client-side fails
+        const serverRes = await fetch("/api/auth/spotify/refresh", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ refreshToken: refresh }),
+        });
+        if (serverRes.ok) {
+          const serverData = await serverRes.json();
+          setSpotifyToken(serverData.accessToken);
+          localStorage.setItem("spotify_access_token", serverData.accessToken);
+          fetchSpotifyData(serverData.accessToken);
+        } else {
+          handleDisconnectSpotify();
+        }
       }
     } catch (e) {
       console.error("Failed to refresh Spotify token:", e);
@@ -166,34 +264,39 @@ export default function SpotifyPlayer() {
     localStorage.removeItem("spotify_refresh_token");
   };
 
-  // Initiate Spotify OAuth Login Flow (Direct Provider URL in Popup)
+  // Initiate Spotify OAuth Login Flow using client-side PKCE redirection
   const handleConnectSpotify = async () => {
     try {
-      const origin = window.location.origin;
-      const res = await fetch(`/api/auth/spotify/url?origin=${encodeURIComponent(origin)}`);
-      const data = await res.json();
-      if (!res.ok) {
-        if (data.unconfigured) {
-          alert("Spotify API credentials are not configured on the server yet.\n\nPlease define SPOTIFY_CLIENT_ID and SPOTIFY_CLIENT_SECRET in the environment variables or app settings.");
-          return;
-        }
-        throw new Error(data.error || "Failed to generate auth url");
-      }
+      const codeVerifier = generateRandomString(64);
+      localStorage.setItem("spotify_code_verifier", codeVerifier);
 
-      const width = 500;
-      const height = 650;
-      const left = window.screen.width / 2 - width / 2;
-      const top = window.screen.height / 2 - height / 2;
+      const codeChallenge = await generateCodeChallenge(codeVerifier);
+      
+      const scope = [
+        "user-read-private",
+        "user-read-email",
+        "playlist-read-private",
+        "playlist-read-collaborative",
+        "user-library-read",
+        "user-top-read",
+        "user-read-recently-played",
+        "user-read-playback-state",
+        "user-modify-playback-state"
+      ].join(" ");
 
-      const authWindow = window.open(
-        data.url,
-        "spotify_auth_popup",
-        `width=${width},height=${height},left=${left},top=${top},menubar=no,toolbar=no,location=no`
-      );
+      const client_id = SPOTIFY_CLIENT_ID;
+      const redirect_uri = window.location.origin + window.location.pathname;
 
-      if (!authWindow) {
-        alert("Please enable popups to connect to Spotify.");
-      }
+      const authUrl = `https://accounts.spotify.com/authorize?` + new URLSearchParams({
+        response_type: "code",
+        client_id: client_id,
+        scope: scope,
+        redirect_uri: redirect_uri,
+        code_challenge_method: "S256",
+        code_challenge: codeChallenge,
+      }).toString();
+
+      window.location.href = authUrl;
     } catch (err: any) {
       console.error("Spotify Auth initiation failed:", err);
       alert(`Connection failed: ${err.message}`);
@@ -269,7 +372,16 @@ export default function SpotifyPlayer() {
       fetchSpotifyData(savedToken);
     }
 
-    // Listen for Success Message from OAuth Popup
+    // Check for PKCE redirect code parameter
+    const params = new URLSearchParams(window.location.search);
+    const code = params.get("code");
+    if (code) {
+      // Clean query string immediately
+      window.history.replaceState({}, document.title, window.location.pathname);
+      exchangeCodeForToken(code);
+    }
+
+    // Listen for Success Message from OAuth Popup (kept for legacy support if local backend is used)
     const handleMessage = (event: MessageEvent) => {
       const origin = event.origin;
       if (!origin.endsWith(".run.app") && !origin.includes("localhost") && !origin.includes("127.0.0.1")) {

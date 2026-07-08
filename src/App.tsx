@@ -285,7 +285,15 @@ export default function App() {
   const riftVideoRef = useRef<HTMLVideoElement | null>(null);
   const riftCanvasRef = useRef<HTMLCanvasElement | null>(null);
 
-  const [activeTab, setActiveTab] = useState('home');
+  const [activeTab, setActiveTab] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.has('code')) return 'music';
+    return localStorage.getItem('portal_active_tab') || 'home';
+  });
+
+  useEffect(() => {
+    localStorage.setItem('portal_active_tab', activeTab);
+  }, [activeTab]);
   const [themeColor, setThemeColor] = useState('purple'); // breathing trim theme: silver, purple, cyan, pink, emerald, amber
   const [searchQuery, setSearchQuery] = useState('');
   const [showSearchPalette, setShowSearchPalette] = useState(false);
