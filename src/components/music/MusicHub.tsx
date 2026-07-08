@@ -316,6 +316,51 @@ export default function MusicHub({ portalDarkMode, themeColor }: MusicHubProps) 
     codeExchange();
   }, []);
 
+  const getOrRefreshToken = async (): Promise<string | null> => {
+    let activeToken = localStorage.getItem("spotify_access_token") || token;
+    const activeRefresh = localStorage.getItem("spotify_refresh_token") || refreshToken;
+
+    if (!activeToken) return null;
+
+    try {
+      const checkRes = await fetch("https://api.spotify.com/v1/me", {
+        headers: { Authorization: `Bearer ${activeToken}` }
+      });
+      if (checkRes.ok) {
+        return activeToken;
+      }
+    } catch (e) {}
+
+    if (activeRefresh) {
+      try {
+        const refreshRes = await fetch("https://accounts.spotify.com/api/token", {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body: new URLSearchParams({
+            client_id: SPOTIFY_CLIENT_ID,
+            grant_type: "refresh_token",
+            refresh_token: activeRefresh
+          })
+        });
+
+        if (refreshRes.ok) {
+          const data = await refreshRes.json();
+          const newToken = data.access_token;
+          setToken(newToken);
+          localStorage.setItem("spotify_access_token", newToken);
+          if (data.refresh_token) {
+            setRefreshToken(data.refresh_token);
+            localStorage.setItem("spotify_refresh_token", data.refresh_token);
+          }
+          return newToken;
+        }
+      } catch (e) {
+        console.error("SDK token auto-refresh failed", e);
+      }
+    }
+    return null;
+  };
+
   // Fetch API with Auth Header and Auto Refresh
   const fetchWebApi = async (endpoint: string, method = "GET", body?: any): Promise<any> => {
     let activeToken = token;
@@ -395,7 +440,10 @@ export default function MusicHub({ portalDarkMode, themeColor }: MusicHubProps) 
     (window as any).onSpotifyWebPlaybackSDKReady = () => {
       const player = new (window as any).Spotify.Player({
         name: "The Portal Player",
-        getOAuthToken: (cb: any) => cb(token),
+        getOAuthToken: async (cb: any) => {
+          const activeTok = await getOrRefreshToken();
+          cb(activeTok);
+        },
         volume: volume / 100
       });
 
@@ -481,29 +529,44 @@ export default function MusicHub({ portalDarkMode, themeColor }: MusicHubProps) 
       .catch((e) => console.error(e));
   }, [token]);
 
-  // Fetch Liked Songs (Saved Tracks)
+  // Fetch Liked Songs (Saved Tracks) with pagination support
   const fetchAllLikedSongs = async () => {
     if (!token) return;
     setActivePlaybackStatus("loading");
     try {
-      // Fetch up to 50 songs
-      const data = await fetchWebApi("v1/me/tracks?limit=50");
-      if (data && data.items) {
-        const mapped = data.items.map((item: any) => ({
-          id: item.track.id,
-          title: item.track.name,
-          artist: item.track.artists.map((a: any) => a.name).join(", "),
-          album: item.track.album.name,
-          imageUrl: item.track.album.images[0]?.url || "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=300&q=80",
-          spotifyUri: item.track.uri,
-          duration: formatDuration(item.track.duration_ms),
-          durationMs: item.track.duration_ms,
-          previewUrl: item.track.preview_url
-        }));
-        setLikedTracks(mapped);
-        if (activeTab === "liked") {
-          setCurrentTracksList(mapped);
+      let url = "v1/me/tracks?limit=50";
+      let allTracks: SpotifyTrack[] = [];
+      
+      // Fetch up to 4 pages (200 songs)
+      for (let page = 0; page < 4; page++) {
+        const data = await fetchWebApi(url);
+        if (data && data.items && data.items.length > 0) {
+          const mapped = data.items.map((item: any) => ({
+            id: item.track.id,
+            title: item.track.name,
+            artist: item.track.artists.map((a: any) => a.name).join(", "),
+            album: item.track.album.name,
+            imageUrl: item.track.album.images[0]?.url || "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=300&q=80",
+            spotifyUri: item.track.uri,
+            duration: formatDuration(item.track.duration_ms),
+            durationMs: item.track.duration_ms,
+            previewUrl: item.track.preview_url
+          }));
+          allTracks = [...allTracks, ...mapped];
+          if (data.next) {
+            const urlObj = new URL(data.next);
+            url = urlObj.pathname.substring(1) + urlObj.search;
+          } else {
+            break;
+          }
+        } else {
+          break;
         }
+      }
+
+      setLikedTracks(allTracks);
+      if (activeTab === "liked") {
+        setCurrentTracksList(allTracks);
       }
       setActivePlaybackStatus("idle");
     } catch (e) {
@@ -512,23 +575,64 @@ export default function MusicHub({ portalDarkMode, themeColor }: MusicHubProps) 
     }
   };
 
-  // Fetch Playlists
+  // Fetch Playlists with pagination support
   const fetchAllPlaylists = async () => {
     if (!token) return;
     try {
-      const data = await fetchWebApi("v1/me/playlists?limit=50");
-      if (data && data.items) {
-        const mapped = data.items.map((item: any) => ({
-          id: item.id,
-          name: item.name,
-          description: item.description || "Spotify Playlist",
-          imageUrl: item.images[0]?.url || "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=300",
-          trackCount: item.tracks.total
-        }));
-        setPlaylists(mapped);
+      let url = "v1/me/playlists?limit=50";
+      let allPlaylists: SpotifyPlaylist[] = [];
+
+      for (let page = 0; page < 5; page++) { // Fetch up to 5 pages (250 playlists)
+        const data = await fetchWebApi(url);
+        if (data && data.items && data.items.length > 0) {
+          const mapped = data.items.map((item: any) => ({
+            id: item.id,
+            name: item.name,
+            description: item.description || "Spotify Playlist",
+            imageUrl: item.images?.[0]?.url || "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=300",
+            trackCount: item.tracks.total
+          }));
+          allPlaylists = [...allPlaylists, ...mapped];
+          if (data.next) {
+            const urlObj = new URL(data.next);
+            url = urlObj.pathname.substring(1) + urlObj.search;
+          } else {
+            break;
+          }
+        } else {
+          break;
+        }
       }
+      setPlaylists(allPlaylists);
     } catch (e) {
       console.error(e);
+    }
+  };
+
+  const handleToggleLikeTrack = async (track: SpotifyTrack, e: React.MouseEvent) => {
+    e.stopPropagation(); // Avoid playing when clicking heart
+    if (!token) return;
+
+    const isLiked = likedTracks.some(t => t.id === track.id);
+    try {
+      if (isLiked) {
+        // Remove from library
+        await fetchWebApi(`v1/me/tracks?ids=${track.id}`, "DELETE");
+        setLikedTracks(prev => prev.filter(t => t.id !== track.id));
+        if (activeTab === "liked") {
+          setCurrentTracksList(prev => prev.filter(t => t.id !== track.id));
+        }
+      } else {
+        // Add to library
+        await fetchWebApi(`v1/me/tracks?ids=${track.id}`, "PUT");
+        const updated = [track, ...likedTracks];
+        setLikedTracks(updated);
+        if (activeTab === "liked") {
+          setCurrentTracksList(updated);
+        }
+      }
+    } catch (err) {
+      console.error("Failed to toggle like", err);
     }
   };
 
@@ -1239,7 +1343,24 @@ export default function MusicHub({ portalDarkMode, themeColor }: MusicHubProps) 
                     </div>
                   </div>
 
-                  <span className="text-[10px] text-zinc-500 tabular-nums shrink-0">{t.duration}</span>
+                  <div className="flex items-center gap-2">
+                    {token && t.spotifyUri && (
+                      <button
+                        onClick={(e) => handleToggleLikeTrack(t, e)}
+                        className="p-1.5 hover:scale-110 transition cursor-pointer"
+                        title={likedTracks.some(lt => lt.id === t.id) ? "Remove from Liked Songs" : "Save to Liked Songs"}
+                      >
+                        <Heart
+                          className={`w-3.5 h-3.5 ${
+                            likedTracks.some(lt => lt.id === t.id)
+                              ? "text-pink-500 fill-current"
+                              : "text-zinc-500 hover:text-white"
+                          }`}
+                        />
+                      </button>
+                    )}
+                    <span className="text-[10px] text-zinc-500 tabular-nums shrink-0">{t.duration}</span>
+                  </div>
                 </div>
               ))
             )}
