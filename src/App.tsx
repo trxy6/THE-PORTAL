@@ -3186,11 +3186,15 @@ export default function App() {
                   }}
                   className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-lg text-xs font-semibold tracking-wide transition-all duration-300 ${
                     isActive 
-                      ? `text-white bg-gradient-to-r ${getThemeGradient()} font-bold shadow-md shadow-purple-500/10` 
+                      ? `text-white font-bold shadow-md shadow-purple-500/20` 
                       : portalDarkMode
                         ? 'text-purple-300/60 hover:text-purple-100 hover:bg-purple-500/10'
                         : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/50'
                   } relative overflow-hidden group`}
+                  style={isActive ? {
+                    background: 'linear-gradient(135deg, #7c3aed, #9333ea, #c026d3)',
+                    boxShadow: '0 0 16px rgba(139,92,246,0.35)',
+                  } : undefined}
                 >
                   <div className="flex items-center gap-3 relative z-10">
                     {renderSidebarIcon(item.id, isActive)}
@@ -3199,7 +3203,7 @@ export default function App() {
 
                   {/* Left accent vertical line for active tab */}
                   {isActive && (
-                    <div className="absolute inset-y-0 left-0 w-[4px] rounded-r-md" style={{ backgroundColor: getThemeHex() }} />
+                    <div className="absolute inset-y-0 left-0 w-[4px] rounded-r-md" style={{ backgroundColor: '#ffffff' }} />
                   )}
                 </button>
               );
@@ -3953,7 +3957,11 @@ export default function App() {
                   <button 
                     type="submit"
                     disabled={isAiLoading || !aiInput.trim()}
-                    className="px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white rounded-lg text-xs font-bold transition-all disabled:opacity-40"
+                    className="px-4 py-2 text-white rounded-lg text-xs font-bold transition-all disabled:opacity-40 cursor-pointer active:scale-95 hover:shadow-[0_0_20px_rgba(139,92,246,0.5)]"
+                    style={{
+                      background: 'linear-gradient(135deg, #7c3aed, #9333ea, #c026d3)',
+                      boxShadow: '0 0 12px rgba(139,92,246,0.3)',
+                    }}
                   >
                     <Send className="w-4 h-4" />
                   </button>
@@ -4065,7 +4073,11 @@ export default function App() {
                   </div>
                   <button 
                     onClick={() => alert("Image prompt pipeline starting. Live Generation sandbox expects configured API Key.")}
-                    className="w-full py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold transition-all"
+                    className="w-full py-2 text-white rounded-lg text-xs font-bold transition-all cursor-pointer active:scale-95 hover:shadow-[0_0_24px_rgba(139,92,246,0.55)]"
+                    style={{
+                      background: 'linear-gradient(135deg, #7c3aed, #9333ea, #c026d3)',
+                      boxShadow: '0 0 16px rgba(139,92,246,0.35)',
+                    }}
                   >
                     Synthesize Media Render
                   </button>
@@ -4133,7 +4145,11 @@ export default function App() {
                   <div className="flex justify-end gap-2">
                     <button 
                       onClick={() => alert("Payload compiled and stored to local matrix storage.")}
-                      className="px-3 py-1.5 rounded bg-amber-500/20 border border-amber-500/40 text-amber-300 text-xs font-bold hover:bg-amber-500/35 transition-colors"
+                      className="px-4 py-1.5 rounded text-white text-xs font-bold transition-all duration-300 cursor-pointer active:scale-95 hover:shadow-[0_0_20px_rgba(139,92,246,0.5)]"
+                      style={{
+                        background: 'linear-gradient(135deg, #7c3aed, #9333ea, #c026d3)',
+                        boxShadow: '0 0 12px rgba(139,92,246,0.3)',
+                      }}
                     >
                       Save Note
                     </button>
@@ -4195,7 +4211,11 @@ export default function App() {
                         </div>
                         <button 
                           onClick={handleEndTurn}
-                          className="px-3 py-1.5 bg-purple-600 hover:bg-purple-500 text-white text-[10px] font-bold rounded-lg transition-all cursor-pointer"
+                          className="px-3 py-1.5 text-white text-[10px] font-bold rounded-lg transition-all cursor-pointer active:scale-95 hover:shadow-[0_0_15px_rgba(139,92,246,0.4)]"
+                          style={{
+                            background: 'linear-gradient(135deg, #7c3aed, #9333ea, #c026d3)',
+                            boxShadow: '0 0 10px rgba(139,92,246,0.25)',
+                          }}
                         >
                           Next Turn &gt;
                         </button>
@@ -4238,7 +4258,11 @@ export default function App() {
                         <button 
                           onClick={handleOracleConsult}
                           disabled={oracleLoading}
-                          className="px-3 bg-purple-600 hover:bg-purple-500 text-white rounded-lg text-xs font-bold transition-all disabled:opacity-40 cursor-pointer"
+                          className="px-3 text-white rounded-lg text-xs font-bold transition-all disabled:opacity-40 cursor-pointer active:scale-95 hover:shadow-[0_0_15px_rgba(139,92,246,0.4)]"
+                          style={{
+                            background: 'linear-gradient(135deg, #7c3aed, #9333ea, #c026d3)',
+                            boxShadow: '0 0 10px rgba(139,92,246,0.25)',
+                          }}
                         >
                           {oracleLoading ? '...' : 'Consult'}
                         </button>
@@ -5553,7 +5577,11 @@ export default function App() {
                           toast("Idea saved locally (offline mode).", "success");
                         }
                       }}
-                      className="w-full py-2 bg-gradient-to-r from-purple-500 to-indigo-600 hover:brightness-110 active:scale-[0.98] text-white rounded-xl text-xs font-bold tracking-widest uppercase transition-all shadow-sm cursor-pointer"
+                      className="w-full py-2 text-white rounded-xl text-xs font-bold tracking-widest uppercase transition-all duration-300 cursor-pointer active:scale-95 hover:shadow-[0_0_24px_rgba(139,92,246,0.55)]"
+                      style={{
+                        background: 'linear-gradient(135deg, #7c3aed, #9333ea, #c026d3)',
+                        boxShadow: '0 0 16px rgba(139,92,246,0.35)',
+                      }}
                     >
                       Channel Idea to trxy6
                     </button>
@@ -5571,7 +5599,7 @@ export default function App() {
                 {/* Theme options */}
                 <div className="flex justify-between items-center py-2 border-b border-slate-100">
                   <div className="flex flex-col text-left">
-                    <span className="text-xs font-bold text-slate-700">Theme</span>
+                    <span className="text-xs font-bold text-slate-700">Theme Accent</span>
                     <span className="text-[9px] text-slate-400">Pick the core energy hue to breathe across system modules.</span>
                   </div>
                   <div className="flex items-center gap-1 bg-[#ebedfa]/45 border border-slate-200/30 p-1.5 rounded-full shrink-0">
@@ -5590,6 +5618,32 @@ export default function App() {
                         } ${themeColor === color ? 'ring-2 ring-slate-400 scale-110 shadow-lg' : 'opacity-45'}`}
                       />
                     ))}
+                  </div>
+                </div>
+
+                {/* Portal Theme Mode */}
+                <div className="flex justify-between items-center py-2 border-b border-slate-100">
+                  <div className="flex flex-col text-left">
+                    <span className="text-xs font-bold text-slate-700">Portal Theme Mode</span>
+                    <span className="text-[9px] text-slate-400">Select between Light (White) or Dark (Purple) cosmic mode.</span>
+                  </div>
+                  <div className="flex items-center gap-1 bg-[#ebedfa]/45 border border-slate-200/30 p-1 rounded-full shrink-0">
+                    <button 
+                      onClick={() => { haptic(10); if (portalDarkMode) togglePortalDarkMode(); }}
+                      className={`px-3 py-1 rounded-full text-[10px] font-bold transition-all cursor-pointer ${!portalDarkMode ? 'bg-[#7c3aed] text-white shadow-sm' : 'text-slate-400 hover:text-slate-200 opacity-60'}`}
+                    >
+                      ☀️ Light
+                    </button>
+                    <button 
+                      onClick={() => { haptic(10); if (!portalDarkMode) togglePortalDarkMode(); }}
+                      className={`px-3 py-1 rounded-full text-[10px] font-bold transition-all cursor-pointer ${portalDarkMode ? 'bg-[#7c3aed] text-white shadow-sm' : 'text-slate-400 hover:text-slate-200 opacity-60'}`}
+                      style={portalDarkMode ? {
+                        background: 'linear-gradient(135deg, #7c3aed, #9333ea, #c026d3)',
+                        boxShadow: '0 0 10px rgba(139,92,246,0.3)',
+                      } : undefined}
+                    >
+                      🌌 Dark
+                    </button>
                   </div>
                 </div>
 
@@ -5815,7 +5869,11 @@ export default function App() {
                       startSoundscape();
                     }
                   }}
-                  className="w-full py-2.5 bg-gradient-to-r from-purple-500 to-indigo-600 hover:brightness-110 active:scale-[0.98] text-white rounded-xl text-xs font-bold tracking-widest uppercase transition-all duration-200 cursor-pointer shadow-sm flex items-center justify-center gap-1.5"
+                  className="w-full py-2.5 text-white rounded-xl text-xs font-bold tracking-widest uppercase transition-all duration-300 cursor-pointer active:scale-95 hover:shadow-[0_0_24px_rgba(139,92,246,0.55)] flex items-center justify-center gap-1.5"
+                  style={{
+                    background: 'linear-gradient(135deg, #7c3aed, #9333ea, #c026d3)',
+                    boxShadow: '0 0 16px rgba(139,92,246,0.35)',
+                  }}
                 >
                   {soundscapeActive ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
                   {soundscapeActive ? 'STOP AMBIENT' : 'PLAY AMBIENT'}
@@ -5896,12 +5954,22 @@ export default function App() {
                       dlAnchorElem.click();
                       toast("Backup downloaded successfully!", "success");
                     }}
-                    className="flex-1 min-w-[110px] py-2 border border-purple-500/20 bg-purple-500/5 hover:bg-purple-500/15 text-purple-700 hover:border-purple-500/40 rounded-xl text-[10px] font-bold uppercase cursor-pointer transition-all flex items-center justify-center gap-1"
+                    className="flex-1 min-w-[110px] py-2 text-white rounded-xl text-[10px] font-bold uppercase cursor-pointer transition-all duration-300 active:scale-95 hover:shadow-[0_0_20px_rgba(139,92,246,0.5)] flex items-center justify-center gap-1"
+                    style={{
+                      background: 'linear-gradient(135deg, #7c3aed, #9333ea, #c026d3)',
+                      boxShadow: '0 0 12px rgba(139,92,246,0.3)',
+                    }}
                   >
                     <Download className="w-3 h-3" />
                     Export Backup
                   </button>
-                  <label className="flex-1 min-w-[110px] py-2 border border-purple-500/20 bg-purple-500/5 hover:bg-purple-500/15 text-purple-700 hover:border-purple-500/40 rounded-xl text-[10px] font-bold uppercase cursor-pointer transition-all text-center flex items-center justify-center gap-1 relative">
+                  <label 
+                    className="flex-1 min-w-[110px] py-2 text-white rounded-xl text-[10px] font-bold uppercase cursor-pointer transition-all duration-300 active:scale-95 hover:shadow-[0_0_20px_rgba(139,92,246,0.5)] text-center flex items-center justify-center gap-1 relative"
+                    style={{
+                      background: 'linear-gradient(135deg, #7c3aed, #9333ea, #c026d3)',
+                      boxShadow: '0 0 12px rgba(139,92,246,0.3)',
+                    }}
+                  >
                     <input 
                       type="file" 
                       accept=".json" 
@@ -6155,7 +6223,11 @@ export default function App() {
                   setAiHistory([{ role: 'model', content: 'New optimal thread initialized.' }]);
                   setActiveTab('chat');
                 }}
-                className="w-full py-2 bg-[#8b5cf6] hover:bg-indigo-600 text-white rounded-md text-[10px] font-bold transition-all tracking-wider shadow-sm cursor-pointer"
+                className="w-full py-2 text-white rounded-md text-[10px] font-bold transition-all tracking-wider cursor-pointer active:scale-95 hover:shadow-[0_0_20px_rgba(139,92,246,0.5)]"
+                style={{
+                  background: 'linear-gradient(135deg, #7c3aed, #9333ea, #c026d3)',
+                  boxShadow: '0 0 12px rgba(139,92,246,0.3)',
+                }}
               >
                 Start New Chat
               </button>
