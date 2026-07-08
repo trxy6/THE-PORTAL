@@ -553,44 +553,52 @@ export default function MusicHub({ portalDarkMode, themeColor }: MusicHubProps) 
     return res.json();
   };
 
-  // Fetch Liked Songs (Saved Tracks) with full pagination
+  // Fetch Liked Songs (Saved Tracks) with full parallel pagination
   const fetchAllLikedSongs = async (activeToken: string) => {
     setActivePlaybackStatus("loading");
     try {
-      let url = "v1/me/tracks?limit=50";
-      let allTracks: SpotifyTrack[] = [];
-
-      // Page through entire library (no cap)
-      while (url) {
-        const data = await apiFetch(activeToken, url);
-        if (!data || !data.items || data.items.length === 0) break;
-
-        const mapped = data.items
-          .filter((item: any) => item.track && item.track.id)
-          .map((item: any) => ({
-            id: item.track.id,
-            title: item.track.name,
-            artist: item.track.artists.map((a: any) => a.name).join(", "),
-            album: item.track.album.name,
-            imageUrl: item.track.album.images[0]?.url || "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=300&q=80",
-            spotifyUri: item.track.uri,
-            duration: formatDuration(item.track.duration_ms),
-            durationMs: item.track.duration_ms,
-            previewUrl: item.track.preview_url
-          }));
-
-        allTracks = [...allTracks, ...mapped];
-
-        if (data.next) {
-          const urlObj = new URL(data.next);
-          url = urlObj.pathname.substring(1) + urlObj.search;
-        } else {
-          break;
-        }
+      // 1. Fetch first page to grab total count
+      const firstPage = await apiFetch(activeToken, "v1/me/tracks?limit=50");
+      if (!firstPage || !firstPage.items) {
+        setLikedTracks([]);
+        setCurrentTracksList([]);
+        setActivePlaybackStatus("idle");
+        return;
       }
 
-      setLikedTracks(allTracks);
-      setCurrentTracksList(allTracks);
+      const total = firstPage.total;
+      let allItems = [...firstPage.items];
+
+      // 2. Fetch all remaining pages concurrently
+      if (total > 50) {
+        const promises = [];
+        for (let offset = 50; offset < total; offset += 50) {
+          promises.push(apiFetch(activeToken, `v1/me/tracks?offset=${offset}&limit=50`));
+        }
+        const results = await Promise.all(promises);
+        results.forEach((res) => {
+          if (res && res.items) {
+            allItems = [...allItems, ...res.items];
+          }
+        });
+      }
+
+      const mapped = allItems
+        .filter((item: any) => item && item.track && item.track.id)
+        .map((item: any) => ({
+          id: item.track.id,
+          title: item.track.name,
+          artist: item.track.artists.map((a: any) => a.name).join(", "),
+          album: item.track.album.name,
+          imageUrl: item.track.album.images[0]?.url || "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=300&q=80",
+          spotifyUri: item.track.uri,
+          duration: formatDuration(item.track.duration_ms),
+          durationMs: item.track.duration_ms,
+          previewUrl: item.track.preview_url
+        }));
+
+      setLikedTracks(mapped);
+      setCurrentTracksList(mapped);
       setActivePlaybackStatus("idle");
     } catch (e) {
       console.error("fetchAllLikedSongs error:", e);
@@ -598,35 +606,42 @@ export default function MusicHub({ portalDarkMode, themeColor }: MusicHubProps) 
     }
   };
 
-  // Fetch ALL playlists with full pagination (no page cap)
+  // Fetch ALL playlists with full parallel pagination
   const fetchAllPlaylists = async (activeToken: string) => {
     try {
-      let url = "v1/me/playlists?limit=50";
-      let allPlaylists: SpotifyPlaylist[] = [];
-
-      while (url) {
-        const data = await apiFetch(activeToken, url);
-        if (!data || !data.items || data.items.length === 0) break;
-
-        const mapped = data.items.map((item: any) => ({
-          id: item.id,
-          name: item.name,
-          description: item.description || "Spotify Playlist",
-          imageUrl: item.images?.[0]?.url || "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=300",
-          trackCount: item.tracks?.total ?? 0
-        }));
-
-        allPlaylists = [...allPlaylists, ...mapped];
-
-        if (data.next) {
-          const urlObj = new URL(data.next);
-          url = urlObj.pathname.substring(1) + urlObj.search;
-        } else {
-          break;
-        }
+      // 1. Fetch first page to grab total count
+      const firstPage = await apiFetch(activeToken, "v1/me/playlists?limit=50");
+      if (!firstPage || !firstPage.items) {
+        setPlaylists([]);
+        return;
       }
 
-      setPlaylists(allPlaylists);
+      const total = firstPage.total;
+      let allItems = [...firstPage.items];
+
+      // 2. Fetch all remaining pages concurrently
+      if (total > 50) {
+        const promises = [];
+        for (let offset = 50; offset < total; offset += 50) {
+          promises.push(apiFetch(activeToken, `v1/me/playlists?offset=${offset}&limit=50`));
+        }
+        const results = await Promise.all(promises);
+        results.forEach((res) => {
+          if (res && res.items) {
+            allItems = [...allItems, ...res.items];
+          }
+        });
+      }
+
+      const mapped = allItems.map((item: any) => ({
+        id: item.id,
+        name: item.name,
+        description: item.description || "Spotify Playlist",
+        imageUrl: item.images?.[0]?.url || "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=300",
+        trackCount: item.tracks?.total ?? 0
+      }));
+
+      setPlaylists(mapped);
     } catch (e) {
       console.error("fetchAllPlaylists error:", e);
     }
