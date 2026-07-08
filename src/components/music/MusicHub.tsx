@@ -260,6 +260,7 @@ export default function MusicHub({ portalDarkMode, themeColor }: MusicHubProps) 
         redirect_uri: redirectUri,
         code_challenge_method: "S256",
         code_challenge: challenge,
+        show_dialog: "true"
       }).toString();
 
       window.location.href = authUrl;
