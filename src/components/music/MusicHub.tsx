@@ -1241,7 +1241,11 @@ export default function MusicHub({ portalDarkMode, themeColor }: MusicHubProps) 
           </h3>
 
           <button
-            onClick={() => setActiveTab("liked")}
+            onClick={() => {
+              setActiveTab("liked");
+              setShowQueue(false);
+              setSearchQuery("");
+            }}
             disabled={!token}
             className={`w-full text-left px-3 py-2.5 rounded-xl text-xs font-semibold flex items-center justify-between transition disabled:opacity-20 disabled:pointer-events-none ${
               activeTab === "liked"
@@ -1257,7 +1261,11 @@ export default function MusicHub({ portalDarkMode, themeColor }: MusicHubProps) 
           </button>
 
           <button
-            onClick={() => setActiveTab("playlists")}
+            onClick={() => {
+              setActiveTab("playlists");
+              setShowQueue(false);
+              setSearchQuery("");
+            }}
             disabled={!token}
             className={`w-full text-left px-3 py-2.5 rounded-xl text-xs font-semibold flex items-center justify-between transition disabled:opacity-20 disabled:pointer-events-none ${
               activeTab === "playlists"
@@ -1273,7 +1281,11 @@ export default function MusicHub({ portalDarkMode, themeColor }: MusicHubProps) 
           </button>
 
           <button
-            onClick={() => setActiveTab("artists")}
+            onClick={() => {
+              setActiveTab("artists");
+              setShowQueue(false);
+              setSearchQuery("");
+            }}
             disabled={!token}
             className={`w-full text-left px-3 py-2.5 rounded-xl text-xs font-semibold flex items-center justify-between transition disabled:opacity-20 disabled:pointer-events-none ${
               activeTab === "artists"
@@ -1294,7 +1306,12 @@ export default function MusicHub({ portalDarkMode, themeColor }: MusicHubProps) 
               {playlists.map((pl) => (
                 <button
                   key={pl.id}
-                  onClick={() => setSelectedPlaylistId(pl.id)}
+                  onClick={() => {
+                    setSelectedPlaylistId(pl.id);
+                    setActiveTab("playlists");
+                    setShowQueue(false);
+                    setSearchQuery("");
+                  }}
                   className={`w-full text-left px-2.5 py-2 rounded-lg text-[11px] truncate flex items-center gap-2 transition ${
                     selectedPlaylistId === pl.id
                       ? "bg-white/5 text-[var(--theme-accent)] font-semibold border-l-2 border-[var(--theme-accent)]"
@@ -1548,13 +1565,6 @@ export default function MusicHub({ portalDarkMode, themeColor }: MusicHubProps) 
             </button>
           </div>
 
-          {/* API Error Diagnostics Notification Banner */}
-          {apiError && (
-            <div className="bg-red-500/10 border border-red-500/20 text-red-400 p-2.5 rounded-xl text-[10px] flex justify-between items-center gap-2 select-none animate-[fadeIn_0.2s_ease-out]">
-              <span className="truncate">{apiError}</span>
-              <button onClick={() => setApiError(null)} className="font-bold hover:text-white shrink-0">✕</button>
-            </div>
-          )}
 
           {!showQueue ? (
             <>
