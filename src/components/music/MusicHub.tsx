@@ -16,11 +16,9 @@ import {
   Heart,
   ListMusic,
   Sparkles,
-  Link2,
   Disc,
   User,
   Power,
-  RotateCcw,
   Sliders,
   ExternalLink
 } from "lucide-react";
@@ -38,6 +36,26 @@ interface SpotifyTrack {
   duration: string;
   durationMs: number;
   previewUrl?: string | null;
+}
+
+interface SpotifyPlaylist {
+  id: string;
+  name: string;
+  description: string;
+  imageUrl: string;
+  trackCount: number;
+}
+
+interface SpotifyArtist {
+  id: string;
+  name: string;
+  imageUrl: string;
+  genres: string[];
+}
+
+interface MusicHubProps {
+  portalDarkMode: boolean;
+  themeColor: string;
 }
 
 const CURATED_TRACKS: SpotifyTrack[] = [
@@ -97,26 +115,6 @@ const CURATED_TRACKS: SpotifyTrack[] = [
     previewUrl: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-5.mp3"
   }
 ];
-
-interface SpotifyPlaylist {
-  id: string;
-  name: string;
-  description: string;
-  imageUrl: string;
-  trackCount: number;
-}
-
-interface SpotifyArtist {
-  id: string;
-  name: string;
-  imageUrl: string;
-  genres: string[];
-}
-
-interface MusicHubProps {
-  portalDarkMode: boolean;
-  themeColor: string;
-}
 
 // PKCE Cryptographic Helpers
 function generateRandomString(length: number): string {
@@ -179,25 +177,17 @@ export default function MusicHub({ portalDarkMode, themeColor }: MusicHubProps) 
 
   // UI state
   const [activePlaybackStatus, setActivePlaybackStatus] = useState<"idle" | "loading" | "playing" | "paused" | "error">("idle");
-  const [showEmbedOnly, setShowEmbedOnly] = useState<boolean>(false);
+
+  // Web Playback SDK States
+  const [spotifyPlayer, setSpotifyPlayer] = useState<any>(null);
+  const [sdkDeviceId, setSdkDeviceId] = useState<string | null>(null);
+  const [isSdkConnected, setIsSdkConnected] = useState<boolean>(false);
 
   // Refs
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const animationRef = useRef<number | null>(null);
-
-  // Native audio progress handlers
-  const handleTimeUpdate = () => {
-    if (audioRef.current) {
-      setCurrentTime(Math.floor(audioRef.current.currentTime));
-    }
-  };
-
-  const handleLoadedMetadata = () => {
-    if (audioRef.current) {
-      setDuration(Math.floor(audioRef.current.duration));
-    }
-  };
+  const spotifyPlayerRef = useRef<any>(null);
 
   // Theme Helpers
   const themeHex = useMemo(() => {
@@ -211,6 +201,19 @@ export default function MusicHub({ portalDarkMode, themeColor }: MusicHubProps) 
         return "#8b5cf6";
     }
   }, [themeColor]);
+
+  // Native audio progress handlers
+  const handleTimeUpdate = () => {
+    if (audioRef.current) {
+      setCurrentTime(Math.floor(audioRef.current.currentTime));
+    }
+  };
+
+  const handleLoadedMetadata = () => {
+    if (audioRef.current) {
+      setDuration(Math.floor(audioRef.current.duration));
+    }
+  };
 
   // 1. OAUTH FLOW HANDLERS
   const handleConnectSpotify = async () => {
@@ -227,7 +230,8 @@ export default function MusicHub({ portalDarkMode, themeColor }: MusicHubProps) 
         "user-library-read",
         "user-top-read",
         "user-read-playback-state",
-        "user-modify-playback-state"
+        "user-modify-playback-state",
+        "streaming" // Critical scope for Web Playback SDK
       ].join(" ");
 
       const redirectUri = window.location.origin + window.location.pathname;
@@ -248,6 +252,11 @@ export default function MusicHub({ portalDarkMode, themeColor }: MusicHubProps) 
   };
 
   const handleDisconnect = () => {
+    if (spotifyPlayerRef.current) {
+      try {
+        spotifyPlayerRef.current.disconnect();
+      } catch (e) {}
+    }
     localStorage.removeItem("spotify_access_token");
     localStorage.removeItem("spotify_refresh_token");
     setToken(null);
@@ -257,6 +266,9 @@ export default function MusicHub({ portalDarkMode, themeColor }: MusicHubProps) 
     setLikedTracks([]);
     setTopArtists([]);
     setCurrentTrack(null);
+    setSpotifyPlayer(null);
+    setSdkDeviceId(null);
+    setIsSdkConnected(false);
   };
 
   // Intercept Redirect code parameters
@@ -364,7 +376,101 @@ export default function MusicHub({ portalDarkMode, themeColor }: MusicHubProps) 
     return res.json();
   };
 
-  // 2. DATA FETCHERS
+  // 2. SPOTIFY WEB PLAYBACK SDK INITIALIZATION
+  useEffect(() => {
+    if (!token) return;
+
+    // Inject Spotify Web Playback SDK Script
+    const scriptId = "spotify-player-sdk";
+    let script = document.getElementById(scriptId) as HTMLScriptElement | null;
+    if (!script) {
+      script = document.createElement("script");
+      script.id = scriptId;
+      script.src = "https://sdk.scdn.co/spotify-player.js";
+      script.async = true;
+      document.body.appendChild(script);
+    }
+
+    // Set callback window handler
+    (window as any).onSpotifyWebPlaybackSDKReady = () => {
+      const player = new (window as any).Spotify.Player({
+        name: "The Portal Player",
+        getOAuthToken: (cb: any) => cb(token),
+        volume: volume / 100
+      });
+
+      player.addListener("ready", ({ device_id }: { device_id: string }) => {
+        console.log("Spotify Web Playback SDK ready with Device ID:", device_id);
+        setSdkDeviceId(device_id);
+        setIsSdkConnected(true);
+        
+        // Auto-transfer playback directly to this browser tab device!
+        fetch(`https://api.spotify.com/v1/me/player`, {
+          method: "PUT",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            device_ids: [device_id],
+            play: false
+          })
+        }).catch(() => {});
+      });
+
+      player.addListener("not_ready", () => {
+        setIsSdkConnected(false);
+        setSdkDeviceId(null);
+      });
+
+      // Synchronize player states automatically (album art, position, playing state)
+      player.addListener("player_state_changed", (state: any) => {
+        if (!state) return;
+        
+        const activeTrack = state.track_window.current_track;
+        if (activeTrack) {
+          setCurrentTrack({
+            id: activeTrack.id,
+            title: activeTrack.name,
+            artist: activeTrack.artists.map((a: any) => a.name).join(", "),
+            album: activeTrack.album.name,
+            imageUrl: activeTrack.album.images[0]?.url || "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=300&q=80",
+            spotifyUri: activeTrack.uri,
+            duration: formatDuration(state.duration),
+            durationMs: state.duration
+          });
+        }
+        
+        setIsPlaying(!state.paused);
+        setDuration(Math.floor(state.duration / 1000));
+        setCurrentTime(Math.floor(state.position / 1000));
+      });
+
+      player.addListener("initialization_error", (e: any) => console.warn(e));
+      player.addListener("authentication_error", (e: any) => console.warn(e));
+      player.addListener("account_error", (e: any) => {
+        console.warn("Spotify Playback SDK Account Error. Playback SDK is only available for Spotify Premium accounts.", e);
+        setIsSdkConnected(false);
+      });
+
+      player.connect();
+      setSpotifyPlayer(player);
+      spotifyPlayerRef.current = player;
+    };
+
+    return () => {
+      // Don't disconnect here on every load, keep player alive while tab persists
+    };
+  }, [token]);
+
+  // Sync volume adjustments to background Spotify player
+  useEffect(() => {
+    if (spotifyPlayerRef.current && isSdkConnected) {
+      spotifyPlayerRef.current.setVolume(volume / 100).catch(() => {});
+    }
+  }, [volume, isSdkConnected]);
+
+  // 3. DATA FETCHERS
   // Fetch user profile info
   useEffect(() => {
     if (!token) return;
@@ -525,44 +631,48 @@ export default function MusicHub({ portalDarkMode, themeColor }: MusicHubProps) 
     return () => clearTimeout(delaySearch);
   }, [searchQuery, token]);
 
-  // 3. MUSIC PLAYBACK ACTIVE DEVICE CONTROLS
+  // 4. MUSIC PLAYBACK ACTIVE DEVICE CONTROLS
   const handlePlayTrack = async (track: SpotifyTrack) => {
     setCurrentTrack(track);
     setIsPlaying(false);
     setDuration(Math.floor(track.durationMs / 1000));
     setCurrentTime(0);
 
-    // 1. Play preview audio natively if present
+    // Stop local standard audio element
     if (audioRef.current) {
-      if (track.previewUrl) {
-        audioRef.current.src = track.previewUrl;
-        audioRef.current.load();
-        audioRef.current.play()
-          .then(() => {
-            setIsPlaying(true);
-            setShowEmbedOnly(false); // Default to vinyl visualizer
+      audioRef.current.pause();
+      audioRef.current.src = "";
+    }
+
+    // A. If Spotify Web Playback SDK is connected, play full song directly on virtual device!
+    if (isSdkConnected && sdkDeviceId && token && track.spotifyUri) {
+      try {
+        await fetch(`https://api.spotify.com/v1/me/player/play?device_id=${sdkDeviceId}`, {
+          method: "PUT",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            uris: [track.spotifyUri]
           })
-          .catch((e) => {
-            console.warn("Autoplay block, showing Embed:", e);
-            setShowEmbedOnly(true);
-            setIsPlaying(true);
-          });
-      } else {
-        // No preview URL, stop native playback and show Spotify Iframe Embed for full song
-        audioRef.current.src = "";
-        setShowEmbedOnly(true);
+        });
         setIsPlaying(true);
+        return;
+      } catch (e) {
+        console.warn("Failed to play on Spotify Web SDK Device, falling back to native previews...", e);
       }
     }
 
-    // 2. Sync state with active Spotify Connect Player session if available
-    if (token && track.spotifyUri) {
-      try {
-        await fetchWebApi("v1/me/player/play", "PUT", {
-          uris: [track.spotifyUri]
-        });
-      } catch (e) {
-        console.warn("No active Spotify Connect device detected.", e);
+    // B. Fallback Mode: Play 30-second preview URL natively using browser <audio> tag
+    if (audioRef.current) {
+      const sourceUrl = track.previewUrl || CURATED_TRACKS[0].previewUrl;
+      if (sourceUrl) {
+        audioRef.current.src = sourceUrl;
+        audioRef.current.load();
+        audioRef.current.play()
+          .then(() => setIsPlaying(true))
+          .catch((e) => console.error("Playback fallback play failed:", e));
       }
     }
   };
@@ -570,7 +680,15 @@ export default function MusicHub({ portalDarkMode, themeColor }: MusicHubProps) 
   const handlePlayToggle = async () => {
     if (!currentTrack) return;
     
-    // Toggle native audio playback
+    // A. If Spotify Web Playback SDK is connected, toggle play/pause natively
+    if (spotifyPlayerRef.current && isSdkConnected) {
+      try {
+        await spotifyPlayerRef.current.togglePlay();
+        return;
+      } catch (e) {}
+    }
+
+    // B. Toggle local audio tag playback
     if (audioRef.current && audioRef.current.src) {
       if (audioRef.current.paused) {
         audioRef.current.play()
@@ -581,25 +699,18 @@ export default function MusicHub({ portalDarkMode, themeColor }: MusicHubProps) 
         setIsPlaying(false);
       }
     } else {
-      // Toggle local state
       setIsPlaying(!isPlaying);
-    }
-
-    // Also try to toggle Spotify Connect active device
-    if (token) {
-      try {
-        if (isPlaying) {
-          await fetchWebApi("v1/me/player/pause", "PUT");
-        } else {
-          await fetchWebApi("v1/me/player/play", "PUT");
-        }
-      } catch (e) {
-        console.warn("Failed to toggle remote Spotify player state:", e);
-      }
     }
   };
 
-  const handleSkipForward = () => {
+  const handleSkipForward = async () => {
+    if (spotifyPlayerRef.current && isSdkConnected) {
+      try {
+        await spotifyPlayerRef.current.nextTrack();
+        return;
+      } catch (e) {}
+    }
+
     const list = activeTab === "search" ? searchResults : currentTracksList;
     if (!currentTrack || list.length === 0) return;
     const idx = list.findIndex(t => t.id === currentTrack.id);
@@ -610,7 +721,14 @@ export default function MusicHub({ portalDarkMode, themeColor }: MusicHubProps) 
     }
   };
 
-  const handleSkipBackward = () => {
+  const handleSkipBackward = async () => {
+    if (spotifyPlayerRef.current && isSdkConnected) {
+      try {
+        await spotifyPlayerRef.current.previousTrack();
+        return;
+      } catch (e) {}
+    }
+
     const list = activeTab === "search" ? searchResults : currentTracksList;
     if (!currentTrack || list.length === 0) return;
     const idx = list.findIndex(t => t.id === currentTrack.id);
@@ -630,16 +748,6 @@ export default function MusicHub({ portalDarkMode, themeColor }: MusicHubProps) 
     }
   };
 
-  // Sync volume changes with Spotify Connect active device
-  useEffect(() => {
-    if (!token) return;
-    const timer = setTimeout(() => {
-      fetchWebApi(`v1/me/player/volume?volume_percent=${volume}`, "PUT")
-        .catch(() => {});
-    }, 250);
-    return () => clearTimeout(timer);
-  }, [volume]);
-
   // Sync volume with native audio element
   useEffect(() => {
     if (audioRef.current) {
@@ -647,10 +755,10 @@ export default function MusicHub({ portalDarkMode, themeColor }: MusicHubProps) 
     }
   }, [volume]);
 
-  // Local simulated progress tick when music is active
+  // Local simulated progress tick when music is active and SDK is NOT connected
   useEffect(() => {
     let timer: any = null;
-    if (isPlaying && duration > 0) {
+    if (isPlaying && duration > 0 && !isSdkConnected) {
       timer = setInterval(() => {
         setCurrentTime((prev) => {
           if (prev >= duration) {
@@ -662,7 +770,7 @@ export default function MusicHub({ portalDarkMode, themeColor }: MusicHubProps) 
       }, 1000);
     }
     return () => clearInterval(timer);
-  }, [isPlaying, duration, currentTrack]);
+  }, [isPlaying, duration, currentTrack, isSdkConnected]);
 
   // Equalizer canvas drawing
   useEffect(() => {
@@ -870,95 +978,72 @@ export default function MusicHub({ portalDarkMode, themeColor }: MusicHubProps) 
         </div>
       </div>
 
-      {/* 2. CENTER PANEL: Spinning Disc / Interactive Iframe Player */}
+      {/* 2. CENTER PANEL: Spinning Disc / Web Playback SDK Host */}
       <div className="lg:col-span-5 flex flex-col gap-6 items-center justify-between h-[620px] bg-white/[0.01] border border-white/[0.03] rounded-3xl p-6 relative overflow-hidden">
         {/* Top Header info */}
         <div className="w-full flex items-center justify-between z-10">
-          {currentTrack && (
-            <button
-              onClick={() => setShowEmbedOnly(!showEmbedOnly)}
-              className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 transition text-[10px] font-bold flex items-center gap-1 cursor-pointer"
-              title="Toggle Embed Playback / Vinyl visualizer"
-            >
-              <Sliders className="w-3 h-3 text-[var(--theme-accent)]" />
-              {showEmbedOnly ? "Show Vinyl" : "Show Play Card"}
-            </button>
+          <div className="flex items-center gap-2">
+            <Sparkles className="w-4 h-4 text-[var(--theme-accent)]" />
+            <span className="text-xs uppercase tracking-widest font-bold text-zinc-400">Spotify Connect Hub</span>
+          </div>
+          {isSdkConnected && (
+            <div className="flex items-center gap-1.5">
+              <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+              <span className="text-[10px] text-emerald-400 uppercase tracking-widest font-bold">Portal Player Active</span>
+            </div>
           )}
         </div>
 
-        {/* Dynamic Inner Component container */}
-        {showEmbedOnly && currentTrack ? (
-          /* EMBEDDED PLAYER IFRAME (Full browser playback) */
-          <div className="w-full my-auto flex items-center justify-center z-10 animate-[fadeIn_0.4s_ease-out]">
+        {/* SPINNING VINYL DISC VISUALIZER */}
+        <div className="relative my-auto flex items-center justify-center group z-10 animate-[fadeIn_0.4s_ease-out]">
+          <div
+            className={`w-64 h-64 rounded-full bg-zinc-950 border border-white/10 flex items-center justify-center shadow-[0_0_55px_rgba(0,0,0,0.85)] relative transition-transform duration-[4000ms] ease-linear ${
+              isPlaying ? "animate-[spin_10s_linear_infinite]" : "rotate-12"
+            }`}
+          >
+            {/* Record Grooves */}
+            <div className="absolute inset-2 rounded-full border border-white/[0.04] pointer-events-none" />
+            <div className="absolute inset-6 rounded-full border border-white/[0.03] pointer-events-none" />
+            <div className="absolute inset-10 rounded-full border border-white/[0.03] pointer-events-none" />
+            <div className="absolute inset-14 rounded-full border border-white/[0.03] pointer-events-none" />
+            <div className="absolute inset-20 rounded-full border border-white/[0.02] pointer-events-none" />
+
+            {/* Glowing album art cover art center */}
             <div
-              className="w-full max-w-sm rounded-3xl overflow-hidden border-2 border-white/10 shadow-2xl relative"
+              className="w-28 h-28 rounded-full overflow-hidden border-2 border-zinc-900 transition-all duration-300 group-hover:scale-105"
               style={{
-                boxShadow: `0 0 35px var(--theme-glow)`
+                boxShadow: `0 0 25px var(--theme-glow)`
               }}
             >
-              <iframe
-                src={`https://open.spotify.com/embed/track/${currentTrack.id}`}
-                width="100%"
-                height="352"
-                frameBorder="0"
-                allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
-                loading="lazy"
-                className="block"
-              />
+              {currentTrack ? (
+                <img
+                  src={currentTrack.imageUrl}
+                  alt={currentTrack.title}
+                  className="w-full h-full object-cover select-none"
+                  referrerPolicy="no-referrer"
+                />
+              ) : (
+                <div className="w-full h-full bg-zinc-900 flex items-center justify-center text-zinc-500">
+                  <Disc className="w-8 h-8" />
+                </div>
+              )}
             </div>
+
+            {/* Center hole */}
+            <div className="absolute w-6 h-6 rounded-full bg-[#04020a] border-2 border-zinc-950" />
           </div>
-        ) : (
-          /* SPINNING VINYL DISC VISUALIZER */
-          <div className="relative my-auto flex items-center justify-center group z-10 animate-[fadeIn_0.4s_ease-out]">
-            <div
-              className={`w-64 h-64 rounded-full bg-zinc-950 border border-white/10 flex items-center justify-center shadow-[0_0_55px_rgba(0,0,0,0.85)] relative transition-transform duration-[4000ms] ease-linear ${
-                isPlaying ? "animate-[spin_10s_linear_infinite]" : "rotate-12"
-              }`}
-            >
-              {/* Record Grooves */}
-              <div className="absolute inset-2 rounded-full border border-white/[0.04] pointer-events-none" />
-              <div className="absolute inset-6 rounded-full border border-white/[0.03] pointer-events-none" />
-              <div className="absolute inset-10 rounded-full border border-white/[0.03] pointer-events-none" />
-              <div className="absolute inset-14 rounded-full border border-white/[0.03] pointer-events-none" />
-              <div className="absolute inset-20 rounded-full border border-white/[0.02] pointer-events-none" />
 
-              {/* Glowing album art cover art center */}
-              <div
-                className="w-28 h-28 rounded-full overflow-hidden border-2 border-zinc-900 transition-all duration-300 group-hover:scale-105"
-                style={{
-                  boxShadow: `0 0 25px var(--theme-glow)`
-                }}
-              >
-                {currentTrack ? (
-                  <img
-                    src={currentTrack.imageUrl}
-                    alt={currentTrack.title}
-                    className="w-full h-full object-cover select-none"
-                    referrerPolicy="no-referrer"
-                  />
-                ) : (
-                  <div className="w-full h-full bg-zinc-900 flex items-center justify-center text-zinc-500">
-                    <Disc className="w-8 h-8" />
-                  </div>
-                )}
-              </div>
-
-              {/* Center hole */}
-              <div className="absolute w-6 h-6 rounded-full bg-[#04020a] border-2 border-zinc-950" />
-            </div>
-
-            {/* Arm Needle indicator */}
-            <div
-              className="absolute top-0 right-0 w-24 h-24 origin-top-left transition-all duration-[800ms] pointer-events-none"
-              style={{
-                transform: isPlaying ? "rotate(15deg) translate(20px, -5px)" : "rotate(-12deg) translate(5px, -15px)"
-              }}
-            >
-              <div className="w-1.5 h-16 bg-zinc-600 rounded-full shadow absolute top-0 left-0" />
-              <div className="w-4 h-4 bg-zinc-400 rounded border border-zinc-500 shadow absolute top-16 -left-1" />
-            </div>
+          {/* Arm Needle indicator */}
+          <div
+            className="absolute top-0 right-0 w-24 h-24 origin-top-left transition-all duration-[800ms] pointer-events-none"
+            style={{
+              transform: isPlaying ? "rotate(15deg) translate(20px, -5px)" : "rotate(-12deg) translate(5px, -15px)"
+            }}
+          >
+            <div className="w-1.5 h-16 bg-zinc-600 rounded-full shadow absolute top-0 left-0" />
+            <div className="w-4 h-4 bg-zinc-400 rounded border border-zinc-500 shadow absolute top-16 -left-1" />
           </div>
-        )}
+        </div>
 
         {/* Current track information */}
         <div className="text-center z-10 w-full">
@@ -989,28 +1074,34 @@ export default function MusicHub({ portalDarkMode, themeColor }: MusicHubProps) 
           )}
         </div>
 
-        {/* Simulated Playback Progress Slider */}
-        {!showEmbedOnly && (
-          <div className="w-full flex flex-col gap-1 z-10 animate-[fadeIn_0.3s_ease-out]">
-            <div className="flex items-center gap-3 w-full">
-              <span className="text-[10px] text-zinc-500 tabular-nums w-8 text-right">
-                {formatSeconds(currentTime)}
-              </span>
-              <input
-                type="range"
-                min={0}
-                max={duration || 100}
-                value={currentTime}
-                onChange={(e) => setCurrentTime(parseInt(e.target.value, 10))}
-                disabled={!currentTrack}
-                className="flex-1 h-[3px] bg-white/10 appearance-none rounded-full cursor-pointer focus:outline-none accent-[var(--theme-accent)]"
-              />
-              <span className="text-[10px] text-zinc-500 tabular-nums w-8 text-left">
-                {formatSeconds(duration)}
-              </span>
-            </div>
+        {/* Playback Progress Slider */}
+        <div className="w-full flex flex-col gap-1 z-10">
+          <div className="flex items-center gap-3 w-full">
+            <span className="text-[10px] text-zinc-500 tabular-nums w-8 text-right">
+              {formatSeconds(currentTime)}
+            </span>
+            <input
+              type="range"
+              min={0}
+              max={duration || 100}
+              value={currentTime}
+              onChange={async (e) => {
+                const newPosSec = parseInt(e.target.value, 10);
+                setCurrentTime(newPosSec);
+                if (spotifyPlayerRef.current && isSdkConnected) {
+                  spotifyPlayerRef.current.seek(newPosSec * 1000).catch(() => {});
+                } else if (audioRef.current && audioRef.current.src) {
+                  audioRef.current.currentTime = newPosSec;
+                }
+              }}
+              disabled={!currentTrack}
+              className="flex-1 h-[3px] bg-white/10 appearance-none rounded-full cursor-pointer focus:outline-none accent-[var(--theme-accent)]"
+            />
+            <span className="text-[10px] text-zinc-500 tabular-nums w-8 text-left">
+              {formatSeconds(duration)}
+            </span>
           </div>
-        )}
+        </div>
 
         {/* Bottom player controls */}
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4 w-full z-10 pt-4 border-t border-white/5">
@@ -1033,35 +1124,33 @@ export default function MusicHub({ portalDarkMode, themeColor }: MusicHubProps) 
           </div>
 
           {/* Main playback control buttons */}
-          {!showEmbedOnly && (
-            <div className="flex items-center gap-6 justify-center animate-[fadeIn_0.3s_ease-out]">
-              <button
-                onClick={handleSkipBackward}
-                disabled={!currentTrack}
-                className="p-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl transition text-white disabled:opacity-20 disabled:pointer-events-none"
-              >
-                <SkipBack className="w-4 h-4 fill-current" />
-              </button>
-              <button
-                onClick={handlePlayToggle}
-                disabled={!currentTrack}
-                className="w-14 h-14 bg-[var(--theme-accent)] hover:scale-105 text-white flex items-center justify-center rounded-full transition shadow-[0_0_20px_var(--theme-glow)] cursor-pointer"
-              >
-                {isPlaying ? <Pause className="w-6 h-6 fill-current" /> : <Play className="w-6 h-6 fill-current translate-x-0.5" />}
-              </button>
-              <button
-                onClick={handleSkipForward}
-                disabled={!currentTrack}
-                className="p-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl transition text-white disabled:opacity-20 disabled:pointer-events-none"
-              >
-                <SkipForward className="w-4 h-4 fill-current" />
-              </button>
-            </div>
-          )}
+          <div className="flex items-center gap-6 justify-center">
+            <button
+              onClick={handleSkipBackward}
+              disabled={!currentTrack}
+              className="p-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl transition text-white disabled:opacity-20 disabled:pointer-events-none"
+            >
+              <SkipBack className="w-4 h-4 fill-current" />
+            </button>
+            <button
+              onClick={handlePlayToggle}
+              disabled={!currentTrack}
+              className="w-14 h-14 bg-[var(--theme-accent)] hover:scale-105 text-white flex items-center justify-center rounded-full transition shadow-[0_0_20px_var(--theme-glow)] cursor-pointer"
+            >
+              {isPlaying ? <Pause className="w-6 h-6 fill-current" /> : <Play className="w-6 h-6 fill-current translate-x-0.5" />}
+            </button>
+            <button
+              onClick={handleSkipForward}
+              disabled={!currentTrack}
+              className="p-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl transition text-white disabled:opacity-20 disabled:pointer-events-none"
+            >
+              <SkipForward className="w-4 h-4 fill-current" />
+            </button>
+          </div>
 
           {/* Connect status label */}
           <div className="hidden sm:block text-[10px] uppercase font-bold text-zinc-500 border border-white/10 rounded-full px-2.5 py-1 tracking-wider bg-white/[0.02]">
-            {token ? "Active Session" : "Offline"}
+            {token ? (isSdkConnected ? "SDK Session" : "API Connected") : "Offline"}
           </div>
         </div>
       </div>
@@ -1176,6 +1265,7 @@ export default function MusicHub({ portalDarkMode, themeColor }: MusicHubProps) 
           </div>
         </div>
       </div>
+
       {/* Native HTML5 Audio Element for previews and curated tracks */}
       <audio
         ref={audioRef}
