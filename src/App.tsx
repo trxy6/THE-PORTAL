@@ -184,6 +184,9 @@ export default function App() {
     }
   });
 
+  // --- Game Selection State ---
+  const [selectedGameSuite, setSelectedGameSuite] = useState<'arcade' | 'drift'>('arcade');
+
   // --- TI-84 Plus CE Graphing Calculator States ---
   const [mathLoaded, setMathLoaded] = useState(false);
   const [currentScreen, setCurrentScreen] = useState('HOME');
@@ -3976,22 +3979,50 @@ export default function App() {
               <div className="flex items-center justify-between">
                 <div>
                   <h2 className="text-sm font-bold text-slate-100 uppercase tracking-widest flex items-center gap-2">
-                    <Gamepad2 className="w-4 h-4 text-blue-400" />
-                    Neon Drift Arena
+                    <Gamepad2 className="w-4 h-4 text-purple-400" />
+                    Portal Arcade Chamber
                   </h2>
-                  <p className="text-xs text-slate-500">Live responsive retro simulation canvas play</p>
+                  <p className="text-xs text-slate-500">Multiplayer party games, tabletop codex, and canvas arcade play</p>
                 </div>
                 <button 
                   onClick={() => setActiveTab('home')}
-                  className="px-2.5 py-1 bg-slate-950 border border-white/5 text-[10px] text-slate-400 hover:text-white transition-colors"
+                  className="px-3 py-1 bg-slate-950 border border-white/5 text-[10px] text-slate-400 hover:text-white rounded-md cursor-pointer transition-colors"
                 >
                   Return to Dashboard
                 </button>
               </div>
 
-              {/* Launched Neon Drift instance */}
-              <div className="max-w-4xl mx-auto">
-                <NeonDriftGame themeColor={themeColor} />
+              {/* Game selection toggle */}
+              <div className="flex bg-slate-950 p-1.5 rounded-xl border border-white/5 max-w-xs select-none">
+                <button 
+                  onClick={() => { haptic(10); setSelectedGameSuite('arcade'); }}
+                  className={`flex-1 py-1.5 rounded-lg text-[10px] font-bold transition-all duration-200 cursor-pointer text-center uppercase tracking-wider ${selectedGameSuite === 'arcade' ? 'text-white' : 'text-slate-400 hover:text-slate-200'}`}
+                  style={selectedGameSuite === 'arcade' ? {
+                    background: 'linear-gradient(135deg, #7c3aed, #9333ea, #c026d3)',
+                    boxShadow: '0 0 10px rgba(139,92,246,0.3)',
+                  } : undefined}
+                >
+                  🕹️ Cabin Arcade
+                </button>
+                <button 
+                  onClick={() => { haptic(10); setSelectedGameSuite('drift'); }}
+                  className={`flex-1 py-1.5 rounded-lg text-[10px] font-bold transition-all duration-200 cursor-pointer text-center uppercase tracking-wider ${selectedGameSuite === 'drift' ? 'text-white' : 'text-slate-400 hover:text-slate-200'}`}
+                  style={selectedGameSuite === 'drift' ? {
+                    background: 'linear-gradient(135deg, #7c3aed, #9333ea, #c026d3)',
+                    boxShadow: '0 0 10px rgba(139,92,246,0.3)',
+                  } : undefined}
+                >
+                  🏎️ Neon Drift
+                </button>
+              </div>
+
+              {/* Game Suite Render */}
+              <div className="max-w-5xl mx-auto">
+                {selectedGameSuite === 'arcade' ? (
+                  <TenGamesArena currentUser={currentUser || 'Traveler'} />
+                ) : (
+                  <NeonDriftGame themeColor={themeColor} />
+                )}
               </div>
             </div>
           )}
