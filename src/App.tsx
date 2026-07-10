@@ -7,12 +7,13 @@ import {
   Search, Bell, ChevronDown, Plus, Check, Play, Pause, Trash2, 
   Download, Sparkle, Server, Shield, Brain, Cpu, Database, 
   Battery, AlertCircle, RefreshCw, Send, CheckCircle2, X, Fingerprint,
-  PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen, Dices, Trophy, Trash, CalendarRange,
+  PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen, Dices, Trophy, Trash, CalendarRange, ChefHat,
   ArrowLeft, ArrowRight, Bot, Lock, Volume2, VolumeX, Link, Copy, Eye, Music, ExternalLink
 } from 'lucide-react';
 import { AudioPlayer, TRACKS } from './components/AudioPlayer';
 import { NeonDriftGame } from './components/NeonDriftGame';
 import DiceTrayCanvas from './components/DiceTrayCanvas';
+import { CookbookContainer } from './components/cookbook/CookbookContainer';
 import D20War from './components/D20War';
 import CosmicWords from './components/CosmicWords';
 import TenGamesArena from './components/TenGamesArena';
@@ -89,17 +90,18 @@ const store = {
 
 // Navigation list
 const NAV_ITEMS = [
-  { id: 'home', label: 'Home', icon: Home },
   { id: 'chat', label: 'AI Chat', icon: Bot },
-  { id: 'games', label: 'Games', icon: Gamepad2 },
-  { id: 'files', label: 'Files', icon: Folder },
-  { id: 'images', label: 'Images', icon: Image },
   { id: 'browser', label: 'Browser', icon: Globe },
-  { id: 'music', label: 'Music', icon: Music },
-  { id: 'utilities', label: 'Utilities', icon: Dices },
-  { id: 'sports', label: 'Sports', icon: Trophy },
   { id: 'code', label: 'Code', icon: Code2 },
+  { id: 'cookbook', label: 'Cookbook', icon: ChefHat },
+  { id: 'files', label: 'Files', icon: Folder },
+  { id: 'games', label: 'Games', icon: Gamepad2 },
+  { id: 'home', label: 'Home', icon: Home },
+  { id: 'images', label: 'Images', icon: Image },
+  { id: 'music', label: 'Music', icon: Music },
   { id: 'settings', label: 'Settings', icon: Settings },
+  { id: 'sports', label: 'Sports', icon: Trophy },
+  { id: 'utilities', label: 'Utilities', icon: Dices },
 ];
 
 // Quick Access Items from reference image
@@ -1853,6 +1855,31 @@ export default function App() {
     setSportsParlays(nextParlays);
     localStorage.setItem('sports_parlays', JSON.stringify(nextParlays));
     toast("Deleted saved parlay.");
+  };
+
+  const refreshParlays = async () => {
+    toast("🔄 Refreshing parlay outcomes across networks...");
+    const uniqueLeagues = Array.from(new Set(sportsParlays.flatMap(p => p.legs.map(l => l.league))));
+    if (uniqueLeagues.length === 0) {
+      await loadSportsScores();
+      return;
+    }
+
+    for (const league of uniqueLeagues) {
+      const config = SPORTS_LEAGUES[league as keyof typeof SPORTS_LEAGUES];
+      if (!config) continue;
+      try {
+        const res = await fetch(config.url, { cache: 'no-store' });
+        if (res.ok) {
+          const data = await res.json();
+          const games = Array.isArray(data?.events) ? data.events : [];
+          evaluateParlays(games, league as any);
+        }
+      } catch (err) {
+        console.error(`Failed to refresh league ${league}:`, err);
+      }
+    }
+    toast("✓ Parlays updated with latest public scores.");
   };
 
   // --- Auth Handlers ---
@@ -4576,12 +4603,6 @@ export default function App() {
                     >
                       Tasks
                     </button>
-                    <button 
-                      onClick={() => { haptic(5); setUtilityTab('cookbook'); }}
-                      className={`px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all cursor-pointer whitespace-nowrap ${utilityTab === 'cookbook' ? 'bg-[#ff7597]/20 border border-[#ff7597]/40 text-[#ff7597]' : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white'}`}
-                    >
-                      Cookbook
-                    </button>
                   </div>
                 </div>
 
@@ -5097,222 +5118,6 @@ export default function App() {
                 </div>
               )}
 
-              {utilityTab === 'cookbook' && (
-                <div className="space-y-6 animate-[fadeIn_0.3s_ease-out]">
-                  <div className="flex justify-between items-center pb-2.5 border-b border-slate-200/50 dark:border-white/5 select-none">
-                    <div className="flex items-center gap-2">
-                      <span className="text-pink-400 text-sm animate-pulse">🧪</span>
-                      <span className="text-xs font-bold text-slate-700 dark:text-slate-200 uppercase tracking-wider">Alchemist Cook's Codex</span>
-                    </div>
-                    <div className="flex bg-slate-100 dark:bg-slate-950 p-1 rounded-lg border border-slate-200/50 dark:border-white/5">
-                      <button 
-                        onClick={() => { haptic(5); setRecipeActiveSubMode('transcribe'); }}
-                        className={`px-3 py-1.5 rounded-md text-[9px] font-bold transition-all cursor-pointer ${recipeActiveSubMode === 'transcribe' ? 'bg-purple-600 text-white shadow-sm' : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'}`}
-                      >
-                        Social Link Decoder
-                      </button>
-                      <button 
-                        onClick={() => { haptic(5); setRecipeActiveSubMode('manual'); }}
-                        className={`px-3 py-1.5 rounded-md text-[9px] font-bold transition-all cursor-pointer ${recipeActiveSubMode === 'manual' ? 'bg-purple-600 text-white shadow-sm' : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'}`}
-                      >
-                        Enscribe Recipe
-                      </button>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 w-full">
-                    {/* Left Column: Input / Creation Area */}
-                    <div className="lg:col-span-8 flex flex-col gap-4">
-                      {recipeActiveSubMode === 'transcribe' ? (
-                        <div className="p-4 bg-slate-50 dark:bg-slate-950/40 border border-slate-200 dark:border-white/5 rounded-xl space-y-4">
-                          <div className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Social Link Transcription</div>
-                          <p className="text-[10px] text-slate-400 leading-relaxed">
-                            Paste any TikTok, Instagram, YouTube, or Facebook recipe link below. The alchemical portal will decrypt subtitles and parse the cooking steps automatically.
-                          </p>
-                          <div className="flex gap-2">
-                            <input 
-                              type="url" 
-                              placeholder="https://www.tiktok.com/@creator/video/..." 
-                              value={decryptUrl}
-                              onChange={(e) => setDecryptUrl(e.target.value)}
-                              className="flex-grow bg-slate-100 dark:bg-slate-950 border border-slate-200 dark:border-white/10 rounded-lg px-3 py-2 text-xs text-slate-800 dark:text-slate-100 outline-none focus:border-purple-500/60"
-                            />
-                            <button 
-                              onClick={handleDecodeRecipe}
-                              disabled={decrypting}
-                              className="px-4 py-2 bg-gradient-to-r from-pink-500 to-rose-600 hover:from-pink-400 hover:to-rose-500 text-white rounded-lg font-bold text-xs uppercase tracking-wider transition-all disabled:opacity-40"
-                            >
-                              {decrypting ? 'DECODING...' : 'DECODE LINK'}
-                            </button>
-                          </div>
-
-                          {decryptLogs.length > 0 && (
-                            <div className="p-3 bg-slate-950 border border-purple-500/20 text-[#ffd6ea] font-mono text-[9px] rounded-lg leading-relaxed space-y-1">
-                              {decryptLogs.map((log, idx) => (
-                                <div key={idx}>{log}</div>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      ) : (
-                        <form onSubmit={handleSaveManualRecipe} className="p-4 bg-slate-50 dark:bg-slate-950/40 border border-slate-200 dark:border-white/5 rounded-xl space-y-3.5">
-                          <div className="grid grid-cols-2 gap-3">
-                            <div className="flex flex-col gap-1">
-                              <label className="text-[9px] uppercase tracking-wider text-slate-500 font-bold">Recipe Title</label>
-                              <input 
-                                type="text"
-                                placeholder="e.g. Iron Skin Stew"
-                                value={newRecipeTitle}
-                                onChange={(e) => setNewRecipeTitle(e.target.value)}
-                                className="bg-slate-100 dark:bg-slate-950 border border-slate-200 dark:border-white/10 rounded-lg p-2 text-xs text-slate-800 dark:text-slate-100 outline-none"
-                              />
-                            </div>
-                            <div className="flex flex-col gap-1">
-                              <label className="text-[9px] uppercase tracking-wider text-slate-500 font-bold">Cooking Time</label>
-                              <input 
-                                type="text"
-                                placeholder="e.g. 20 mins"
-                                value={newRecipeTime}
-                                onChange={(e) => setNewRecipeTime(e.target.value)}
-                                className="bg-slate-100 dark:bg-slate-950 border border-slate-200 dark:border-white/10 rounded-lg p-2 text-xs text-slate-800 dark:text-slate-100 outline-none"
-                              />
-                            </div>
-                          </div>
-
-                          <div className="grid grid-cols-2 gap-3">
-                            <div className="flex flex-col gap-1">
-                              <label className="text-[9px] uppercase tracking-wider text-slate-500 font-bold">Category</label>
-                              <select 
-                                value={newRecipeCategory}
-                                onChange={(e) => setNewRecipeCategory(e.target.value)}
-                                className="bg-slate-100 dark:bg-slate-950 border border-slate-200/10 rounded-lg p-2 text-xs text-slate-800 dark:text-slate-100 outline-none"
-                              >
-                                <option value="Camp Brew">Camp Brew</option>
-                                <option value="Camp Ration">Camp Ration</option>
-                                <option value="Magic Brew">Magic Brew</option>
-                                <option value="Combat Potion">Combat Potion</option>
-                              </select>
-                            </div>
-                            <div className="flex flex-col gap-1">
-                              <label className="text-[9px] uppercase tracking-wider text-slate-500 font-bold">Elixir Effects</label>
-                              <input 
-                                type="text"
-                                placeholder="e.g. +10 Armor for 1 hour"
-                                value={newRecipeEffects}
-                                onChange={(e) => setNewRecipeEffects(e.target.value)}
-                                className="bg-slate-100 dark:bg-slate-950 border border-slate-200 dark:border-white/10 rounded-lg p-2 text-xs text-slate-800 dark:text-slate-100 outline-none"
-                              />
-                            </div>
-                          </div>
-
-                          <div className="flex flex-col gap-1">
-                            <label className="text-[9px] uppercase tracking-wider text-slate-500 font-bold">Short Description</label>
-                            <input 
-                              type="text"
-                              placeholder="Describe the brew..."
-                              value={newRecipeDesc}
-                              onChange={(e) => setNewRecipeDesc(e.target.value)}
-                              className="bg-slate-100 dark:bg-slate-950 border border-slate-200 dark:border-white/10 rounded-lg p-2 text-xs text-slate-800 dark:text-slate-100 outline-none"
-                            />
-                          </div>
-
-                          <div className="flex flex-col gap-1">
-                            <label className="text-[9px] uppercase tracking-wider text-slate-500 font-bold">Ingredients</label>
-                            <textarea 
-                              placeholder="List ingredients separated by commas..."
-                              value={newRecipeIngredients}
-                              onChange={(e) => setNewRecipeIngredients(e.target.value)}
-                              className="bg-slate-100 dark:bg-slate-950 border border-slate-200 dark:border-white/10 rounded-lg p-2 text-xs text-slate-800 dark:text-slate-100 outline-none h-14 resize-none"
-                            />
-                          </div>
-
-                          <div className="flex flex-col gap-1">
-                            <label className="text-[9px] uppercase tracking-wider text-slate-500 font-bold">Preparation & Cooking Steps</label>
-                            <textarea 
-                              placeholder="Step by step preparation details..."
-                              value={newRecipeInstructions}
-                              onChange={(e) => setNewRecipeInstructions(e.target.value)}
-                              className="bg-slate-100 dark:bg-slate-950 border border-slate-200 dark:border-white/10 rounded-lg p-2 text-xs text-slate-800 dark:text-slate-100 outline-none h-20 resize-none"
-                            />
-                          </div>
-
-                          <button 
-                            type="submit"
-                            className="w-full py-2 bg-purple-600 hover:bg-purple-500 text-white rounded-lg text-xs font-bold transition-all text-center"
-                          >
-                            Enscribe into Codex
-                          </button>
-                        </form>
-                      )}
-
-                      {/* SELECTED RECIPE DETAIL CARD */}
-                      {(() => {
-                        const rec = recipes.find(r => r.id === selectedRecipeId);
-                        if (!rec) return null;
-                        return (
-                          <div className="p-4 bg-slate-950 border border-white/5 rounded-xl space-y-3.5 text-left relative overflow-hidden">
-                            <div className="flex justify-between items-center pb-2 border-b border-white/5">
-                              <div>
-                                <span className="text-[8px] font-mono text-purple-400 uppercase tracking-widest bg-purple-500/10 px-2 py-0.5 rounded border border-purple-500/20">{rec.category}</span>
-                                <h3 className="text-sm font-bold text-white mt-1.5">{rec.title}</h3>
-                              </div>
-                              <span className="text-[10px] font-mono text-slate-400">{rec.time}</span>
-                            </div>
-
-                            <p className="text-xs text-slate-400 italic font-medium leading-relaxed">"{rec.description}"</p>
-
-                            <div className="space-y-2">
-                              <span className="text-[9px] uppercase tracking-wider text-slate-500 font-bold block">Required Reagents:</span>
-                              <p className="text-xs text-slate-200 font-mono leading-relaxed bg-slate-900 border border-white/5 p-2.5 rounded-lg">{rec.ingredients}</p>
-                            </div>
-
-                            <div className="space-y-2">
-                              <span className="text-[9px] uppercase tracking-wider text-slate-500 font-bold block">Brewing Directions:</span>
-                              <p className="text-xs text-slate-300 leading-relaxed bg-slate-900 border border-white/5 p-2.5 rounded-lg whitespace-pre-line">{rec.instructions}</p>
-                            </div>
-
-                            <div className="p-2.5 bg-pink-500/5 border border-pink-500/20 rounded-xl flex items-center justify-between">
-                              <span className="text-[9px] font-bold text-pink-400 uppercase tracking-wider">Active Alchemical Effects</span>
-                              <span className="text-xs font-bold text-white font-mono">{rec.effects}</span>
-                            </div>
-                          </div>
-                        );
-                      })()}
-                    </div>
-
-                    {/* Right Column: Codex List */}
-                    <div className="lg:col-span-4 space-y-4">
-                      <div className="p-4 bg-slate-50 dark:bg-slate-950/40 border border-slate-200 dark:border-white/5 rounded-xl flex flex-col">
-                        <span className="text-[10px] uppercase tracking-wider text-slate-500 font-bold mb-3 block">Codex Library</span>
-                        <div className="space-y-2 max-h-[380px] overflow-y-auto pr-0.5">
-                          {recipes.map((rec) => (
-                            <div 
-                              key={rec.id} 
-                              onClick={() => { haptic(5); setSelectedRecipeId(rec.id); }}
-                              className={`p-3 rounded-lg border transition-all cursor-pointer flex justify-between items-center ${selectedRecipeId === rec.id ? 'bg-purple-950/30 border-purple-500/40 shadow-[0_0_8px_rgba(168,85,247,0.15)]' : 'bg-transparent border-slate-200/50 dark:border-white/5'}`}
-                            >
-                              <div className="flex flex-col text-left max-w-[80%]">
-                                <span className="text-xs font-bold text-slate-700 dark:text-slate-200 truncate">{rec.title}</span>
-                                <span className="text-[8px] text-slate-500 font-mono mt-0.5">{rec.category} • {rec.time}</span>
-                              </div>
-                              <button 
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleDeleteRecipe(rec.id);
-                                }}
-                                className="text-slate-400 hover:text-red-400 p-1 text-xs font-bold transition-colors cursor-pointer"
-                                title="Purge recipe"
-                              >
-                                ×
-                              </button>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
 
               {utilityTab === 'calc' && (
                 <div className="flex flex-col md:flex-row gap-6 w-full animate-[fadeIn_0.3s_ease-out]">
@@ -6192,6 +5997,13 @@ export default function App() {
                   </div>
                 </div>
               </div>
+            </div>
+          )}
+
+          {/* COOKBOOK (CRAIVE) TAB */}
+          {activeTab === 'cookbook' && (
+            <div className="glass-panel rounded-2xl border border-white/[0.04] p-6 text-left animate-[fadeIn_0.4s_ease-out] flex flex-col h-full overflow-hidden">
+              <CookbookContainer />
             </div>
           )}
 
