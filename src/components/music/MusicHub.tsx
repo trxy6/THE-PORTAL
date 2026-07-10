@@ -1,156 +1,99 @@
-import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
-import {
-  Play,
-  Pause,
-  SkipForward,
-  SkipBack,
-  Volume2,
-  VolumeX,
-  Heart,
-  Search,
-  Disc,
-  Sliders,
-  User,
-  Power,
-  ListMusic,
-  ListPlus,
-  Loader2,
-  RefreshCw,
-  HelpCircle
-} from "lucide-react";
+/**
+ * @license
+ * SPDX-License-Identifier: Apache-2.0
+ */
 
-// PROPS DEFINITION
+import React, { useState, useEffect, useRef, useMemo } from "react";
+import { 
+  Play, 
+  Pause, 
+  SkipForward, 
+  SkipBack, 
+  Volume2, 
+  VolumeX, 
+  Heart, 
+  Tv,
+  ListMusic,
+  X
+} from "lucide-react";
+import { Track, Playlist } from "./types";
+import Sidebar from "./Sidebar";
+import PlayerDashboard from "./PlayerDashboard";
+import AudioVisualizer from "./AudioVisualizer";
+import LyricsDisplay from "./LyricsDisplay";
+
+// Helper: Convert time string "M:SS" to seconds
+function parseDurationToSeconds(durationStr?: string): number {
+  if (!durationStr) return 180; // Default 3 minutes
+  const parts = durationStr.split(":");
+  if (parts.length < 2) return 180;
+  const mins = parseInt(parts[0], 10) || 0;
+  const secs = parseInt(parts[1], 10) || 0;
+  return mins * 60 + secs;
+}
+
+// Helper: Format seconds to "M:SS"
+function formatSecondsToTime(secs: number): string {
+  const m = Math.floor(secs / 60);
+  const s = Math.floor(secs % 60);
+  return `${m}:${s < 10 ? "0" : ""}${s}`;
+}
+
 interface MusicHubProps {
   portalDarkMode: boolean;
   themeColor: string;
 }
 
-// TRACK INTERFACE
-interface SpotifyTrack {
-  id: string;
-  title: string;
-  artist: string;
-  album: string;
-  imageUrl: string;
-  spotifyUri: string;
-  duration: string;
-  durationMs: number;
-  previewUrl?: string;
-}
-
-// DEFAULT CURATED TRACKS (For offline / not connected view)
-const CURATED_TRACKS: SpotifyTrack[] = [
-  {
-    id: "curated-1",
-    title: "Aether",
-    artist: "Kozmic",
-    album: "Nova Horizon",
-    imageUrl: "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=300&q=80",
-    spotifyUri: "",
-    duration: "3:45",
-    durationMs: 225000,
-    previewUrl: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3"
-  },
-  {
-    id: "curated-2",
-    title: "Lunar Escape",
-    artist: "Nova & Helios",
-    album: "Solar Wind",
-    imageUrl: "https://images.unsplash.com/photo-1508700115892-45ecd05ae2ad?w=300&q=80",
-    spotifyUri: "",
-    duration: "4:12",
-    durationMs: 252000,
-    previewUrl: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3"
-  },
-  {
-    id: "curated-3",
-    title: "Kozmic Void",
-    artist: "Aether Group",
-    album: "Deep Nebula",
-    imageUrl: "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=300&q=80",
-    spotifyUri: "",
-    duration: "3:20",
-    durationMs: 200000,
-    previewUrl: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3"
-  }
-];
-
-// OAUTH SETTINGS
-const SPOTIFY_CLIENT_ID = "6238dcf567664f328bde1570c68f9eae";
-
-// PKCE HELPER METHODS
-function generateRandomString(length: number) {
-  let text = "";
-  const possible = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-  for (let i = 0; i < length; i++) {
-    text += possible.charAt(Math.floor(Math.random() * possible.length));
-  }
-  return text;
-}
-
-async function sha256(plain: string) {
-  const encoder = new TextEncoder();
-  const data = encoder.encode(plain);
-  return window.crypto.subtle.digest("SHA-256", data);
-}
-
-function base64urlencode(a: ArrayBuffer) {
-  return btoa(String.fromCharCode.apply(null, new Uint8Array(a) as any))
-    .replace(/\+/g, "-")
-    .replace(/\//g, "_")
-    .replace(/=+$/, "");
-}
-
 export default function MusicHub({ portalDarkMode, themeColor }: MusicHubProps) {
-  // Authentication & Token States
-  const [token, setToken] = useState<string | null>(() => localStorage.getItem("spotify_access_token"));
-  const [refreshToken, setRefreshToken] = useState<string | null>(() => localStorage.getItem("spotify_refresh_token"));
-  const [userProfile, setUserProfile] = useState<any>(null);
+  // Playlists and Library States
+  const [curatedPlaylists, setCuratedPlaylists] = useState<Playlist[]>([]);
+  const [userPlaylists, setUserPlaylists] = useState<Playlist[]>([]);
+  const [activePlaylist, setActivePlaylist] = useState<Playlist | null>(null);
+  const [activePlaylistId, setActivePlaylistId] = useState<string>("");
 
-  // Library & UI States
-  const [likedTracks, setLikedTracks] = useState<SpotifyTrack[]>(() => {
-    try {
-      const cached = localStorage.getItem("spotify_cached_liked_tracks");
-      return cached ? JSON.parse(cached) : [];
-    } catch (e) {
-      return [];
-    }
-  });
+  // Playback Control States
+  const [currentTrack, setCurrentTrack] = useState<Track | null>(null);
+  const [embedType, setEmbedType] = useState<"track" | "playlist" | "album" | "artist">("track");
+  const [embedId, setEmbedId] = useState<string>("");
 
-  const [activeTab, setActiveTab] = useState<"liked" | "search">("liked");
-  const [searchQuery, setSearchQuery] = useState<string>("");
-  const [searchResults, setSearchResults] = useState<SpotifyTrack[]>([]);
-  const [playbackQueue, setPlaybackQueue] = useState<SpotifyTrack[]>([]);
-  const [currentQueueIndex, setCurrentQueueIndex] = useState<number>(-1);
-  const [showQueue, setShowQueue] = useState<boolean>(false);
-
-  // Sync Progress Indicators
-  const [syncStatus, setSyncStatus] = useState<"idle" | "loading" | "error">("idle");
-  const [syncProgress, setSyncProgress] = useState<{ loaded: number; total: number } | null>(null);
-  const [syncErrorMsg, setSyncErrorMsg] = useState<string | null>(null);
-
-  // Player Playback States
-  const [currentTrack, setCurrentTrack] = useState<SpotifyTrack | null>(null);
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
-  const [volume, setVolume] = useState<number>(70);
-  const [prevVolume, setPrevVolume] = useState<number>(70);
+  const [volume, setVolume] = useState<number>(80);
+  const [prevVolume, setPrevVolume] = useState<number>(80);
   const [currentTime, setCurrentTime] = useState<number>(0);
-  const [duration, setDuration] = useState<number>(0);
+  const [duration, setDuration] = useState<number>(180);
+  const [previewMode, setPreviewMode] = useState<boolean>(false);
 
-  // Web Playback SDK States
-  const [spotifyPlayer, setSpotifyPlayer] = useState<any>(null);
-  const [sdkDeviceId, setSdkDeviceId] = useState<string | null>(null);
-  const [isSdkConnected, setIsSdkConnected] = useState<boolean>(false);
+  const previewModeRef = useRef<boolean>(false);
+  useEffect(() => {
+    previewModeRef.current = previewMode;
+  }, [previewMode]);
 
-  // Refs
-  const audioRef = useRef<HTMLAudioElement | null>(null);
-  const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const animationRef = useRef<number | null>(null);
+  // Tab coordinates
+  const [activeTab, setActiveTab] = useState<"explore" | "curator" | "spotify">("explore");
+
+  // Secondary layout toggles
+  const [showLyricsPanel, setShowLyricsPanel] = useState<boolean>(true);
+  const [rightPanelTab, setRightPanelTab] = useState<"lyrics" | "queue">("lyrics");
+  const [queue, setQueue] = useState<Track[]>([]);
+  const [isLiked, setIsLiked] = useState<boolean>(false);
+
+  // Spotify Account Connection States
+  const [spotifyToken, setSpotifyToken] = useState<string | null>(null);
+  const [spotifyRefreshToken, setSpotifyRefreshToken] = useState<string | null>(null);
+  const [spotifyUser, setSpotifyUser] = useState<{
+    id: string;
+    display_name: string;
+    imageUrl?: string;
+  } | null>(null);
+  const [spotifyPlaylists, setSpotifyPlaylists] = useState<Playlist[]>([]);
+  const [spotifyError, setSpotifyError] = useState<string | null>(null);
+  const [spotifyDeviceId, setSpotifyDeviceId] = useState<string | null>(null);
   const spotifyPlayerRef = useRef<any>(null);
-  const refreshPromiseRef = useRef<Promise<string | null> | null>(null);
 
-  // Theme Helpers
-  const themeHex = useMemo(() => {
+  const [likedSongsStatus, setLikedSongsStatus] = useState<{ loaded: number; total: number; loading: boolean }>({ loaded: 0, total: 0, loading: false });
+
+  // Map theme color to visualizer color
+  const visualizerColor = useMemo(() => {
     switch (themeColor) {
       case "cyan": return "#06b6d4";
       case "pink": return "#ec4899";
@@ -162,329 +105,293 @@ export default function MusicHub({ portalDarkMode, themeColor }: MusicHubProps) 
     }
   }, [themeColor]);
 
-  // Unified fetchWebApi with refresh concurrency lock
-  const fetchWebApi = async (endpoint: string, method = "GET", body?: any): Promise<any> => {
-    let activeToken = localStorage.getItem("spotify_access_token") || token;
+  // Progressive background fetch for Liked Songs
+  const startProgressiveLikedSongsFetch = async (token: string, existingTracks: Track[] = []) => {
+    if (likedSongsStatus.loading && existingTracks.length === 0) return;
 
-    const executeRequest = async (tok: string) => {
-      return fetch(`https://api.spotify.com/${endpoint}`, {
-        headers: {
-          Authorization: `Bearer ${tok}`,
-          "Content-Type": "application/json"
-        },
-        method,
-        body: body ? JSON.stringify(body) : undefined
-      });
-    };
+    setLikedSongsStatus({ loaded: existingTracks.length, total: 0, loading: true });
 
-    if (!activeToken) return null;
-    let res = await executeRequest(activeToken);
-
-    // If 401 Unauthorized, automatically handle token refresh
-    if (res.status === 401) {
-      if (refreshToken) {
-        try {
-          // If a refresh is already in progress, reuse the same promise
-          if (!refreshPromiseRef.current) {
-            refreshPromiseRef.current = (async () => {
-              const refreshRes = await fetch("https://accounts.spotify.com/api/token", {
-                method: "POST",
-                headers: { "Content-Type": "application/x-www-form-urlencoded" },
-                body: new URLSearchParams({
-                  client_id: SPOTIFY_CLIENT_ID,
-                  grant_type: "refresh_token",
-                  refresh_token: refreshToken
-                })
-              });
-
-              if (refreshRes.ok) {
-                const data = await refreshRes.json();
-                const newToken = data.access_token;
-                setToken(newToken);
-                localStorage.setItem("spotify_access_token", newToken);
-                if (data.refresh_token) {
-                  setRefreshToken(data.refresh_token);
-                  localStorage.setItem("spotify_refresh_token", data.refresh_token);
-                }
-                return newToken;
-              } else {
-                handleDisconnect();
-                return null;
-              }
-            })();
-          }
-
-          const newToken = await refreshPromiseRef.current;
-          refreshPromiseRef.current = null; // Clear lock
-
-          if (newToken) {
-            res = await executeRequest(newToken);
-          } else {
-            return null;
-          }
-        } catch (e) {
-          refreshPromiseRef.current = null;
-          console.error("Token refresh lock fail:", e);
-          handleDisconnect();
-          return null;
-        }
-      } else {
-        handleDisconnect();
-        return null;
-      }
-    }
-
-    if (!res.ok) {
-      if (res.status === 204) return null; // No Content success
-      const errText = await res.text().catch(() => "");
-      throw new Error(`Spotify API error: ${res.status} ${res.statusText} ${errText}`);
-    }
-    return res.json();
-  };
-
-  // Direct fetch helper that doesn't trigger refresh loops (used in catalog loading)
-  const apiFetch = async (activeToken: string, endpoint: string, method = "GET", body?: any): Promise<any> => {
-    const res = await fetch(`https://api.spotify.com/${endpoint}`, {
-      headers: {
-        Authorization: `Bearer ${activeToken}`,
-        "Content-Type": "application/json"
-      },
-      method,
-      body: body ? JSON.stringify(body) : undefined
-    });
-    if (!res.ok) {
-      if (res.status === 204) return null;
-      const errText = await res.text().catch(() => "");
-      throw new Error(`Spotify API error: ${res.status} ${res.statusText} ${errText}`);
-    }
-    return res.json();
-  };
-
-  // Safe cached token grabber for SDK callback
-  const getOrRefreshToken = async (): Promise<string | null> => {
-    return localStorage.getItem("spotify_access_token") || token;
-  };
-
-  // Initiate OAuth flow with PKCE
-  const handleConnectSpotify = async () => {
     try {
-      const verifier = generateRandomString(128);
-      localStorage.setItem("spotify_code_verifier", verifier);
-
-      const hashed = await sha256(verifier);
-      const challenge = base64urlencode(hashed);
-
-      const scopes = [
-        "user-read-private",
-        "user-read-email",
-        "user-library-read",
-        "user-top-read",
-        "user-read-playback-state",
-        "user-modify-playback-state",
-        "streaming"
-      ].join(" ");
-
-      let redirectUri = window.location.origin + window.location.pathname;
-      if (redirectUri.includes("trxy6.github.io/THE-PORTAL") && !redirectUri.endsWith("/")) {
-        redirectUri += "/";
-      }
-
-      const authUrl = `https://accounts.spotify.com/authorize?` + new URLSearchParams({
-        response_type: "code",
-        client_id: SPOTIFY_CLIENT_ID,
-        scope: scopes,
-        redirect_uri: redirectUri,
-        code_challenge_method: "S256",
-        code_challenge: challenge,
-        show_dialog: "true"
-      }).toString();
-
-      window.location.href = authUrl;
-    } catch (e) {
-      console.error("Auth start fail:", e);
-    }
-  };
-
-  // Clean disconnect
-  const handleDisconnect = () => {
-    if (spotifyPlayerRef.current) {
-      try {
-        spotifyPlayerRef.current.disconnect();
-      } catch (e) {}
-    }
-    localStorage.removeItem("spotify_access_token");
-    localStorage.removeItem("spotify_refresh_token");
-    localStorage.removeItem("spotify_cached_liked_tracks");
-    localStorage.removeItem("spotify_last_sync_time");
-    setToken(null);
-    setRefreshToken(null);
-    setUserProfile(null);
-    setLikedTracks([]);
-    setCurrentTrack(null);
-    setSpotifyPlayer(null);
-    setSdkDeviceId(null);
-    setIsSdkConnected(false);
-    setSyncProgress(null);
-  };
-
-  // Intercept Redirect Auth parameters on mount
-  useEffect(() => {
-    const codeExchange = async () => {
-      const params = new URLSearchParams(window.location.search);
-      const code = params.get("code");
-      if (!code) return;
-
-      // Wipe code parameters immediately
-      window.history.replaceState({}, document.title, window.location.pathname);
-
-      const verifier = localStorage.getItem("spotify_code_verifier");
-      if (!verifier) return;
-
-      let redirectUri = window.location.origin + window.location.pathname;
-      if (redirectUri.includes("trxy6.github.io/THE-PORTAL") && !redirectUri.endsWith("/")) {
-        redirectUri += "/";
-      }
-
-      try {
-        const res = await fetch("https://accounts.spotify.com/api/token", {
-          method: "POST",
-          headers: { "Content-Type": "application/x-www-form-urlencoded" },
-          body: new URLSearchParams({
-            client_id: SPOTIFY_CLIENT_ID,
-            grant_type: "authorization_code",
-            code: code,
-            redirect_uri: redirectUri,
-            code_verifier: verifier
-          })
-        });
-
-        if (res.ok) {
-          const data = await res.json();
-          setToken(data.access_token);
-          setRefreshToken(data.refresh_token);
-          localStorage.setItem("spotify_access_token", data.access_token);
-          if (data.refresh_token) {
-            localStorage.setItem("spotify_refresh_token", data.refresh_token);
-          }
-        }
-      } catch (e) {
-        console.error("Token exchange fail:", e);
-      }
-    };
-
-    codeExchange();
-  }, []);
-
-  // Fetch user profile info
-  useEffect(() => {
-    if (!token) return;
-    fetchWebApi("v1/me")
-      .then((profile) => {
-        setUserProfile(profile);
-      })
-      .catch((e) => {
-        console.error("Profile check fail:", e);
+      const firstPageUrl = `https://api.spotify.com/v1/me/tracks?limit=50&offset=${existingTracks.length}`;
+      const res = await fetch(firstPageUrl, {
+        headers: { Authorization: `Bearer ${token}` },
       });
-  }, [token]);
 
-  // Load all Liked Songs sequentially to prevent 429 Rate Limits
-  const fetchAllLikedSongs = async (activeToken: string) => {
-    setSyncStatus("loading");
-    setSyncProgress(null);
-    setSyncErrorMsg(null);
-    try {
-      // 1. Fetch first page to grab total count
-      const firstPage = await apiFetch(activeToken, "v1/me/tracks?limit=50&offset=0");
-      if (!firstPage || !firstPage.items) {
-        setLikedTracks([]);
-        setSyncStatus("idle");
+      if (!res.ok) {
+        if (res.status === 401) {
+          await handleSpotifyTokenRefresh();
+        }
+        setLikedSongsStatus(prev => ({ ...prev, loading: false }));
         return;
       }
 
-      const total = firstPage.total;
-      let allItems = [...firstPage.items];
-      setSyncProgress({ loaded: allItems.length, total });
+      const data = await res.json();
+      const totalSongs = data.total;
+      
+      const firstPageTracks = (data.items || [])
+        .filter((item: any) => item?.track)
+        .map((item: any) => mapSpotifyTrackToTrack(item.track));
 
-      // 2. Fetch remaining pages sequentially
-      for (let offset = 50; offset < total; offset += 50) {
-        const pageData = await apiFetch(activeToken, `v1/me/tracks?limit=50&offset=${offset}`);
-        if (pageData && pageData.items) {
-          allItems = [...allItems, ...pageData.items];
-          setSyncProgress({ loaded: allItems.length, total });
-        }
-        // Small breathing delay to be friendly to Spotify servers
-        await new Promise((resolve) => setTimeout(resolve, 60));
-      }
+      let accumulatedTracks = [...existingTracks, ...firstPageTracks];
+      setLikedSongsStatus({ loaded: accumulatedTracks.length, total: totalSongs, loading: accumulatedTracks.length < totalSongs });
 
-      // Map to SpotifyTrack structure defensively
-      const mapped = allItems
-        .filter((item: any) => item && item.track && item.track.id)
-        .map((item: any) => {
-          const t = item.track;
-          const title = t.name || "Unknown Title";
-          const artist = Array.isArray(t.artists) ? t.artists.map((a: any) => a?.name || "Unknown").join(", ") : "Unknown Artist";
-          const album = t.album?.name || "Unknown Album";
-          const imageUrl = t.album?.images?.[0]?.url || "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=300&q=80";
-          const spotifyUri = t.uri || "";
-          const durationMs = typeof t.duration_ms === "number" ? t.duration_ms : 0;
-          const duration = formatDuration(durationMs);
-          const previewUrl = t.preview_url || undefined;
+      const updatePlaylistState = (tracks: Track[]) => {
+        setSpotifyPlaylists((prev) =>
+          prev.map((p) => {
+            if (p.id === "spotify-liked-songs") {
+              return { ...p, tracks };
+            }
+            return p;
+          })
+        );
+        setActivePlaylist((prevActive) => {
+          if (prevActive && prevActive.id === "spotify-liked-songs") {
+            return { ...prevActive, tracks };
+          }
+          return prevActive;
+        });
+      };
 
-          return {
-            id: t.id,
-            title,
-            artist,
-            album,
-            imageUrl,
-            spotifyUri,
-            duration,
-            durationMs,
-            previewUrl
-          };
+      updatePlaylistState(accumulatedTracks);
+
+      let nextUrl = data.next;
+      while (nextUrl) {
+        await new Promise((resolve) => setTimeout(resolve, 300));
+
+        const pageRes = await fetch(nextUrl, {
+          headers: { Authorization: `Bearer ${token}` },
         });
 
-      setLikedTracks(mapped);
-      localStorage.setItem("spotify_cached_liked_tracks", JSON.stringify(mapped));
-      localStorage.setItem("spotify_last_sync_time", Date.now().toString());
-      setSyncStatus("idle");
-      setSyncProgress(null);
-    } catch (e: any) {
-      console.error("fetchAllLikedSongs fail:", e);
-      setSyncStatus("error");
-      setSyncErrorMsg(e.message || "Library sync failed");
-      setSyncProgress(null);
+        if (!pageRes.ok) {
+          if (pageRes.status === 401) {
+            await handleSpotifyTokenRefresh();
+          }
+          break;
+        }
+
+        const pageData = await pageRes.json();
+        const pageTracks = (pageData.items || [])
+          .filter((item: any) => item?.track)
+          .map((item: any) => mapSpotifyTrackToTrack(item.track));
+
+        accumulatedTracks = [...accumulatedTracks, ...pageTracks];
+        setLikedSongsStatus({
+          loaded: accumulatedTracks.length,
+          total: totalSongs,
+          loading: accumulatedTracks.length < totalSongs,
+        });
+
+        updatePlaylistState(accumulatedTracks);
+        nextUrl = pageData.next;
+      }
+
+      setLikedSongsStatus({
+        loaded: accumulatedTracks.length,
+        total: totalSongs,
+        loading: false,
+      });
+
+    } catch (err) {
+      console.error("Progressive fetch of Liked Songs failed:", err);
+      setLikedSongsStatus(prev => ({ ...prev, loading: false }));
     }
   };
 
-  // Sync / Load library on mount or token update
-  useEffect(() => {
+  // Helper: map a raw Spotify track to our internal Track type
+  const mapSpotifyTrackToTrack = (t: any): Track => {
+    const durationMinSec = t.duration_ms
+      ? `${Math.floor(t.duration_ms / 60000)}:${String(Math.floor((t.duration_ms % 60000) / 1000)).padStart(2, "0")}`
+      : "3:00";
+    return {
+      id: t.id,
+      title: t.name,
+      artist: t.artists?.map((a: any) => a.name).join(", ") || "Unknown Artist",
+      album: t.album?.name || "Single",
+      spotifyId: t.id,
+      spotifyUri: t.uri || `spotify:track:${t.id}`,
+      imageUrl: t.album?.images?.[0]?.url || "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=300",
+      duration: durationMinSec,
+    };
+  };
+
+  // Fetch user profile and playlists from the Spotify Web API
+  const fetchSpotifyData = async (token: string) => {
+    try {
+      const userRes = await fetch("https://api.spotify.com/v1/me", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!userRes.ok) {
+        if (userRes.status === 401) {
+          await handleSpotifyTokenRefresh();
+          return;
+        }
+        throw new Error("Failed to fetch Spotify user profile");
+      }
+      const userData = await userRes.json();
+      setSpotifyUser({
+        id: userData.id,
+        display_name: userData.display_name || userData.id,
+        imageUrl: userData.images?.[0]?.url,
+      });
+
+      // Pagination loop to fetch ALL user playlists (up to 500)
+      let playlists: Playlist[] = [];
+      
+      // Prepend virtual Liked Songs playlist
+      const likedSongsPlaylist: Playlist = {
+        id: "spotify-liked-songs",
+        name: "Liked Songs",
+        description: "Your favorite tracks saved on Spotify",
+        tracks: [], // lazy loaded
+        isCustom: false,
+        imageUrl: "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=300",
+      };
+      playlists.push(likedSongsPlaylist);
+
+      let nextUrl: string | null = "https://api.spotify.com/v1/me/playlists?limit=50";
+      let pagesFetched = 0;
+
+      while (nextUrl && pagesFetched < 10) {
+        const plRes = await fetch(nextUrl, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!plRes.ok) {
+          if (plRes.status === 401) {
+            await handleSpotifyTokenRefresh();
+          }
+          break;
+        }
+        const plData = await plRes.json();
+        if (plData.items) {
+          const pagePlaylists = plData.items
+            .filter((item: any) => item !== null)
+            .map((item: any) => ({
+              id: item.id,
+              name: item.name,
+              description: item.description || `Playlist by ${item.owner?.display_name || "Spotify User"}`,
+              tracks: [], // lazy loaded
+              isCustom: false,
+              imageUrl: item.images?.[0]?.url,
+            }));
+          playlists = [...playlists, ...pagePlaylists];
+        }
+        nextUrl = plData.next;
+        pagesFetched++;
+      }
+      setSpotifyPlaylists(playlists);
+    } catch (err: any) {
+      console.error("Failed to load Spotify details:", err);
+      setSpotifyError(err.message);
+    }
+  };
+
+  // Refresh token using the server-side proxy
+  const handleSpotifyTokenRefresh = async () => {
+    const refresh = localStorage.getItem("spotify_refresh_token");
+    if (!refresh) return;
+
+    try {
+      const res = await fetch("/api/auth/spotify/refresh", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ refreshToken: refresh }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setSpotifyToken(data.accessToken);
+        localStorage.setItem("spotify_access_token", data.accessToken);
+        fetchSpotifyData(data.accessToken);
+      } else {
+        handleDisconnectSpotify();
+      }
+    } catch (e) {
+      console.error("Failed to refresh Spotify token:", e);
+    }
+  };
+
+  // Disconnect Spotify Integration
+  const handleDisconnectSpotify = () => {
+    setSpotifyToken(null);
+    setSpotifyRefreshToken(null);
+    setSpotifyUser(null);
+    setSpotifyPlaylists([]);
+    localStorage.removeItem("spotify_access_token");
+    localStorage.removeItem("spotify_refresh_token");
+  };
+
+  // Initiate Spotify OAuth Login Flow (Direct Provider URL in Popup)
+  const handleConnectSpotify = async () => {
+    try {
+      const origin = window.location.origin;
+      const res = await fetch(`/api/auth/spotify/url?origin=${encodeURIComponent(origin)}`);
+      const data = await res.json();
+      if (!res.ok) {
+        if (data.unconfigured) {
+          alert("Spotify API credentials are not configured on the server yet.\n\nPlease define SPOTIFY_CLIENT_ID and SPOTIFY_CLIENT_SECRET in the Secrets panel inside your AI Studio Settings menu.");
+          return;
+        }
+        throw new Error(data.error || "Failed to generate auth url");
+      }
+
+      const width = 500;
+      const height = 650;
+      const left = window.screen.width / 2 - width / 2;
+      const top = window.screen.height / 2 - height / 2;
+
+      const authWindow = window.open(
+        data.url,
+        "spotify_auth_popup",
+        `width=${width},height=${height},left=${left},top=${top},menubar=no,toolbar=no,location=no`
+      );
+
+      if (!authWindow) {
+        alert("Please enable popups to connect to Spotify.");
+      }
+    } catch (err: any) {
+      console.error("Spotify Auth initiation failed:", err);
+      alert(`Connection failed: ${err.message}`);
+    }
+  };
+
+  // Load Liked Tracks directly from Spotify API
+  const fetchSpotifyLikedSongs = async () => {
+    const token = spotifyToken || localStorage.getItem("spotify_access_token");
     if (!token) return;
-    fetchAllLikedSongs(token);
-  }, [token]);
+    
+    setActivePlaylistId("spotify-liked-songs");
+    const pl = spotifyPlaylists.find((p) => p.id === "spotify-liked-songs");
+    if (pl) {
+      setActivePlaylist(pl);
+    } else {
+      const fallbackPl: Playlist = {
+        id: "spotify-liked-songs",
+        name: "Liked Songs",
+        description: "Your favorite tracks saved on Spotify",
+        tracks: [],
+        isCustom: false,
+      };
+      setActivePlaylist(fallbackPl);
+    }
+    setActiveTab("explore");
 
-  // Sync catalog lists dynamically based on active tab
-  const currentTracksList = useMemo(() => {
-    return token ? likedTracks : CURATED_TRACKS;
-  }, [likedTracks, token]);
+    if (!likedSongsStatus.loading) {
+      startProgressiveLikedSongsFetch(token);
+    }
+  };
 
-  // Real-time client-side search (requires 0 API requests)
-  const filteredTracksList = useMemo(() => {
-    if (!searchQuery.trim()) return currentTracksList;
-    const q = searchQuery.toLowerCase();
-    return currentTracksList.filter(
-      (t) =>
-        t.title.toLowerCase().includes(q) ||
-        t.artist.toLowerCase().includes(q) ||
-        t.album.toLowerCase().includes(q)
-    );
-  }, [currentTracksList, searchQuery]);
-
-  // Web Playback SDK Initialization
+  // Initialize Spotify Web Playback SDK Player when a token is available
   useEffect(() => {
-    if (!token) return;
+    if (!spotifyToken) {
+      if (spotifyPlayerRef.current) {
+        spotifyPlayerRef.current.disconnect();
+        spotifyPlayerRef.current = null;
+      }
+      setSpotifyDeviceId(null);
+      return;
+    }
 
     const scriptId = "spotify-player-sdk";
-    let script = document.getElementById(scriptId) as HTMLScriptElement | null;
+    let script = document.getElementById(scriptId) as HTMLScriptElement;
     if (!script) {
       script = document.createElement("script");
       script.id = scriptId;
@@ -493,760 +400,953 @@ export default function MusicHub({ portalDarkMode, themeColor }: MusicHubProps) 
       document.body.appendChild(script);
     }
 
-    const initPlayer = () => {
-      if (spotifyPlayerRef.current) {
-        try {
-          spotifyPlayerRef.current.disconnect();
-        } catch (e) {}
-      }
+    (window as any).onSpotifyWebPlaybackSDKReady = () => {
+      if (spotifyPlayerRef.current) return;
 
       const player = new (window as any).Spotify.Player({
-        name: "The Portal Player",
-        getOAuthToken: async (cb: any) => {
-          const activeTok = await getOrRefreshToken();
-          cb(activeTok);
+        name: "Lumina Studio Player",
+        getOAuthToken: (cb: (token: string) => void) => {
+          cb(spotifyToken);
         },
-        volume: volume / 100
+        volume: volume / 100,
       });
 
-      player.addListener("ready", ({ device_id }: { device_id: string }) => {
-        console.log("Spotify Web Playback SDK ready with Device ID:", device_id);
-        setSdkDeviceId(device_id);
-        setIsSdkConnected(true);
+      spotifyPlayerRef.current = player;
 
-        // Auto-transfer playback directly to this browser tab device!
-        fetch("https://api.spotify.com/v1/me/player", {
-          method: "PUT",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({
-            device_ids: [device_id],
-            play: false
-          })
-        }).catch(() => {});
+      player.addListener("initialization_error", ({ message }: { message: string }) => {
+        console.error("Spotify Web Playback SDK initialization error:", message);
       });
-
-      player.addListener("not_ready", () => {
-        setIsSdkConnected(false);
-        setSdkDeviceId(null);
+      player.addListener("authentication_error", ({ message }: { message: string }) => {
+        console.error("Spotify Web Playback SDK authentication error:", message);
+        handleSpotifyTokenRefresh();
+      });
+      player.addListener("account_error", ({ message }: { message: string }) => {
+        console.warn("Spotify Web Playback SDK account type warning (requires Spotify Premium):", message);
+      });
+      player.addListener("playback_error", ({ message }: { message: string }) => {
+        console.error("Spotify Web Playback SDK playback failure:", message);
       });
 
       player.addListener("player_state_changed", (state: any) => {
         if (!state) return;
-
-        const activeTrack = state.track_window.current_track;
-        if (activeTrack) {
-          setCurrentTrack({
-            id: activeTrack.id,
-            title: activeTrack.name,
-            artist: activeTrack.artists.map((a: any) => a.name).join(", "),
-            album: activeTrack.album.name,
-            imageUrl: activeTrack.album.images[0]?.url || "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=300&q=80",
-            spotifyUri: activeTrack.uri,
-            duration: formatDuration(state.duration),
-            durationMs: state.duration
-          });
-        }
-
         setIsPlaying(!state.paused);
         setDuration(Math.floor(state.duration / 1000));
-        setCurrentTime(Math.floor(state.position / 1000));
+        const posSec = Math.floor(state.position / 1000);
+        setCurrentTime(posSec);
+
+        if (!state.paused && previewModeRef.current && posSec >= 30) {
+          player.pause().catch((err: any) => console.debug("Auto-paused due to preview mode:", err));
+        }
       });
 
-      player.addListener("initialization_error", (e: any) => console.warn(e));
-      player.addListener("authentication_error", (e: any) => console.warn(e));
-      player.addListener("account_error", (e: any) => {
-        console.warn("Spotify Playback SDK Account Error. Playback SDK is only available for Spotify Premium accounts.", e);
-        setIsSdkConnected(false);
+      player.addListener("ready", ({ device_id }: { device_id: string }) => {
+        console.log("Spotify Web Playback SDK is connected. Device ID:", device_id);
+        setSpotifyDeviceId(device_id);
+
+        fetch("https://api.spotify.com/v1/me/player", {
+          method: "PUT",
+          headers: {
+            Authorization: `Bearer ${spotifyToken}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            device_ids: [device_id],
+            play: false,
+          }),
+        }).catch((err) => console.debug("Auto-transfer session attempt:", err));
+      });
+
+      player.addListener("not_ready", ({ device_id }: { device_id: string }) => {
+        console.log("Spotify Web Playback device has gone offline:", device_id);
+        setSpotifyDeviceId(null);
       });
 
       player.connect();
-      setSpotifyPlayer(player);
-      spotifyPlayerRef.current = player;
     };
 
-    if ((window as any).Spotify) {
-      initPlayer();
-    } else {
-      (window as any).onSpotifyWebPlaybackSDKReady = () => {
-        initPlayer();
-      };
+    if ((window as any).Spotify && !spotifyPlayerRef.current) {
+      (window as any).onSpotifyWebPlaybackSDKReady();
     }
 
     return () => {
-      // Keep player alive while tab persists
     };
-  }, [token]);
+  }, [spotifyToken]);
 
-  // Sync volume adjustments to background Spotify player
+  // Handle local Web SDK player volume updates
   useEffect(() => {
-    if (spotifyPlayerRef.current && isSdkConnected) {
-      spotifyPlayerRef.current.setVolume(volume / 100).catch(() => {});
+    if (spotifyPlayerRef.current) {
+      spotifyPlayerRef.current.setVolume(volume / 100).catch((err: any) => {
+        console.debug("Failed to set Spotify Web Playback volume:", err);
+      });
     }
-  }, [volume, isSdkConnected]);
+  }, [volume]);
 
-  // Audio Playback progress tracking
-  const handleTimeUpdate = () => {
-    if (audioRef.current && !isSdkConnected) {
-      setCurrentTime(Math.floor(audioRef.current.currentTime));
-    }
-  };
-
-  const handleLoadedMetadata = () => {
-    if (audioRef.current && !isSdkConnected) {
-      setDuration(Math.floor(audioRef.current.duration));
-    }
-  };
-
-  // Seek bar slide trigger
-  const handleSeekChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const time = parseInt(e.target.value, 10);
-    setCurrentTime(time);
-
-    if (isSdkConnected && spotifyPlayerRef.current) {
+  // Load Curated Playlists from server API and Hydrate/Listen for Spotify Auth
+  useEffect(() => {
+    const fetchCurated = async () => {
       try {
-        await spotifyPlayerRef.current.seek(time * 1000);
+        const res = await fetch("/api/playlists");
+        if (res.ok) {
+          const data = await res.json();
+          if (data && data.playlists) {
+            setCuratedPlaylists(data.playlists);
+            if (data.playlists.length > 0) {
+              setActivePlaylist(data.playlists[0]);
+              setActivePlaylistId(data.playlists[0].id);
+            }
+          }
+        }
       } catch (err) {
-        console.error("SDK seek fail:", err);
+        console.error("Failed to fetch playlists:", err);
       }
-    } else if (audioRef.current) {
-      audioRef.current.currentTime = time;
+    };
+    fetchCurated();
+
+    // Recover User Custom Playlists
+    try {
+      const saved = localStorage.getItem("spotify_lite_user_playlists");
+      if (saved) {
+        setUserPlaylists(JSON.parse(saved));
+      }
+    } catch (e) {
+      console.error(e);
+    }
+
+    // Recover Spotify Tokens
+    const savedToken = localStorage.getItem("spotify_access_token");
+    const savedRefresh = localStorage.getItem("spotify_refresh_token");
+    if (savedToken && savedToken !== "null" && savedToken !== "undefined") {
+      setSpotifyToken(savedToken);
+      setSpotifyRefreshToken(savedRefresh && savedRefresh !== "null" && savedRefresh !== "undefined" ? savedRefresh : null);
+      fetchSpotifyData(savedToken);
+    }
+
+    // Listen for Success Message from OAuth Popup
+    const handleMessage = (event: MessageEvent) => {
+      const origin = event.origin;
+      if (!origin.endsWith(".run.app") && !origin.includes("localhost") && !origin.includes("127.0.0.1")) {
+        return;
+      }
+      if (event.data?.type === "SPOTIFY_AUTH_SUCCESS") {
+        const { accessToken, refreshToken } = event.data.tokens;
+        setSpotifyToken(accessToken);
+        setSpotifyRefreshToken(refreshToken);
+        localStorage.setItem("spotify_access_token", accessToken);
+        localStorage.setItem("spotify_refresh_token", refreshToken);
+        fetchSpotifyData(accessToken);
+      } else if (event.data?.type === "SPOTIFY_AUTH_FAILURE") {
+        alert(`Spotify Sync failed: ${event.data.error || "Unknown Error"}`);
+      }
+    };
+    window.addEventListener("message", handleMessage);
+    return () => window.removeEventListener("message", handleMessage);
+  }, []);
+
+  // Save User Custom Playlists to localStorage
+  const saveUserPlaylists = (updated: Playlist[]) => {
+    setUserPlaylists(updated);
+    try {
+      localStorage.setItem("spotify_lite_user_playlists", JSON.stringify(updated));
+    } catch (e) {
+      console.error(e);
     }
   };
 
-  // Playback control wrappers
-  const handlePlayTrack = async (track: SpotifyTrack, index: number, queue: SpotifyTrack[] = filteredTracksList) => {
-    setCurrentTrack(track);
-    setPlaybackQueue(queue);
-    setCurrentQueueIndex(index);
-    setShowQueue(false);
+  // Timer interval for lyrics and seek synchronization
+  useEffect(() => {
+    let timerId: any = null;
+    if (isPlaying) {
+      timerId = setInterval(() => {
+        setCurrentTime((prev) => {
+          const nextTime = prev + 1;
 
-    if (token && isSdkConnected && sdkDeviceId) {
-      try {
-        await fetchWebApi(`v1/me/player/play?device_id=${sdkDeviceId}`, "PUT", {
-          uris: [track.spotifyUri]
+          // If in preview mode, cap play time at 30 seconds
+          if (previewMode && nextTime >= 30) {
+            setIsPlaying(false);
+            if (spotifyPlayerRef.current) {
+              spotifyPlayerRef.current.pause().catch((err: any) => console.debug("SDK pause error:", err));
+            } else if (spotifyToken) {
+              const controlUrl = spotifyDeviceId
+                ? `https://api.spotify.com/v1/me/player/pause?device_id=${spotifyDeviceId}`
+                : `https://api.spotify.com/v1/me/player/pause`;
+              fetch(controlUrl, {
+                method: "PUT",
+                headers: {
+                  Authorization: `Bearer ${spotifyToken}`,
+                  "Content-Type": "application/json",
+                },
+              }).catch((err) => console.debug("Spotify remote pause attempt:", err));
+            }
+            return 30; // Cap at 30
+          }
+
+          if (nextTime >= duration) {
+            setIsPlaying(false);
+            return 0;
+          }
+          return nextTime;
         });
-        setIsPlaying(true);
-      } catch (err) {
-        console.warn("Failed to play via Spotify SDK player. Falling back to local preview:", err);
-        playLocalPreview(track);
+      }, 1000);
+    }
+    return () => {
+      if (timerId) clearInterval(timerId);
+    };
+  }, [isPlaying, duration, previewMode, spotifyToken, spotifyDeviceId]);
+
+  // Handle selecting a playlist from sidebar
+  const handleSelectPlaylist = async (id: string, isCustom: boolean, isSpotifyRemote?: boolean) => {
+    if (isSpotifyRemote) {
+      const pl = spotifyPlaylists.find((p) => p.id === id);
+      if (pl) {
+        if (pl.tracks.length === 0 && spotifyToken) {
+          try {
+            if (id === "spotify-liked-songs") {
+              setActivePlaylist(pl);
+              setActivePlaylistId(id);
+              startProgressiveLikedSongsFetch(spotifyToken);
+            } else {
+              const tracksRes = await fetch(`https://api.spotify.com/v1/playlists/${id}/tracks?limit=50`, {
+                headers: { Authorization: `Bearer ${spotifyToken}` },
+              });
+              if (tracksRes.ok) {
+                const tracksData = await tracksRes.json();
+                const mappedTracks = tracksData.items
+                  .filter((item: any) => item.track)
+                  .map((item: any) => mapSpotifyTrackToTrack(item.track));
+
+                const updatedPl = { ...pl, tracks: mappedTracks };
+                setSpotifyPlaylists((prev) => prev.map((p) => p.id === id ? updatedPl : p));
+                setActivePlaylist(updatedPl);
+                setActivePlaylistId(id);
+              } else if (tracksRes.status === 401) {
+                await handleSpotifyTokenRefresh();
+              }
+            }
+          } catch (e) {
+            console.error("Failed to fetch Spotify playlist tracks:", e);
+          }
+        } else {
+          setActivePlaylist(pl);
+          setActivePlaylistId(id);
+        }
+      }
+    } else if (isCustom) {
+      const pl = userPlaylists.find((p) => p.id === id);
+      if (pl) {
+        setActivePlaylist(pl);
+        setActivePlaylistId(id);
       }
     } else {
-      playLocalPreview(track);
+      const pl = curatedPlaylists.find((p) => p.id === id);
+      if (pl) {
+        setActivePlaylist(pl);
+        setActivePlaylistId(id);
+      }
     }
+    setActiveTab("explore");
   };
 
-  const playLocalPreview = (track: SpotifyTrack) => {
-    if (audioRef.current) {
-      audioRef.current.pause();
-      if (track.previewUrl) {
-        audioRef.current.src = track.previewUrl;
-        audioRef.current.play()
-          .then(() => {
-            setIsPlaying(true);
-          })
-          .catch((e) => {
-            console.error("Local preview failed to play", e);
-            setIsPlaying(false);
+  // Create a new empty custom playlist
+  const handleCreatePlaylist = (name: string, description?: string, tracks?: Track[]) => {
+    const newPlaylist: Playlist = {
+      id: `custom-pl-${Date.now()}`,
+      name,
+      description: description || "My custom track compilation",
+      tracks: tracks || [],
+      isCustom: true,
+    };
+    const updated = [...userPlaylists, newPlaylist];
+    saveUserPlaylists(updated);
+    setActivePlaylist(newPlaylist);
+    setActivePlaylistId(newPlaylist.id);
+    setActiveTab("explore");
+  };
+
+  // Load an external Spotify asset directly (from paste bar)
+  const handleLoadExternalUrl = async (type: "track" | "playlist" | "album" | "artist", id: string) => {
+    setEmbedType(type);
+    setEmbedId(id);
+    setIsPlaying(true);
+    setCurrentTime(0);
+
+    const token = spotifyToken || localStorage.getItem("spotify_access_token");
+
+    if (token) {
+      try {
+        if (type === "track") {
+          const res = await fetch(`https://api.spotify.com/v1/tracks/${id}`, {
+            headers: { Authorization: `Bearer ${token}` },
           });
-      } else {
-        alert("This track does not have a 30-second preview available. Connect Spotify Premium to play full tracks.");
-        setIsPlaying(false);
+          if (res.ok) {
+            const trackData = await res.json();
+            const durationMinSec = trackData.duration_ms
+              ? `${Math.floor(trackData.duration_ms / 60000)}:${String(Math.floor((trackData.duration_ms % 60000) / 1000)).padStart(2, '0')}`
+              : "3:00";
+            const fetchedTrack: Track = {
+              id: trackData.id,
+              title: trackData.name,
+              artist: trackData.artists?.map((a: any) => a.name).join(", ") || "Unknown Artist",
+              album: trackData.album?.name || "Single",
+              spotifyId: trackData.id,
+              spotifyUri: trackData.uri || `spotify:track:${trackData.id}`,
+              imageUrl: trackData.album?.images?.[0]?.url || "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=300",
+              duration: durationMinSec,
+            };
+            setCurrentTrack(fetchedTrack);
+            setDuration(parseDurationToSeconds(durationMinSec));
+            return;
+          }
+        } else if (type === "playlist") {
+          const playlistRes = await fetch(`https://api.spotify.com/v1/playlists/${id}`, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          if (playlistRes.ok) {
+            const playlistData = await playlistRes.json();
+            const playlistName = playlistData.name || "Custom Playlist";
+            
+            let tracks: Track[] = [];
+            let nextUrl: string | null = `https://api.spotify.com/v1/playlists/${id}/tracks?limit=100`;
+            let pagesFetched = 0;
+            
+            while (nextUrl && pagesFetched < 15) {
+              const tracksRes = await fetch(nextUrl, {
+                headers: { Authorization: `Bearer ${token}` },
+              });
+              if (!tracksRes.ok) break;
+              const data = await tracksRes.json();
+              if (data.items) {
+                const pageTracks = data.items
+                  .filter((item: any) => item.track)
+                  .map((item: any) => {
+                    const t = item.track;
+                    const durationMinSec = t.duration_ms
+                      ? `${Math.floor(t.duration_ms / 60000)}:${String(Math.floor((t.duration_ms % 60000) / 1000)).padStart(2, '0')}`
+                      : "3:00";
+                    return {
+                      id: t.id,
+                      title: t.name,
+                      artist: t.artists?.map((a: any) => a.name).join(", ") || "Unknown Artist",
+                      album: t.album?.name || "Single",
+                      spotifyId: t.id,
+                      spotifyUri: t.uri || `spotify:track:${t.id}`,
+                      imageUrl: t.album?.images?.[0]?.url || "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=300",
+                      duration: durationMinSec,
+                    };
+                  });
+                tracks = [...tracks, ...pageTracks];
+              }
+              nextUrl = data.next;
+              pagesFetched++;
+            }
+
+            if (tracks.length > 0) {
+              const newPlaylist: Playlist = {
+                id: `spotify-import-${id}`,
+                name: playlistName,
+                description: playlistData.description || `Imported Spotify playlist.`,
+                tracks,
+                isCustom: true,
+              };
+              
+              if (!userPlaylists.some(pl => pl.id === newPlaylist.id)) {
+                const updated = [...userPlaylists, newPlaylist];
+                saveUserPlaylists(updated);
+              }
+              
+              setActivePlaylist(newPlaylist);
+              setActivePlaylistId(newPlaylist.id);
+              setCurrentTrack(tracks[0]);
+              setEmbedType("track");
+              setEmbedId(tracks[0].spotifyId);
+              setDuration(parseDurationToSeconds(tracks[0].duration));
+              setActiveTab("explore");
+              return;
+            }
+          }
+        } else if (type === "album") {
+          const albumRes = await fetch(`https://api.spotify.com/v1/albums/${id}`, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          if (albumRes.ok) {
+            const albumData = await albumRes.json();
+            const albumName = albumData.name || "Custom Album";
+            const albumImg = albumData.images?.[0]?.url || "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=300";
+            
+            if (albumData.tracks && albumData.tracks.items) {
+              const tracks = albumData.tracks.items.map((t: any) => {
+                const durationMinSec = t.duration_ms
+                  ? `${Math.floor(t.duration_ms / 60000)}:${String(Math.floor((t.duration_ms % 60000) / 1000)).padStart(2, '0')}`
+                  : "3:00";
+                return {
+                  id: t.id,
+                  title: t.name,
+                  artist: t.artists?.map((a: any) => a.name).join(", ") || "Unknown Artist",
+                  album: albumName,
+                  spotifyId: t.id,
+                  spotifyUri: t.uri || `spotify:track:${t.id}`,
+                  imageUrl: albumImg,
+                  duration: durationMinSec,
+                };
+              });
+
+              const newPlaylist: Playlist = {
+                id: `spotify-album-import-${id}`,
+                name: albumName,
+                description: `Imported Spotify album by ${albumData.artists?.[0]?.name || "Unknown Artist"}.`,
+                tracks,
+                isCustom: true,
+              };
+              
+              if (!userPlaylists.some(pl => pl.id === newPlaylist.id)) {
+                const updated = [...userPlaylists, newPlaylist];
+                saveUserPlaylists(updated);
+              }
+              
+              setActivePlaylist(newPlaylist);
+              setActivePlaylistId(newPlaylist.id);
+              setCurrentTrack(tracks[0]);
+              setEmbedType("track");
+              setEmbedId(tracks[0].spotifyId);
+              setDuration(parseDurationToSeconds(tracks[0].duration));
+              setActiveTab("explore");
+              return;
+            }
+          }
+        }
+      } catch (err) {
+        console.error("Failed to load rich details for external Spotify asset:", err);
       }
+    }
+
+    // Fallback/Non-authenticated logic (plays iframe embed directly)
+    if (type === "track") {
+      setCurrentTrack({
+        id,
+        title: "Pasted Spotify Link",
+        artist: "Unknown Artist",
+        album: "External Spotify Frame",
+        spotifyId: id,
+        spotifyUri: `https://open.spotify.com/track/${id}`,
+        duration: "3:00",
+      });
+      setDuration(180);
+    } else {
+      setCurrentTrack({
+        id,
+        title: `Pasted Spotify ${type}`,
+        artist: "Continuous Playback",
+        album: "External Media",
+        spotifyId: id,
+        spotifyUri: `https://open.spotify.com/${type}/${id}`,
+      });
+      setDuration(600);
     }
   };
 
-  const handleTogglePlay = async () => {
-    if (!currentTrack) {
-      if (filteredTracksList.length > 0) {
-        handlePlayTrack(filteredTracksList[0], 0);
+  // Trigger track playing
+  const handlePlayTrack = (track: Track) => {
+    setCurrentTrack(track);
+    setEmbedType("track");
+    setEmbedId(track.spotifyId);
+    setIsPlaying(true);
+    setCurrentTime(0);
+    setDuration(parseDurationToSeconds(track.duration));
+    setIsLiked(false);
+    setShowLyricsPanel(true);
+
+    if (spotifyToken) {
+      const playUrl = spotifyDeviceId
+        ? `https://api.spotify.com/v1/me/player/play?device_id=${spotifyDeviceId}`
+        : "https://api.spotify.com/v1/me/player/play";
+      fetch(playUrl, {
+        method: "PUT",
+        headers: {
+          Authorization: `Bearer ${spotifyToken}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          uris: [track.spotifyUri || `spotify:track:${track.spotifyId}`],
+        }),
+      }).catch((err) => console.debug("Spotify remote play attempt:", err));
+    }
+  };
+
+  // Append track to a custom user playlist
+  const handleAddToPlaylist = (track: Track, playlistId: string) => {
+    const updated = userPlaylists.map((pl) => {
+      if (pl.id === playlistId) {
+        if (pl.tracks.some((t) => t.spotifyId === track.spotifyId)) return pl;
+        return {
+          ...pl,
+          tracks: [...pl.tracks, track],
+        };
       }
+      return pl;
+    });
+    saveUserPlaylists(updated);
+
+    if (activePlaylistId === playlistId) {
+      const activePl = updated.find((p) => p.id === playlistId);
+      if (activePl) setActivePlaylist(activePl);
+    }
+  };
+
+  // Skip tracks forward
+  const handleSkipForward = () => {
+    if (queue.length > 0) {
+      const nextTrack = queue[0];
+      setQueue((prev) => prev.slice(1));
+      handlePlayTrack(nextTrack);
       return;
     }
-
-    if (isSdkConnected && spotifyPlayerRef.current) {
-      try {
-        await spotifyPlayerRef.current.togglePlay();
-        setIsPlaying(!isPlaying);
-      } catch (err) {
-        console.error("SDK togglePlay fail:", err);
-      }
-    } else if (audioRef.current) {
-      if (isPlaying) {
-        audioRef.current.pause();
-      } else {
-        audioRef.current.play().catch(() => {});
-      }
-      setIsPlaying(!isPlaying);
+    if (!activePlaylist || !currentTrack) return;
+    const tracks = activePlaylist.tracks;
+    const currentIndex = tracks.findIndex((t) => t.spotifyId === currentTrack.spotifyId);
+    if (currentIndex !== -1 && currentIndex < tracks.length - 1) {
+      handlePlayTrack(tracks[currentIndex + 1]);
+    } else {
+      if (tracks.length > 0) handlePlayTrack(tracks[0]);
     }
   };
 
-  const handleSkipForward = () => {
-    if (playbackQueue.length === 0 || currentQueueIndex === -1) return;
-    const nextIndex = (currentQueueIndex + 1) % playbackQueue.length;
-    handlePlayTrack(playbackQueue[nextIndex], nextIndex, playbackQueue);
-  };
-
+  // Skip tracks backward
   const handleSkipBackward = () => {
-    if (playbackQueue.length === 0 || currentQueueIndex === -1) return;
-    let prevIndex = currentQueueIndex - 1;
-    if (prevIndex < 0) prevIndex = playbackQueue.length - 1;
-    handlePlayTrack(playbackQueue[prevIndex], prevIndex, playbackQueue);
+    if (!activePlaylist || !currentTrack) return;
+    const tracks = activePlaylist.tracks;
+    const currentIndex = tracks.findIndex((t) => t.spotifyId === currentTrack.spotifyId);
+    if (currentIndex > 0) {
+      handlePlayTrack(tracks[currentIndex - 1]);
+    } else {
+      if (tracks.length > 0) handlePlayTrack(tracks[tracks.length - 1]);
+    }
   };
 
-  const handleToggleVolumeMute = () => {
+  // Play a freshly generated AI playlist
+  const handleCuratedPlaylistSelect = (tracks: Track[], name: string, desc: string) => {
+    const freshPlaylist: Playlist = {
+      id: `ai-temp-${Date.now()}`,
+      name,
+      description: desc,
+      tracks,
+    };
+    setActivePlaylist(freshPlaylist);
+    setActivePlaylistId(freshPlaylist.id);
+    setActiveTab("explore");
+
+    if (tracks.length > 0) {
+      handlePlayTrack(tracks[0]);
+    }
+  };
+
+  // Toggle audio volume mute state
+  const handleVolumeToggle = () => {
     if (volume > 0) {
       setPrevVolume(volume);
       setVolume(0);
     } else {
-      setVolume(prevVolume);
+      setVolume(prevVolume || 80);
     }
   };
 
-  const handleToggleLikeTrack = async (track: SpotifyTrack, e: React.MouseEvent) => {
-    e.stopPropagation(); // Avoid playing when clicking heart
-    if (!token) return;
+  // Play/pause simulated state toggles
+  const handlePlayToggle = () => {
+    if (currentTrack) {
+      const nextPlayingState = !isPlaying;
+      setIsPlaying(nextPlayingState);
 
-    const isLiked = likedTracks.some(t => t.id === track.id);
-    try {
-      if (isLiked) {
-        await fetchWebApi(`v1/me/tracks?ids=${track.id}`, "DELETE");
-        setLikedTracks(prev => prev.filter(t => t.id !== track.id));
-      } else {
-        await fetchWebApi(`v1/me/tracks?ids=${track.id}`, "PUT");
-        setLikedTracks(prev => [track, ...prev]);
-      }
-    } catch (err) {
-      console.error("Toggle like fail:", err);
-    }
-  };
-
-  const handleAddToQueue = async (track: SpotifyTrack, e: React.MouseEvent) => {
-    e.stopPropagation(); // Avoid playing when clicking plus
-    
-    setPlaybackQueue((prev) => {
-      if (prev.length === 0) {
-        setCurrentQueueIndex(0);
-        setCurrentTrack(track);
-      }
-      return [...prev, track];
-    });
-
-    if (token && track.spotifyUri) {
-      try {
-        await fetchWebApi(`v1/me/player/queue?uri=${encodeURIComponent(track.spotifyUri)}`, "POST");
-      } catch (err) {
-        console.warn("Failed to sync to Spotify queue:", err);
+      if (spotifyToken) {
+        const endpoint = nextPlayingState ? "play" : "pause";
+        const controlUrl = spotifyDeviceId
+          ? `https://api.spotify.com/v1/me/player/${endpoint}?device_id=${spotifyDeviceId}`
+          : `https://api.spotify.com/v1/me/player/${endpoint}`;
+        fetch(controlUrl, {
+          method: "PUT",
+          headers: {
+            Authorization: `Bearer ${spotifyToken}`,
+            "Content-Type": "application/json",
+          },
+        }).catch((err) => console.debug(`Spotify remote ${endpoint} attempt:`, err));
       }
     }
   };
 
-  // Visualizer Animation Hook (Sleek CSS Wave style)
+  // Synchronize volume change to active Spotify device (with debouncing)
   useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-
-    canvas.width = canvas.offsetWidth;
-    canvas.height = canvas.offsetHeight;
-
-    const barCount = 45;
-    const barWidth = Math.floor(canvas.width / barCount) - 2;
-    const barsArray: { x: number; height: number; targetHeight: number; speed: number }[] = [];
-
-    for (let i = 0; i < barCount; i++) {
-      barsArray.push({
-        x: i * (barWidth + 2),
-        height: 2,
-        targetHeight: 2,
-        speed: 0.15 + Math.random() * 0.1
-      });
-    }
-
-    const draw = () => {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-      barsArray.forEach((bar, index) => {
-        if (isPlaying) {
-          const peak = Math.sin(Date.now() * 0.005 + index) * 0.5 + 0.5;
-          bar.targetHeight = peak * (canvas.height - 10) + 5;
-        } else {
-          bar.targetHeight = 3;
-        }
-
-        bar.height += (bar.targetHeight - bar.height) * bar.speed;
-
-        const gradient = ctx.createLinearGradient(bar.x, canvas.height - bar.height, bar.x, canvas.height);
-        gradient.addColorStop(0, themeHex);
-        gradient.addColorStop(1, "rgba(255, 255, 255, 0.03)");
-
-        ctx.fillStyle = gradient;
-        
-        ctx.beginPath();
-        if (ctx.roundRect) {
-          const radius = Math.max(0, barWidth / 2);
-          ctx.roundRect(bar.x, canvas.height - bar.height, barWidth, bar.height, [radius, radius, 0, 0]);
-        } else {
-          ctx.rect(bar.x, canvas.height - bar.height, barWidth, bar.height);
-        }
-        ctx.fill();
-      });
-
-      animationRef.current = requestAnimationFrame(draw);
+    if (!spotifyToken) return;
+    
+    const controller = new AbortController();
+    const updateDeviceVolume = async () => {
+      try {
+        const volumeUrl = spotifyDeviceId
+          ? `https://api.spotify.com/v1/me/player/volume?volume_percent=${volume}&device_id=${spotifyDeviceId}`
+          : `https://api.spotify.com/v1/me/player/volume?volume_percent=${volume}`;
+        await fetch(volumeUrl, {
+          method: "PUT",
+          headers: { 
+            Authorization: `Bearer ${spotifyToken}`,
+            "Content-Type": "application/json"
+          },
+          signal: controller.signal,
+        });
+      } catch (err) {
+        console.debug("Spotify live volume sync:", err);
+      }
     };
 
-    draw();
-
+    const timer = setTimeout(updateDeviceVolume, 300);
     return () => {
-      if (animationRef.current) cancelAnimationFrame(animationRef.current);
+      controller.abort();
+      clearTimeout(timer);
     };
-  }, [isPlaying, themeHex]);
+  }, [volume, spotifyToken, spotifyDeviceId]);
 
-  // Duration formatting helpers
-  const formatDuration = (ms: number) => {
-    const min = Math.floor(ms / 60000);
-    const sec = Math.floor((ms % 60000) / 1000);
-    return `${min}:${String(sec).padStart(2, "0")}`;
-  };
-
-  const formatSeconds = (secs: number) => {
-    const min = Math.floor(secs / 60);
-    const sec = Math.floor(secs % 60);
-    return `${String(min).padStart(2, "0")}:${String(sec).padStart(2, "0")}`;
+  const handleAddToQueue = (track: Track) => {
+    setQueue((prev) => [...prev, track]);
+    setRightPanelTab("queue");
   };
 
   return (
-    <div
-      id="portal-music-hub"
-      className="w-full grid grid-cols-1 lg:grid-cols-12 gap-6 bg-[#04020a]/80 text-[#e2d9f3] rounded-2xl border border-white/[0.04] p-6 backdrop-blur-xl animate-[fadeIn_0.5s_ease-out]"
-      style={{
-        "--theme-glow": `${themeHex}66`,
-        "--theme-accent": themeHex
-      } as React.CSSProperties}
-    >
-      {/* 1. LEFT SIDEBAR: Connection & Library Selection */}
-      <div className="lg:col-span-3 flex flex-col gap-5 h-[620px]">
-        {/* Connection card */}
-        <div className="bg-white/[0.02] border border-white/[0.05] rounded-2xl p-4 flex flex-col gap-3.5 shadow-inner">
-          <div className="flex items-center gap-3">
-            {userProfile?.images?.[0]?.url ? (
-              <img
-                src={userProfile.images[0].url}
-                alt="Profile"
-                className="w-10 h-10 rounded-full border border-white/10"
-              />
-            ) : (
-              <div className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-zinc-400">
-                <User className="w-5 h-5" />
+    <div id="music-hub-container" className="h-[680px] w-full flex flex-col overflow-hidden bg-[#04020a]/85 rounded-2xl border border-white/[0.04] backdrop-blur-xl relative text-[#e0dcd0] font-sans antialiased">
+      {/* Upper Content Section (Sidebar + Main panel + Synced Lyrics Right column) */}
+      <div className="flex-1 flex min-h-0 relative">
+        <Sidebar
+          curatedPlaylists={curatedPlaylists}
+          userPlaylists={userPlaylists}
+          activePlaylistId={activePlaylistId}
+          onSelectPlaylist={handleSelectPlaylist}
+          onCreatePlaylist={handleCreatePlaylist}
+          onLoadExternalUrl={handleLoadExternalUrl}
+          activeTab={activeTab}
+          setActiveTab={setActiveTab}
+          spotifyToken={spotifyToken}
+          spotifyUser={spotifyUser}
+          spotifyPlaylists={spotifyPlaylists}
+          onConnectSpotify={handleConnectSpotify}
+          onDisconnectSpotify={handleDisconnectSpotify}
+          onFetchLikedSongs={fetchSpotifyLikedSongs}
+        />
+
+        {/* Dashboard/Search panel */}
+        <main className="flex-1 flex flex-col min-h-0 relative">
+          <PlayerDashboard
+            activePlaylist={activePlaylist}
+            currentTrack={currentTrack}
+            onPlayTrack={handlePlayTrack}
+            onAddToPlaylist={handleAddToPlaylist}
+            userPlaylists={userPlaylists}
+            activeTab={activeTab}
+            onCuratedPlaylistSelect={handleCuratedPlaylistSelect}
+            onAddToQueue={handleAddToQueue}
+            spotifyToken={spotifyToken}
+            spotifyPlaylists={spotifyPlaylists}
+            onCreatePlaylist={handleCreatePlaylist}
+            likedSongsStatus={likedSongsStatus}
+          />
+        </main>
+
+        {/* Right Panel: Embedded Player, Visualizer & Synced Lyrics / Queue */}
+        {showLyricsPanel && (
+          <aside className="w-80 flex flex-col border-l border-[#8b5cf6]/15 bg-[#06030d]/90 backdrop-blur-md p-4 space-y-4 shrink-0 overflow-y-auto scrollbar-none select-none fixed lg:relative right-0 top-0 bottom-24 lg:bottom-0 h-[calc(100vh-6rem)] lg:h-auto z-40 shadow-2xl lg:shadow-none animate-fade-in">
+            {/* Mobile Close Button Header */}
+            <div className="flex items-center justify-between lg:hidden border-b border-white/10 pb-3 shrink-0">
+              <span className="text-xs font-semibold uppercase tracking-widest text-[#8b5cf6] font-mono">Player Console</span>
+              <button
+                onClick={() => setShowLyricsPanel(false)}
+                className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-zinc-400 hover:text-white transition"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Segmented Tab Selector: Lyrics vs. Queue */}
+            <div className="flex bg-[#0a0518] p-1 rounded-xl border border-white/5 shrink-0 relative z-10">
+              <button
+                onClick={() => setRightPanelTab("lyrics")}
+                className={`flex-1 text-center py-2 text-xs font-semibold rounded-lg transition-all ${
+                  rightPanelTab === "lyrics"
+                    ? "bg-[#8b5cf6] text-white shadow-md font-bold shadow-[#8b5cf6]/25"
+                    : "text-zinc-400 hover:text-white"
+                }`}
+              >
+                Lyrics
+              </button>
+              <button
+                onClick={() => setRightPanelTab("queue")}
+                className={`flex-1 text-center py-2 text-xs font-semibold rounded-lg transition-all flex items-center justify-center gap-1.5 ${
+                  rightPanelTab === "queue"
+                    ? "bg-[#8b5cf6] text-white shadow-md font-bold shadow-[#8b5cf6]/25"
+                    : "text-zinc-400 hover:text-white"
+                }`}
+              >
+                <span>Queue</span>
+                {queue.length > 0 && (
+                  <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-mono font-bold leading-none ${
+                    rightPanelTab === "queue" ? "bg-black text-[#8b5cf6]" : "bg-white/10 text-zinc-300"
+                  }`}>
+                    {queue.length}
+                  </span>
+                )}
+              </button>
+            </div>
+
+            {/* Spinning Vinyl Disc */}
+            {currentTrack && (
+              <div className="flex flex-col items-center justify-center p-2 shrink-0 select-none">
+                <div className="relative group my-2 flex items-center justify-center">
+                  <div className="w-36 h-36 rounded-full bg-black/60 border border-white/5 flex items-center justify-center relative shadow-[0_0_20px_rgba(0,0,0,0.8)] overflow-hidden transition-all duration-500">
+                    {/* Grooves */}
+                    <div className="absolute inset-1 border border-white/5 rounded-full" />
+                    <div className="absolute inset-3 border border-white/5 rounded-full" />
+                    <div className="absolute inset-6 border border-white/5 rounded-full" />
+                    <div className="absolute inset-10 border border-white/5 rounded-full" />
+                    <div className="absolute inset-15 border border-white/5 rounded-full" />
+
+                    <div className={`w-20 h-20 rounded-full overflow-hidden relative shadow-[0_0_10px_rgba(0,0,0,0.5)] transition-transform duration-1000 ${
+                      isPlaying ? "animate-spin-slow" : ""
+                    }`}>
+                      <img
+                        src={currentTrack.imageUrl || "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=200&q=80"}
+                        alt="Vinyl Cover"
+                        className="w-full h-full object-cover"
+                        referrerPolicy="no-referrer"
+                      />
+                      <div className="absolute inset-0 bg-black/10" />
+                    </div>
+                    <div className="absolute w-4 h-4 rounded-full bg-[#0d0a1b] border-2 border-black/80 flex items-center justify-center" />
+                  </div>
+
+                  {/* Needle Arm */}
+                  <div
+                    className="absolute top-[-10px] right-[25px] w-10 h-24 origin-top-left transition-transform duration-700 pointer-events-none animate-needle-arm"
+                    style={{
+                      transform: isPlaying ? "rotate(18deg)" : "rotate(-12deg)",
+                      backgroundImage: "linear-gradient(to bottom, #4b5563 5%, #1f2937 100%)",
+                      clipPath: "polygon(0 0, 4px 0, 2px 96px)"
+                    }}
+                  />
+                </div>
               </div>
             )}
-            <div className="min-w-0">
-              <h4 className="text-xs font-bold text-white truncate">
-                {userProfile ? userProfile.display_name : "Spotify Sync"}
-              </h4>
-              <p className="text-[10px] text-zinc-400 truncate mt-0.5">
-                {userProfile ? `Linked: ${userProfile.email}` : "Offline"}
-              </p>
+
+            {/* Audio Visualizer */}
+            <div className="shrink-0 h-20">
+              <AudioVisualizer isPlaying={isPlaying} color={visualizerColor} volume={volume} />
             </div>
-          </div>
 
-          {token ? (
-            <button
-              onClick={handleDisconnect}
-              className="w-full py-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 cursor-pointer"
-            >
-              <Power className="w-3.5 h-3.5" />
-              Disconnect Spotify
-            </button>
-          ) : (
-            <button
-              onClick={handleConnectSpotify}
-              className="w-full py-2 bg-[var(--theme-accent)] hover:scale-[1.02] text-white rounded-xl text-xs font-bold transition shadow-[0_0_15px_var(--theme-glow)] flex items-center justify-center gap-2 cursor-pointer"
-            >
-              <Disc className="w-4 h-4 animate-spin-slow" />
-              Connect Spotify
-            </button>
-          )}
-        </div>
-
-        {/* Collections Sidebar list */}
-        <div className="flex-1 bg-white/[0.02] border border-white/[0.05] rounded-2xl p-3 flex flex-col gap-2 overflow-hidden">
-          <h3 className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 px-2 py-1 flex items-center gap-1.5 border-b border-white/5 mb-1.5">
-            <ListMusic className="w-3.5 h-3.5 text-[var(--theme-accent)]" />
-            Spotify Collections
-          </h3>
-
-          <button
-            onClick={() => {
-              setActiveTab("liked");
-              setShowQueue(false);
-              setSearchQuery("");
-            }}
-            disabled={!token}
-            className={`w-full text-left px-3 py-2.5 rounded-xl text-xs font-semibold flex items-center justify-between transition disabled:opacity-20 disabled:pointer-events-none ${
-              activeTab === "liked"
-                ? "bg-[var(--theme-accent)] text-white shadow-[0_0_15px_var(--theme-glow)]"
-                : "bg-white/[0.01] hover:bg-white/5 text-zinc-300"
-            }`}
-          >
-            <div className="flex items-center gap-2">
-              <Heart className="w-3.5 h-3.5 fill-current" />
-              <span>All Liked Songs</span>
-            </div>
-            <span className="opacity-70 text-[10px]">{likedTracks.length}</span>
-          </button>
-
-          {/* Sync status overlay */}
-          {syncStatus === "loading" && syncProgress && (
-            <div className="mt-auto bg-[var(--theme-accent)]/5 border border-[var(--theme-accent)]/10 rounded-xl p-3 flex flex-col gap-2 select-none">
-              <div className="flex items-center gap-2 text-xs font-semibold text-white">
-                <RefreshCw className="w-3.5 h-3.5 animate-spin text-[var(--theme-accent)]" />
-                <span>Syncing Library...</span>
-              </div>
-              <div className="w-full bg-white/5 h-1.5 rounded-full overflow-hidden">
-                <div
-                  className="bg-[var(--theme-accent)] h-full transition-all duration-300"
-                  style={{ width: `${(syncProgress.loaded / syncProgress.total) * 100}%` }}
+            {rightPanelTab === "lyrics" ? (
+              /* Timed scrolling lyrics */
+              <div className="flex-1 min-h-[200px] overflow-hidden">
+                <LyricsDisplay
+                  title={currentTrack?.title || ""}
+                  artist={currentTrack?.artist || ""}
+                  currentTime={currentTime}
+                  isPlaying={isPlaying}
                 />
               </div>
-              <div className="flex justify-between text-[9px] text-zinc-400">
-                <span>{syncProgress.loaded} / {syncProgress.total} songs</span>
-                <span>{Math.round((syncProgress.loaded / syncProgress.total) * 100)}%</span>
-              </div>
-            </div>
-          )}
-
-          {/* Sync error display */}
-          {syncStatus === "error" && syncErrorMsg && (
-            <div className="mt-auto bg-red-500/5 border border-red-500/10 rounded-xl p-2.5 flex flex-col gap-1 select-none">
-              <span className="text-[10px] font-bold text-red-400">Sync Failed:</span>
-              <p className="text-[9px] text-zinc-400 break-words leading-tight">{syncErrorMsg}</p>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* 2. CENTER PANEL: Modern Spinning Player */}
-      <div className="lg:col-span-5 flex flex-col gap-6 items-center justify-between h-[620px] bg-white/[0.01] border border-white/[0.03] rounded-3xl p-6 relative overflow-hidden">
-        <div className="flex justify-between items-center w-full">
-          <span className="text-[10px] uppercase font-bold text-zinc-500 tracking-wider">Spotify Connect Hub</span>
-          <div className="flex items-center gap-1">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-            <span className="text-[9px] uppercase font-bold text-emerald-400 tracking-wider">Active</span>
-          </div>
-        </div>
-
-        {/* Vinyl spinning album disc */}
-        <div className="relative group my-auto flex items-center justify-center">
-          <div className={`w-64 h-64 rounded-full bg-black/60 border border-white/5 flex items-center justify-center relative shadow-[0_0_50px_rgba(0,0,0,0.8)] overflow-hidden transition-all duration-500 ${
-            isPlaying ? "scale-105" : "scale-100"
-          }`}>
-            {/* Grooves */}
-            <div className="absolute inset-2 border border-white/5 rounded-full" />
-            <div className="absolute inset-6 border border-white/5 rounded-full" />
-            <div className="absolute inset-10 border border-white/5 rounded-full" />
-            <div className="absolute inset-16 border border-white/5 rounded-full" />
-            <div className="absolute inset-24 border border-white/5 rounded-full" />
-
-            <div className={`w-32 h-32 rounded-full overflow-hidden relative shadow-[0_0_20px_rgba(0,0,0,0.5)] transition-transform duration-1000 ${
-              isPlaying ? "animate-spin-slow" : ""
-            }`}>
-              <img
-                src={currentTrack?.imageUrl || "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=400&q=80"}
-                alt="Vinyl Cover"
-                className="w-full h-full object-cover"
-              />
-              <div className="absolute inset-0 bg-black/10" />
-            </div>
-            <div className="absolute w-6 h-6 rounded-full bg-[#0d0a1b] border-4 border-black/80 flex items-center justify-center" />
-          </div>
-
-          {/* Needle Arm */}
-          <div
-            className="absolute top-[-25px] right-[40px] w-20 h-44 origin-top-left transition-transform duration-700 pointer-events-none"
-            style={{
-              transform: isPlaying ? "rotate(18deg)" : "rotate(-12deg)",
-              backgroundImage: "linear-gradient(to bottom, #4b5563 5%, #1f2937 100%)",
-              clipPath: "polygon(0 0, 8px 0, 4px 176px)"
-            }}
-          />
-        </div>
-
-        {/* Current song details */}
-        <div className="w-full text-center flex flex-col gap-1 z-10">
-          <h2 className="text-lg font-bold text-white truncate max-w-full px-4">
-            {currentTrack ? currentTrack.title : "Ready to Play"}
-          </h2>
-          <p className="text-xs text-zinc-400 truncate max-w-full px-4">
-            {currentTrack ? currentTrack.artist : "Select a Liked Song to start syncing"}
-          </p>
-        </div>
-
-        {/* Playback Controls & Progress bar */}
-        <div className="w-full flex flex-col gap-4">
-          <div className="flex flex-col gap-1">
-            <input
-              type="range"
-              min={0}
-              max={duration || 100}
-              value={currentTime}
-              onChange={handleSeekChange}
-              className="w-full h-1 bg-white/5 appearance-none rounded-full cursor-pointer accent-[var(--theme-accent)] transition hover:h-1.5"
-            />
-            <div className="flex justify-between text-[10px] text-zinc-500 font-medium select-none">
-              <span>{formatSeconds(currentTime)}</span>
-              <span>{currentTrack ? currentTrack.duration : "0:00"}</span>
-            </div>
-          </div>
-
-          <div className="flex justify-between items-center px-4">
-            {/* Left side volume slider */}
-            <div className="flex items-center gap-2">
-              <button
-                onClick={handleToggleVolumeMute}
-                className="p-1.5 text-zinc-500 hover:text-white transition cursor-pointer"
-              >
-                {volume === 0 ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
-              </button>
-              <input
-                type="range"
-                min={0}
-                max={100}
-                value={volume}
-                onChange={(e) => setVolume(parseInt(e.target.value, 10))}
-                className="h-[2px] w-20 bg-white/10 appearance-none rounded-full cursor-pointer accent-[var(--theme-accent)]"
-              />
-            </div>
-
-            {/* Central Controls */}
-            <div className="flex items-center gap-4">
-              <button
-                onClick={handleSkipBackward}
-                className="p-2 text-zinc-400 hover:text-white active:scale-95 transition cursor-pointer"
-              >
-                <SkipBack className="w-5 h-5 fill-current" />
-              </button>
-              <button
-                onClick={handleTogglePlay}
-                className="p-3.5 bg-white text-[#0d0a1b] rounded-full hover:scale-105 active:scale-95 transition shadow-lg cursor-pointer"
-              >
-                {isPlaying ? <Pause className="w-5 h-5 fill-current" /> : <Play className="w-5 h-5 fill-current ml-0.5" />}
-              </button>
-              <button
-                onClick={handleSkipForward}
-                className="p-2 text-zinc-400 hover:text-white active:scale-95 transition cursor-pointer"
-              >
-                <SkipForward className="w-5 h-5 fill-current" />
-              </button>
-            </div>
-
-            {/* Connection mode indicator */}
-            <div className="text-[9px] uppercase font-bold text-zinc-500 border border-white/10 rounded-full px-2.5 py-1 bg-white/[0.02]">
-              {token ? (isSdkConnected ? "SDK Session" : "Web Preview") : "Offline"}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* 3. RIGHT PANEL: Songs List Index / Search */}
-      <div className="lg:col-span-4 flex flex-col gap-6 h-[620px]">
-        <div className="flex-1 bg-white/[0.02] border border-white/[0.05] rounded-3xl p-4 flex flex-col gap-4 overflow-hidden">
-          {/* Tabs header */}
-          <div className="flex border-b border-white/5 pb-1 select-none">
-            <button
-              onClick={() => setShowQueue(false)}
-              className={`flex-1 text-center py-2 text-xs font-bold transition cursor-pointer ${
-                !showQueue
-                  ? "text-[var(--theme-accent)] border-b-2 border-[var(--theme-accent)]"
-                  : "text-zinc-500 hover:text-white"
-              }`}
-            >
-              Library Tracks
-            </button>
-            <button
-              onClick={() => setShowQueue(true)}
-              className={`flex-1 text-center py-2 text-xs font-bold transition cursor-pointer flex items-center justify-center gap-1.5 ${
-                showQueue
-                  ? "text-[var(--theme-accent)] border-b-2 border-[var(--theme-accent)]"
-                  : "text-zinc-500 hover:text-white"
-              }`}
-            >
-              Play Queue
-              {playbackQueue.length > 0 && (
-                <span className="bg-white/10 px-1.5 py-0.5 rounded-full text-[9px] text-zinc-400 font-medium">
-                  {playbackQueue.length}
-                </span>
-              )}
-            </button>
-          </div>
-
-          {!showQueue ? (
-            <>
-              {/* Client-side Search */}
-              <div className="relative w-full">
-                <Search className="w-3.5 h-3.5 text-zinc-500 absolute left-3 top-1/2 -translate-y-1/2" />
-                <input
-                  type="text"
-                  placeholder="Search artists, songs..."
-                  value={searchQuery}
-                  onChange={(e) => {
-                    setSearchQuery(e.target.value);
-                    if (activeTab !== "search") setActiveTab("search");
-                  }}
-                  disabled={!token}
-                  className="w-full bg-white/[0.03] border border-white/5 rounded-xl pl-9 pr-3 py-2 text-xs focus:outline-none focus:border-[var(--theme-accent)] transition text-white placeholder-zinc-500"
-                />
-              </div>
-
-              {/* Scrollable List Area */}
-              <div className="flex-1 overflow-y-auto space-y-1 pr-1 scrollbar-thin">
-                {/* RENDER TRACKS LIST */}
-                {filteredTracksList.map((t, idx) => (
-                  <div
-                    key={t.id}
-                    onClick={() => handlePlayTrack(t, idx, filteredTracksList)}
-                    className={`w-full p-2 rounded-xl text-left text-xs flex items-center justify-between transition cursor-pointer group ${
-                      currentTrack?.id === t.id
-                        ? "bg-white/[0.05] border border-[var(--theme-accent)]/20"
-                        : "hover:bg-white/[0.02] border border-transparent"
-                    }`}
-                  >
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div className="w-8 h-8 rounded overflow-hidden bg-white/5 shrink-0 flex items-center justify-center text-zinc-600 relative">
-                        <img
-                          src={t.imageUrl}
-                          alt={t.title}
-                          className="w-full h-full object-cover"
-                          referrerPolicy="no-referrer"
-                        />
-                        {currentTrack?.id === t.id && isPlaying && (
-                          <div className="absolute inset-0 bg-black/40 flex items-center justify-center text-[var(--theme-accent)]">
-                            <Disc className="w-4 h-4 animate-spin-slow" />
-                          </div>
-                        )}
-                      </div>
-                      <div className="truncate">
-                        <p className={`font-semibold truncate ${currentTrack?.id === t.id ? "text-[var(--theme-accent)]" : "text-white"}`}>
-                          {t.title}
-                        </p>
-                        <p className="text-[10px] text-zinc-500 truncate mt-0.5">{t.artist}</p>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-1.5">
-                      {token && t.spotifyUri && (
-                        <button
-                          onClick={(e) => handleAddToQueue(t, e)}
-                          className="p-1 text-zinc-500 hover:text-white hover:scale-110 transition cursor-pointer"
-                          title="Add to Play Queue"
-                        >
-                          <ListPlus className="w-3.5 h-3.5" />
-                        </button>
-                      )}
-                      {token && t.spotifyUri && (
-                        <button
-                          onClick={(e) => handleToggleLikeTrack(t, e)}
-                          className="p-1 hover:scale-110 transition cursor-pointer"
-                          title={likedTracks.some(lt => lt.id === t.id) ? "Remove from Liked Songs" : "Save to Liked Songs"}
-                        >
-                          <Heart
-                            className={`w-3.5 h-3.5 ${
-                              likedTracks.some(lt => lt.id === t.id)
-                                ? "text-pink-500 fill-current"
-                                : "text-zinc-500 hover:text-white"
-                            }`}
-                          />
-                        </button>
-                      )}
-                      <span className="text-[10px] text-zinc-500 tabular-nums shrink-0">{t.duration}</span>
-                    </div>
-                  </div>
-                ))}
-
-                {/* Empty views */}
-                {!token && (
-                  <div className="text-zinc-500 text-center py-16 text-xs flex flex-col items-center gap-2 select-none">
-                    <Sliders className="w-8 h-8 opacity-40 text-[var(--theme-accent)]" />
-                    <span>Connect your Spotify account to load your library details.</span>
-                  </div>
-                )}
-                {token && filteredTracksList.length === 0 && (
-                  <div className="text-zinc-600 text-center py-16 italic text-xs select-none">
-                    No tracks found in library
-                  </div>
-                )}
-              </div>
-            </>
-          ) : (
-            /* PLAY QUEUE VIEW */
-            <div className="flex-1 flex flex-col gap-4 overflow-hidden animate-[fadeIn_0.3s_ease-out]">
-              {/* Now Playing card */}
-              {currentTrack && (
-                <div className="bg-white/[0.03] border border-white/5 rounded-2xl p-3 flex flex-col gap-2">
-                  <span className="text-[9px] uppercase tracking-wider font-bold text-zinc-500">Now Playing</span>
-                  <div className="flex items-center gap-3">
-                    <img src={currentTrack.imageUrl} alt={currentTrack.title} className="w-10 h-10 rounded object-cover shrink-0" />
-                    <div className="min-w-0 flex-1">
-                      <p className="font-bold text-sm text-[var(--theme-accent)] truncate">{currentTrack.title}</p>
-                      <p className="text-xs text-zinc-400 truncate mt-0.5">{currentTrack.artist}</p>
-                    </div>
-                    {isPlaying && <Disc className="w-5 h-5 text-[var(--theme-accent)] animate-spin-slow shrink-0" />}
-                  </div>
+            ) : (
+              /* Play Queue */
+              <div className="flex-1 flex flex-col min-h-[200px] overflow-hidden bg-[#050505]/40 border border-white/5 rounded-2xl p-3 space-y-3 font-sans">
+                <div className="flex items-center justify-between border-b border-white/5 pb-2 shrink-0">
+                  <span className="text-[10px] font-bold text-[#8b5cf6] uppercase tracking-widest font-mono">
+                    Upcoming Tracks
+                  </span>
+                  {queue.length > 0 && (
+                    <button
+                      onClick={() => setQueue([])}
+                      className="text-[10px] font-bold text-red-400 hover:text-red-300 transition uppercase tracking-wider font-mono"
+                    >
+                      Clear All
+                    </button>
+                  )}
                 </div>
-              )}
 
-              {/* Queue items list */}
-              <div className="flex-1 flex flex-col gap-2 overflow-hidden">
-                <span className="text-[9px] uppercase tracking-wider font-bold text-zinc-500 px-1">Next Up</span>
-                <div className="flex-1 overflow-y-auto space-y-1 pr-1 scrollbar-thin">
-                  {playbackQueue.slice(currentQueueIndex + 1).map((t, indexOffset) => {
-                    const actualIndex = currentQueueIndex + 1 + indexOffset;
-                    return (
+                <div className="flex-1 overflow-y-auto space-y-2 pr-1 scrollbar-thin">
+                  {queue.length === 0 ? (
+                    <div className="h-full flex flex-col items-center justify-center text-center p-4">
+                      <ListMusic className="w-8 h-8 text-zinc-600 mb-2 stroke-[1.5]" />
+                      <p className="text-xs text-zinc-500 italic">Queue is empty</p>
+                      <p className="text-[10px] text-zinc-600 mt-1">Click options on explore tracks to add.</p>
+                    </div>
+                  ) : (
+                    queue.map((track, i) => (
                       <div
-                        key={`${t.id}-${actualIndex}`}
-                        onClick={() => handlePlayTrack(t, actualIndex, playbackQueue)}
-                        className="w-full p-2 rounded-xl text-left text-xs flex items-center justify-between hover:bg-white/[0.02] border border-transparent transition cursor-pointer group"
+                        key={`${track.id}-${i}`}
+                        className="group p-2 rounded-xl bg-white/[0.02] border border-white/5 hover:border-white/10 flex items-center justify-between gap-3 transition"
                       >
-                        <div className="flex items-center gap-3 min-w-0">
-                          <img src={t.imageUrl} alt={t.title} className="w-8 h-8 rounded object-cover shrink-0" />
-                          <div className="truncate">
-                            <p className="font-semibold text-white truncate">{t.title}</p>
-                            <p className="text-[10px] text-zinc-500 truncate mt-0.5">{t.artist}</p>
+                        <div 
+                          className="flex items-center gap-2.5 min-w-0 flex-1 cursor-pointer"
+                          onClick={() => {
+                            setQueue((prev) => prev.filter((_, idx) => idx !== i));
+                            handlePlayTrack(track);
+                          }}
+                        >
+                          {track.imageUrl && (
+                            <img src={track.imageUrl} alt="" className="w-8 h-8 rounded object-cover shrink-0" />
+                          )}
+                          <div className="min-w-0 flex-1">
+                            <p className="text-xs font-semibold text-white truncate group-hover:text-[#8b5cf6] transition">
+                              {track.title}
+                            </p>
+                            <p className="text-[10px] text-zinc-500 truncate mt-0.5">{track.artist}</p>
                           </div>
                         </div>
-                        <span className="text-[10px] text-zinc-500 tabular-nums shrink-0">{t.duration}</span>
+
+                        <button
+                          onClick={() => setQueue((prev) => prev.filter((_, idx) => idx !== i))}
+                          className="p-1 rounded hover:bg-white/5 text-zinc-500 hover:text-red-400 opacity-0 group-hover:opacity-100 transition shrink-0"
+                          title="Remove from queue"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
                       </div>
-                    );
-                  })}
-                  {playbackQueue.length - 1 <= currentQueueIndex && (
-                    <div className="text-zinc-600 text-center py-12 italic text-xs select-none">
-                      Queue end reached
-                    </div>
+                    ))
                   )}
                 </div>
               </div>
-            </div>
-          )}
-
-          {/* Canvas wave visualizer */}
-          <div className="h-16 shrink-0 border-t border-white/5 pt-2 flex flex-col gap-1.5">
-            <span className="text-[9px] uppercase tracking-wider font-bold text-zinc-500 select-none">Live Frequency EQ</span>
-            <canvas ref={canvasRef} className="w-full h-full bg-white/[0.01] rounded-lg" />
-          </div>
-        </div>
+            )}
+          </aside>
+        )}
       </div>
 
-      {/* HTML5 Audio Fallback Player */}
-      <audio
-        ref={audioRef}
-        onTimeUpdate={handleTimeUpdate}
-        onLoadedMetadata={handleLoadedMetadata}
-        onEnded={handleSkipForward}
-      />
+      {/* Persistent Bottom Playback bar */}
+      <footer className="h-24 bg-gradient-to-r from-[#0c041a] to-[#04020a] border-t border-[#8b5cf6]/20 px-8 flex items-center justify-between shrink-0 select-none">
+        {/* Track Detail (Left Area) */}
+        <div className="flex items-center gap-4 w-1/4 min-w-[150px]">
+          {currentTrack ? (
+            <>
+              {currentTrack.imageUrl ? (
+                <img
+                  src={currentTrack.imageUrl}
+                  alt={currentTrack.title}
+                  referrerPolicy="no-referrer"
+                  className="w-12 h-12 rounded bg-white/5 object-cover shadow-md shrink-0 border border-white/5"
+                />
+              ) : (
+                <div className="w-12 h-12 bg-white/5 border border-white/5 rounded flex items-center justify-center text-[#8b5cf6] shrink-0 font-bold">
+                  •••
+                </div>
+              )}
+              <div className="min-w-0 flex flex-col">
+                <h4 className="text-sm font-medium truncate text-white">{currentTrack.title}</h4>
+                <p className="text-xs text-zinc-500 truncate mt-0.5">{currentTrack.artist}</p>
+              </div>
+              <button
+                id="toggle-like-btn"
+                onClick={() => setIsLiked(!isLiked)}
+                className={`p-1 hover:bg-white/5 rounded-full transition ml-1 shrink-0 ${
+                  isLiked ? "text-[#8b5cf6] animate-pulse" : "text-zinc-500 hover:text-zinc-300"
+                }`}
+              >
+                <Heart className={`w-4 h-4 ${isLiked ? "fill-[#8b5cf6]" : ""}`} />
+              </button>
+            </>
+          ) : (
+            <div className="text-xs text-zinc-500 italic">No track loaded</div>
+          )}
+        </div>
+
+        {/* Playback Controls & Progress Seek slider (Center Area) */}
+        <div className="flex flex-col items-center gap-2.5 flex-1 max-w-xl">
+          <div className="flex items-center gap-8">
+            <button
+              id="previous-track-btn"
+              onClick={handleSkipBackward}
+              disabled={!activePlaylist}
+              className="opacity-40 hover:opacity-100 disabled:opacity-15 disabled:pointer-events-none transition cursor-pointer"
+            >
+              <SkipBack className="w-4 h-4 fill-current text-white" />
+            </button>
+            <button
+              id="playback-play-toggle-btn"
+              onClick={handlePlayToggle}
+              disabled={!currentTrack}
+              className="w-12 h-12 rounded-full border border-[#8b5cf6] flex items-center justify-center text-[#8b5cf6] hover:bg-[#8b5cf6] hover:text-white transition shadow-[0_0_15px_rgba(139,92,246,0.25)] shrink-0 cursor-pointer"
+            >
+              {isPlaying ? <Pause className="w-5 h-5 fill-current" /> : <Play className="w-5 h-5 fill-current translate-x-0.5" />}
+            </button>
+            <button
+              id="next-track-btn"
+              onClick={handleSkipForward}
+              disabled={!activePlaylist}
+              className="opacity-40 hover:opacity-100 disabled:opacity-15 disabled:pointer-events-none transition cursor-pointer"
+            >
+              <SkipForward className="w-4 h-4 fill-current text-white" />
+            </button>
+          </div>
+
+          {/* Seek Bar */}
+          <div className="flex items-center gap-3 w-full">
+            <span className="text-[10px] opacity-40 tabular-nums w-8 text-right">
+              {formatSecondsToTime(currentTime)}
+            </span>
+            <div className="flex-1 relative group py-2">
+              <input
+                id="seek-slider"
+                type="range"
+                min={0}
+                max={previewMode ? Math.min(duration, 30) : duration}
+                value={currentTime}
+                disabled={!currentTrack}
+                onChange={(e) => setCurrentTime(parseInt(e.target.value, 10))}
+                className="w-full h-[2px] bg-white/10 appearance-none cursor-pointer focus:outline-none accent-[#8b5cf6] transition rounded-full"
+              />
+            </div>
+            <span className="text-[10px] opacity-40 tabular-nums w-8 text-left">
+              {formatSecondsToTime(previewMode ? Math.min(duration, 30) : duration)}
+            </span>
+          </div>
+        </div>
+
+        {/* Options & volume Control (Right Area) */}
+        <div className="flex items-center justify-end gap-6 w-1/4">
+          {/* Preview Limit Toggle */}
+          <button
+            id="toggle-preview-mode-btn"
+            onClick={() => setPreviewMode(!previewMode)}
+            className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[10px] font-bold font-mono tracking-wider uppercase transition-all duration-300 border cursor-pointer ${
+              previewMode
+                ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/30 shadow-sm shadow-emerald-500/10"
+                : "bg-white/5 text-zinc-500 border-white/5 hover:text-zinc-300 hover:border-white/10"
+            }`}
+            title="When active, tracks are capped at 30 seconds"
+          >
+            <span className={`w-1.5 h-1.5 rounded-full ${previewMode ? "bg-emerald-400 animate-pulse" : "bg-zinc-600"}`} />
+            30s Preview
+          </button>
+
+          {/* Mobile indicator that triggers right columns if needed */}
+          <button
+            id="toggle-lyrics-panel-btn"
+            onClick={() => setShowLyricsPanel(!showLyricsPanel)}
+            className={`p-2 hover:bg-white/5 rounded-lg transition cursor-pointer ${
+              showLyricsPanel ? "text-[#8b5cf6] bg-[#8b5cf6]/10" : "text-zinc-400 hover:text-white"
+            }`}
+            title="Toggle Visualizer & Lyrics"
+          >
+            <Tv className="w-4 h-4" />
+          </button>
+
+          {/* Volume bars */}
+          <div className="flex items-center gap-2 w-32">
+            <button
+              id="toggle-mute-btn"
+              onClick={handleVolumeToggle}
+              className="text-zinc-400 hover:text-white transition p-1 cursor-pointer"
+            >
+              {volume === 0 ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
+            </button>
+            <input
+              id="volume-slider"
+              type="range"
+              min={0}
+              max={100}
+              value={volume}
+              onChange={(e) => setVolume(parseInt(e.target.value, 10))}
+              className="flex-1 h-[2px] bg-white/10 rounded-full appearance-none cursor-pointer accent-[#8b5cf6] transition"
+            />
+          </div>
+        </div>
+      </footer>
     </div>
   );
 }
