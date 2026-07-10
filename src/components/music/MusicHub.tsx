@@ -1006,7 +1006,7 @@ export default function MusicHub({ portalDarkMode, themeColor }: MusicHubProps) 
   };
 
   return (
-    <div id="music-hub-container" className="h-[680px] w-full flex flex-col overflow-hidden bg-[#04020a]/85 rounded-2xl border border-white/[0.04] backdrop-blur-xl relative text-[#e0dcd0] font-sans antialiased">
+    <div id="music-hub-container" className="w-full h-full flex flex-col overflow-hidden bg-gradient-to-br from-[#0c041a] via-[#04020a] to-[#010103] relative text-[#e0dcd0] font-sans antialiased">
       {/* Upper Content Section (Sidebar + Main panel + Synced Lyrics Right column) */}
       <div className="flex-1 flex min-h-0 relative">
         <Sidebar
