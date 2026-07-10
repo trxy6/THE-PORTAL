@@ -149,9 +149,9 @@ export function AudioPlayer({ themeColor }: AudioPlayerProps) {
   return (
     <div id="portal-radio" className="flex flex-col md:flex-row items-center justify-between w-full h-full px-4 gap-4">
       {/* Track Info */}
-      <div className="flex items-center gap-3 w-full md:w-auto">
+      <div className="flex items-center gap-3 w-full md:w-auto shrink-0">
         <div 
-          className="relative w-10 h-10 rounded-full bg-slate-900 border flex items-center justify-center overflow-hidden"
+          className="relative w-10 h-10 rounded-full bg-slate-900 border flex items-center justify-center overflow-hidden shrink-0"
           style={{ borderColor: getThemeHex() + '50' }}
         >
           {/* Breathing orbit inside disc */}
@@ -166,11 +166,11 @@ export function AudioPlayer({ themeColor }: AudioPlayerProps) {
           )}
         </div>
         
-        <div className="flex flex-col text-left">
-          <div className="text-xs font-bold text-slate-100 uppercase tracking-wider truncate max-w-[150px]">
+        <div className="flex flex-col text-left min-w-0">
+          <div className="text-xs font-bold text-slate-100 uppercase tracking-wider truncate max-w-[200px]">
             {TRACKS[currentTrackIndex].name}
           </div>
-          <div className="text-[10px] text-slate-500 font-medium">
+          <div className="text-[10px] text-slate-500 font-medium whitespace-nowrap">
             Portal Radio • {TRACKS[currentTrackIndex].genre}
           </div>
         </div>
