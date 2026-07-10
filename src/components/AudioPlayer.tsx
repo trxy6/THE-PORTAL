@@ -24,6 +24,13 @@ export function AudioPlayer({ themeColor }: AudioPlayerProps) {
   const synthIntervalRef = useRef<any>(null);
   const visualizerIntervalRef = useRef<any>(null);
   
+  const volumeRef = useRef(volume);
+  const gainNodeRef = useRef<GainNode | null>(null);
+
+  useEffect(() => {
+    volumeRef.current = volume;
+  }, [volume]);
+  
   // Fake animated visualizer bars state
   const [bars, setBars] = useState<number[]>(new Array(16).fill(2));
 
@@ -60,6 +67,7 @@ export function AudioPlayer({ themeColor }: AudioPlayerProps) {
         const osc1 = ctx.createOscillator();
         const osc2 = ctx.createOscillator();
         const gainNode = ctx.createGain();
+        gainNodeRef.current = gainNode;
         const filter = ctx.createBiquadFilter();
 
         osc1.type = 'sawtooth';
@@ -110,7 +118,7 @@ export function AudioPlayer({ themeColor }: AudioPlayerProps) {
             filterNode.frequency.setValueAtTime(800, ctx.currentTime);
             filterNode.frequency.exponentialRampToValueAtTime(150, ctx.currentTime + 0.3);
 
-            noteGain.gain.setValueAtTime(volume * 0.1, ctx.currentTime);
+            noteGain.gain.setValueAtTime(volumeRef.current * 0.1, ctx.currentTime);
             noteGain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.4);
 
             osc.connect(filterNode);
@@ -143,15 +151,26 @@ export function AudioPlayer({ themeColor }: AudioPlayerProps) {
       } catch (e) {}
     });
     synthNodesRef.current = [];
+    gainNodeRef.current = null;
   };
 
-  // Update volume on nodes
+  // Update sound when track changes
   useEffect(() => {
     if (isPlaying) {
-      // Refresh sound with new volume
       startSynth();
     }
-  }, [volume, currentTrackIndex]);
+  }, [currentTrackIndex]);
+
+  // Adjust drone volume dynamically without restarting sound nodes
+  useEffect(() => {
+    if (gainNodeRef.current && audioCtxRef.current) {
+      try {
+        gainNodeRef.current.gain.setValueAtTime(volume * 0.15, audioCtxRef.current.currentTime);
+      } catch (e) {
+        console.error("Failed to adjust synth gain node:", e);
+      }
+    }
+  }, [volume]);
 
   // Main playback control
   const togglePlay = () => {

@@ -136,6 +136,13 @@ export default function MusicHub({ portalDarkMode, themeColor }: MusicHubProps) 
       setLikedSongsStatus({ loaded: accumulatedTracks.length, total: totalSongs, loading: accumulatedTracks.length < totalSongs });
 
       const updatePlaylistState = (tracks: Track[]) => {
+        try {
+          localStorage.setItem("spotify_liked_songs_tracks", JSON.stringify(tracks));
+          localStorage.setItem("spotify_liked_songs_total", String(totalSongs));
+        } catch (e) {
+          console.error("Failed to write liked songs cache:", e);
+        }
+        
         setSpotifyPlaylists((prev) =>
           prev.map((p) => {
             if (p.id === "spotify-liked-songs") {
@@ -237,12 +244,33 @@ export default function MusicHub({ portalDarkMode, themeColor }: MusicHubProps) 
       // Pagination loop to fetch ALL user playlists (up to 500)
       let playlists: Playlist[] = [];
       
+      let cachedTracks: Track[] = [];
+      let cachedTotal = 0;
+      try {
+        const stored = localStorage.getItem("spotify_liked_songs_tracks");
+        const storedTotalStr = localStorage.getItem("spotify_liked_songs_total");
+        if (stored) {
+          cachedTracks = JSON.parse(stored);
+        }
+        if (storedTotalStr) {
+          cachedTotal = parseInt(storedTotalStr, 10);
+        }
+      } catch (e) {
+        console.error("Failed to parse cached liked songs:", e);
+      }
+
+      setLikedSongsStatus({
+        loaded: cachedTracks.length,
+        total: cachedTotal || cachedTracks.length,
+        loading: false,
+      });
+
       // Prepend virtual Liked Songs playlist
       const likedSongsPlaylist: Playlist = {
         id: "spotify-liked-songs",
         name: "Liked Songs",
         description: "Your favorite tracks saved on Spotify",
-        tracks: [], // lazy loaded
+        tracks: cachedTracks,
         isCustom: false,
         imageUrl: "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=300",
       };
@@ -391,10 +419,23 @@ export default function MusicHub({ portalDarkMode, themeColor }: MusicHubProps) 
     }
     setActiveTab("explore");
 
-    if (!likedSongsStatus.loading) {
+    const currentTracks = pl?.tracks || [];
+    if (currentTracks.length === 0 && !likedSongsStatus.loading) {
       startProgressiveLikedSongsFetch(token);
     }
   };
+
+  useEffect(() => {
+    (window as any).triggerSpotifyLikedSongsResync = () => {
+      const token = spotifyToken || localStorage.getItem("spotify_access_token");
+      if (token) {
+        startProgressiveLikedSongsFetch(token, []);
+      }
+    };
+    return () => {
+      delete (window as any).triggerSpotifyLikedSongsResync;
+    };
+  }, [spotifyToken]);
 
   // Initialize Spotify Web Playback SDK Player when a token is available
   useEffect(() => {

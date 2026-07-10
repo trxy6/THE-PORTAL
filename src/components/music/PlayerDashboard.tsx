@@ -773,8 +773,25 @@ export default function PlayerDashboard({
                       )}
                     </div>
                   </div>
-                  <div className="text-xs font-mono text-zinc-500 px-4 py-2 bg-[#050505] rounded-lg border border-white/5 relative z-10">
-                    <span>Tracks count: {activePlaylist.tracks.length}</span>
+                  <div className="flex items-center gap-2.5 relative z-10">
+                    {activePlaylist.id === "spotify-liked-songs" && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (typeof (window as any).triggerSpotifyLikedSongsResync === 'function') {
+                            (window as any).triggerSpotifyLikedSongsResync();
+                          }
+                        }}
+                        disabled={likedSongsStatus?.loading}
+                        className="text-xs font-bold text-black bg-[#1db954] hover:bg-[#1ed760] disabled:bg-zinc-800 disabled:text-zinc-500 px-4 py-2 rounded-lg transition active:scale-95 flex items-center gap-1.5 cursor-pointer font-sans"
+                      >
+                        <Disc className={`w-3.5 h-3.5 ${likedSongsStatus?.loading ? 'animate-spin' : ''}`} />
+                        <span>{likedSongsStatus?.loading ? 'Syncing...' : 'Sync Spotify'}</span>
+                      </button>
+                    )}
+                    <div className="text-xs font-mono text-zinc-500 px-4 py-2 bg-[#050505] rounded-lg border border-white/5">
+                      <span>Tracks count: {activePlaylist.tracks.length}</span>
+                    </div>
                   </div>
                 </div>
 
