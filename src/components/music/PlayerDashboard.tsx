@@ -803,406 +803,597 @@ export default function PlayerDashboard({
                     </div>
                   )}
 
-                  {filteredPlaylistTracks.length === 0 ? (
-                    <div className="py-12 text-center text-zinc-500 italic text-xs">
-                      {activePlaylist.tracks.length === 0 ? "No tracks in this playlist yet. Add songs from Explore Search!" : "No matches found in this playlist."}
-                    </div>
-                  ) : (
-                    <div className="divide-y divide-white/5">
-                      {filteredPlaylistTracks.map((track, i) => {
+                  <div className="px-4 py-3 border-b border-white/5 flex items-center text-xs font-bold text-zinc-500 uppercase tracking-widest bg-white/[0.02]">
+                    <span className="w-10 text-center">#</span>
+                    <span className="flex-1">Title</span>
+                    <span className="w-28 hidden sm:block">Album</span>
+                    <span className="w-14 text-center">
+                      <Clock className="w-4 h-4 mx-auto text-zinc-600" />
+                    </span>
+                    <span className="w-10" />
+                  </div>
+
+                  <div className="divide-y divide-white/5">
+                    {activePlaylist.tracks.length === 0 ? (
+                      <div className="p-8 text-center text-zinc-600 text-xs italic">
+                        No songs inside this playlist yet. Use Search above to find tracks and attach them!
+                      </div>
+                    ) : filteredPlaylistTracks.length === 0 ? (
+                      <div className="p-8 text-center text-zinc-600 text-xs italic">
+                        No matching tracks found for &ldquo;{playlistSearchQuery}&rdquo;
+                      </div>
+                    ) : (
+                      filteredPlaylistTracks.map((track, i) => {
                         const isCurrent = currentTrack?.spotifyId === track.spotifyId;
                         return (
                           <div
-                            key={`${track.id}-${i}`}
+                            key={track.id}
                             onClick={() => onPlayTrack(track)}
-                            className={`group px-6 py-3 flex items-center justify-between gap-4 cursor-pointer hover:bg-white/[0.02] transition ${
-                              isCurrent ? "bg-white/[0.03]" : ""
+                            className={`px-4 py-3 flex items-center gap-4 cursor-pointer group transition-all duration-200 ${
+                              isCurrent ? "bg-[#8b5cf6]/10" : "hover:bg-white/5"
                             }`}
                           >
-                            <div className="flex items-center gap-4 min-w-0 flex-1">
-                              <span className={`text-xs font-mono w-4 shrink-0 text-center ${isCurrent ? "text-[#8b5cf6] font-bold" : "text-zinc-600"}`}>
-                                {isCurrent ? "▶" : i + 1}
-                              </span>
+                            <span className={`w-6 text-center text-xs font-semibold ${isCurrent ? "text-[#8b5cf6]" : "text-zinc-600 group-hover:text-zinc-400"}`}>
+                              {i + 1}
+                            </span>
+                            <div className="flex-1 min-w-0 flex items-center gap-3">
                               {track.imageUrl && (
-                                <img src={track.imageUrl} alt="" referrerPolicy="no-referrer" className="w-10 h-10 rounded object-cover bg-zinc-900 border border-white/5 shrink-0" />
+                                <img src={track.imageUrl} alt="" referrerPolicy="no-referrer" className="w-9 h-9 rounded-md object-cover bg-zinc-900" />
                               )}
-                              <div className="min-w-0 flex-1">
+                              <div className="min-w-0">
                                 <p className={`text-sm font-semibold truncate ${isCurrent ? "text-[#8b5cf6]" : "text-white"}`}>
                                   {track.title}
                                 </p>
                                 <p className="text-xs text-zinc-500 truncate mt-0.5">{track.artist}</p>
                               </div>
                             </div>
-
-                            <p className="text-xs text-zinc-500 truncate w-1/4 hidden md:block">
+                            <span className="w-28 text-xs text-zinc-500 truncate hidden sm:block">
                               {track.album || "Single"}
-                            </p>
+                            </span>
+                            <span className="w-14 text-center text-xs font-mono text-zinc-500">
+                              {track.duration || "--:--"}
+                            </span>
+                            
+                            {/* Action dropdown for Playlists */}
+                            <div className="w-10 relative">
+                              <button
+                                id={`playlist-menu-trigger-${track.id}`}
+                                onClick={(e) => toggleTrackMenu(track.id, e)}
+                                className="p-1.5 rounded-md hover:bg-white/5 text-zinc-400 hover:text-white transition opacity-0 group-hover:opacity-100 focus:opacity-100"
+                                title="More Options"
+                              >
+                                <MoreHorizontal className="w-4 h-4" />
+                              </button>
+                              {activeMenuTrackId === track.id && (
+                                <div className="absolute right-0 top-full mt-1 w-48 bg-[#080808] border border-white/5 rounded-lg shadow-2xl z-50 p-1 font-sans">
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      onAddToQueue(track);
+                                      setActiveMenuTrackId(null);
+                                    }}
+                                    className="w-full text-left text-xs text-zinc-300 hover:text-[#8b5cf6] hover:bg-white/5 px-2.5 py-2 rounded transition flex items-center gap-2 font-sans"
+                                  >
+                                    <ListMusic className="w-3.5 h-3.5 text-[#8b5cf6]" />
+                                    <span>Add to Queue</span>
+                                  </button>
+                                  
+                                  <div className="border-t border-white/5 my-1" />
+                                  <p className="text-[10px] font-bold text-[#8b5cf6]/80 uppercase tracking-widest px-2.5 py-1.5 font-sans">
+                                    Playlists
+                                  </p>
+                                  
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      const name = prompt("Enter new playlist name:");
+                                      if (name && name.trim()) {
+                                        onCreatePlaylist(name.trim(), "My custom selection", [track]);
+                                      }
+                                      setActiveMenuTrackId(null);
+                                    }}
+                                    className="w-full text-left text-xs text-[#8b5cf6] hover:bg-[#8b5cf6]/10 px-2.5 py-1.5 rounded transition font-semibold flex items-center gap-1.5 font-sans"
+                                  >
+                                    <Plus className="w-3.5 h-3.5" />
+                                    <span>+ Create Playlist</span>
+                                  </button>
 
-                            <div className="flex items-center gap-3 shrink-0">
-                              <span className="text-xs text-zinc-600 font-mono">
-                                {track.duration}
-                              </span>
-                              {/* Menu Trigger */}
-                              <div className="relative">
-                                <button
-                                  id={`playlist-track-menu-${track.id}-${i}`}
-                                  onClick={(e) => toggleTrackMenu(`${track.id}-${i}`, e)}
-                                  className="p-1 rounded hover:bg-white/5 text-zinc-500 hover:text-white transition"
-                                >
-                                  <MoreHorizontal className="w-4 h-4" />
-                                </button>
-                                {activeMenuTrackId === `${track.id}-${i}` && (
-                                  <div className="absolute right-0 top-full mt-1 w-48 bg-[#080808] border border-white/5 rounded-lg shadow-2xl z-50 p-1 font-sans">
-                                    <button
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        onAddToQueue(track);
-                                        setActiveMenuTrackId(null);
-                                      }}
-                                      className="w-full text-left text-xs text-zinc-300 hover:text-[#8b5cf6] hover:bg-white/5 px-2.5 py-2 rounded transition flex items-center gap-2 font-sans"
-                                    >
-                                      <ListMusic className="w-3.5 h-3.5 text-[#8b5cf6]" />
-                                      <span>Add to Queue</span>
-                                    </button>
-                                    
-                                    <div className="border-t border-white/5 my-1" />
-                                    <p className="text-[10px] font-bold text-[#8b5cf6]/80 uppercase tracking-widest px-2.5 py-1.5 font-sans">
-                                      Playlists
-                                    </p>
-                                    
-                                    <button
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        const name = prompt("Enter new playlist name:");
-                                        if (name && name.trim()) {
-                                          onCreatePlaylist(name.trim(), "My custom selection", [track]);
-                                        }
-                                        setActiveMenuTrackId(null);
-                                      }}
-                                      className="w-full text-left text-xs text-[#8b5cf6] hover:bg-[#8b5cf6]/10 px-2.5 py-1.5 rounded transition font-semibold flex items-center gap-1.5 font-sans"
-                                    >
-                                      <Plus className="w-3.5 h-3.5" />
-                                      <span>+ Create Playlist</span>
-                                    </button>
-
-                                    {userPlaylists.length > 0 && (
-                                      <div className="max-h-28 overflow-y-auto mt-1 border-t border-white/5 pt-1 space-y-0.5 scrollbar-thin">
-                                        {userPlaylists.map((pl) => (
-                                          <button
-                                            key={pl.id}
-                                            onClick={(e) => {
-                                              e.stopPropagation();
-                                              handleAddToPlaylistAction(track, pl.id);
-                                            }}
-                                            className="w-full text-left text-xs text-zinc-300 hover:text-[#8b5cf6] hover:bg-white/5 px-2.5 py-1.5 rounded transition truncate font-sans block"
-                                          >
-                                            {pl.name}
-                                          </button>
-                                        ))}
-                                      </div>
-                                    )}
-                                  </div>
-                                )}
-                              </div>
+                                  {userPlaylists.length > 0 && (
+                                    <div className="max-h-28 overflow-y-auto mt-1 border-t border-white/5 pt-1 space-y-0.5 scrollbar-thin">
+                                      {userPlaylists.map((pl) => (
+                                        <button
+                                          key={pl.id}
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleAddToPlaylistAction(track, pl.id);
+                                          }}
+                                          className="w-full text-left text-xs text-zinc-300 hover:text-[#8b5cf6] hover:bg-white/5 px-2.5 py-1.5 rounded transition truncate font-sans block"
+                                        >
+                                          {pl.name}
+                                        </button>
+                                      ))}
+                                    </div>
+                                  )}
+                                </div>
+                              )}
                             </div>
                           </div>
                         );
-                      })}
-                    </div>
-                  )}
+                      })
+                    )}
+                  </div>
                 </div>
               </div>
             )}
           </motion.div>
         ) : activeTab === "curator" ? (
-          /* ================= CURATOR AI ASSISTANT ================= */
+          /* ================= AI MUSIC CURATOR TAB ================= */
           <motion.div
             key="curator-tab"
             initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -15 }}
             transition={{ duration: 0.3 }}
-            className="space-y-8 max-w-2xl mx-auto w-full relative z-10"
+            className="space-y-8 max-w-2xl mx-auto w-full pt-4 relative z-10"
           >
-            <div>
-              <h2 className="text-2xl md:text-3xl font-serif italic tracking-tight text-[#8b5cf6]">Gemini Music Curator</h2>
-              <p className="text-xs text-zinc-500 mt-1">
-                Input any complex prompt or mood and let the Google Gemini AI compose custom offline setlists.
+            {/* Header Description */}
+            <div className="text-center space-y-2">
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-[#8b5cf6]/10 border border-[#8b5cf6]/20 rounded-full text-[#8b5cf6] text-xs font-semibold uppercase tracking-wider font-mono">
+                <Sparkles className="w-3.5 h-3.5 animate-bounce" />
+                <span>Gemini Assistant Curation</span>
+              </div>
+              <h2 className="text-2xl md:text-3xl font-serif italic text-white tracking-tight">AI Music Curator</h2>
+              <p className="text-xs text-zinc-400 max-w-md mx-auto leading-relaxed">
+                Describe your mood, active vibe, environment, or tasks. Gemini will compile a tailored 5-track playlist with verified Spotify IDs.
               </p>
             </div>
 
-            <div className="bg-[#080808]/60 border border-white/5 rounded-2xl p-6 shadow-2xl space-y-6">
-              <form onSubmit={handleCuratorSubmit} className="space-y-4">
-                <div className="flex flex-col gap-2.5">
-                  <label className="text-xs font-bold text-zinc-400 uppercase tracking-widest font-mono">
-                    Describe your Vibe / Mood
+            {/* Prompt Input Form */}
+            <div className="p-6 rounded-2xl bg-[#080808]/80 border border-white/5 shadow-2xl relative overflow-hidden">
+              <form onSubmit={(e) => handleCuratorSubmit(e)} className="space-y-4">
+                <div className="space-y-2">
+                  <label className="text-[11px] font-bold text-zinc-500 uppercase tracking-widest block font-sans">
+                    Describe your Vibe / Soundtrack Concept
                   </label>
                   <textarea
                     rows={3}
-                    placeholder="E.g., Chill lofi beats for coding on a rainy night, heavy bass synthwave for night driving, energetic pop gym tracks..."
+                    placeholder="E.g., late night coding in heavy rain, deep concentration lo-fi beats..."
                     value={moodInput}
                     onChange={(e) => setMoodInput(e.target.value)}
-                    className="w-full bg-[#050505] border border-white/5 focus:border-[#8b5cf6] text-xs text-[#e0dcd0] rounded-xl p-3.5 focus:outline-none focus:ring-4 focus:ring-[#8b5cf6]/20 placeholder-zinc-600 transition"
+                    className="w-full bg-[#050505] border border-white/5 focus:border-[#8b5cf6] text-sm text-[#e0dcd0] rounded-xl p-4 focus:outline-none focus:ring-4 focus:ring-[#8b5cf6]/10 placeholder-zinc-600 transition leading-relaxed resize-none"
                   />
+                </div>
+
+                {/* Example Quick-Pick tags */}
+                <div className="space-y-2">
+                  <span className="text-[10px] font-bold text-zinc-600 uppercase tracking-wider font-sans">Tap an example:</span>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {AI_MOODS.map((mood) => (
+                      <button
+                        key={mood.text}
+                        type="button"
+                        onClick={() => setMoodInput(mood.text)}
+                        className="text-xs text-left bg-white/5 hover:bg-white/10 border border-white/5 p-2.5 rounded-xl text-zinc-300 hover:text-[#8b5cf6] transition flex items-center gap-2 font-sans"
+                      >
+                        <span className="text-sm shrink-0">{mood.icon}</span>
+                        <span className="truncate">{mood.text}</span>
+                      </button>
+                    ))}
+                  </div>
                 </div>
 
                 <button
                   type="submit"
                   disabled={curatorLoading || !moodInput.trim()}
-                  className="w-full bg-[#8b5cf6] hover:bg-[#8b5cf6]/90 disabled:opacity-50 text-white font-bold text-xs py-3 rounded-xl transition duration-200 shadow-lg shadow-[#8b5cf6]/10 flex items-center justify-center gap-2 cursor-pointer"
+                  className="w-full bg-[#8b5cf6] hover:bg-[#8b5cf6]/90 disabled:opacity-40 text-white font-semibold text-xs py-3 rounded-xl transition duration-300 flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(139,92,246,0.3)] font-sans"
                 >
-                  <Sparkles className="w-4 h-4 text-white" />
-                  Generate Custom Playlist
+                  <Cpu className="w-4 h-4" />
+                  <span>{curatorLoading ? "Analyzing Vibe Spectrum..." : "Curate Soundscape"}</span>
                 </button>
               </form>
-
-              {/* Suggestions Grid */}
-              <div className="space-y-3">
-                <span className="text-[10px] uppercase font-bold text-zinc-500 tracking-wider font-mono px-1">Curator Starters</span>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                  {AI_MOODS.map((mood) => (
-                    <button
-                      key={mood.text}
-                      onClick={() => {
-                        setMoodInput(mood.text);
-                      }}
-                      className="text-left text-xs bg-white/5 border border-white/5 hover:border-[#8b5cf6]/40 hover:bg-white/[0.08] p-3 rounded-xl transition flex items-center gap-2.5 font-medium text-zinc-300"
-                    >
-                      <span className="text-base">{mood.icon}</span>
-                      <span className="truncate">{mood.text}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
             </div>
 
-            {/* Curation logs / playlist preview */}
+            {/* AI Curating Progress Loader */}
             {curatorLoading && (
-              <div className="bg-[#050505] border border-white/5 rounded-2xl p-6 flex flex-col items-center justify-center text-center space-y-4 shadow-xl">
-                <Cpu className="w-10 h-10 text-[#8b5cf6] animate-pulse" />
-                <div className="space-y-1">
-                  <p className="text-sm font-semibold text-white animate-pulse">Composing Setlist...</p>
-                  <p className="text-xs text-[#8b5cf6] font-mono leading-none">
+              <div className="p-6 rounded-2xl bg-[#080808] border border-[#8b5cf6]/20 shadow-xl space-y-4 text-center">
+                <div className="relative w-12 h-12 mx-auto">
+                  <Disc className="w-12 h-12 text-[#8b5cf6] animate-spin" />
+                  <Sparkles className="absolute inset-0 m-auto w-4 h-4 text-[#8b5cf6] animate-pulse" />
+                </div>
+                <div className="space-y-1.5">
+                  <p className="text-xs font-semibold text-[#8b5cf6] animate-pulse">
                     {CURATOR_LOGS[curatorStep]}
                   </p>
+                  <p className="text-[10px] text-zinc-500 font-mono tracking-wider">
+                    Searching Spotify database (no developer tokens required)
+                  </p>
                 </div>
-                <div className="w-full max-w-xs bg-white/5 h-1.5 rounded-full overflow-hidden">
-                  <div 
-                    className="bg-[#8b5cf6] h-full transition-all duration-1000" 
+                <div className="w-full bg-zinc-900 h-1 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-[#8b5cf6] transition-all duration-1000"
                     style={{ width: `${((curatorStep + 1) / CURATOR_LOGS.length) * 100}%` }}
                   />
                 </div>
               </div>
             )}
 
+            {/* Curated AI Playlist Result */}
             {curatedAiPlaylist && (
-              <div className="bg-[#080808]/60 border border-white/5 rounded-2xl p-6 shadow-2xl space-y-5 animate-[fadeIn_0.4s_ease-out]">
-                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-white/5 pb-4">
-                  <div>
-                    <h3 className="text-lg font-bold text-white">{curatedAiPlaylist.name}</h3>
-                    <p className="text-xs text-zinc-500 mt-1">{curatedAiPlaylist.description}</p>
+              <motion.div
+                initial={{ opacity: 0, scale: 0.98 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="space-y-4"
+              >
+                <div className="p-6 rounded-2xl bg-gradient-to-br from-[#080808] to-[#8b5cf6]/5 border border-[#8b5cf6]/20 shadow-2xl relative overflow-hidden">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div>
+                      <span className="text-[10px] font-mono bg-[#8b5cf6]/15 border border-[#8b5cf6]/30 text-[#8b5cf6] px-2 py-0.5 rounded font-bold uppercase tracking-widest">
+                        Fresh Curation
+                      </span>
+                      <h3 className="text-lg font-serif italic text-white mt-1">{curatedAiPlaylist.name}</h3>
+                      <p className="text-xs text-zinc-400 mt-1 leading-relaxed">{curatedAiPlaylist.description}</p>
+                    </div>
+                    <button
+                      id="play-curated-ai-btn"
+                      onClick={() =>
+                        onCuratedPlaylistSelect(
+                          curatedAiPlaylist.tracks,
+                          curatedAiPlaylist.name,
+                          curatedAiPlaylist.description || ""
+                        )
+                      }
+                      className="bg-[#8b5cf6] hover:bg-[#8b5cf6]/90 text-white font-bold text-xs px-4 py-2.5 rounded-lg transition duration-200 shadow-md flex items-center gap-1.5 self-start font-sans"
+                    >
+                      <Play className="w-4 h-4 fill-white" />
+                      <span>Play All</span>
+                    </button>
                   </div>
-                  <button
-                    onClick={() => {
-                      onCuratedPlaylistSelect(
-                        curatedAiPlaylist.tracks, 
-                        curatedAiPlaylist.name, 
-                        curatedAiPlaylist.description || ""
-                      );
-                    }}
-                    className="bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 font-bold text-xs px-4 py-2 rounded-xl transition flex items-center gap-1.5 shrink-0 cursor-pointer"
-                  >
-                    <ArrowDownToLine className="w-4 h-4" />
-                    Load to Library
-                  </button>
-                </div>
 
-                <div className="space-y-2">
-                  <span className="text-[10px] uppercase font-bold text-zinc-500 tracking-wider font-mono px-1">Curated Tracks</span>
-                  <div className="divide-y divide-white/5 bg-[#050505] rounded-xl border border-white/5 overflow-hidden">
-                    {curatedAiPlaylist.tracks.map((track, i) => (
+                  <div className="mt-6 space-y-2.5">
+                    {curatedAiPlaylist.tracks.map((track, idx) => (
                       <div
                         key={track.id}
-                        onClick={() => onCuratedPlaylistSelect(curatedAiPlaylist.tracks, curatedAiPlaylist.name, curatedAiPlaylist.description || "")}
-                        className="px-4 py-3 flex items-center justify-between gap-3 cursor-pointer hover:bg-white/5 transition"
+                        onClick={() => onPlayTrack(track)}
+                        className="group p-2.5 rounded-xl bg-[#050505]/60 hover:bg-white/[0.02] border border-white/5 hover:border-white/10 cursor-pointer flex items-center justify-between transition duration-200"
                       >
                         <div className="flex items-center gap-3 min-w-0">
-                          <span className="text-xs font-mono text-zinc-600 w-4 text-center">{i + 1}</span>
-                          <img src={track.imageUrl} alt="" className="w-8 h-8 rounded object-cover shrink-0" />
+                          <span className="text-xs font-mono font-medium text-zinc-600 group-hover:text-[#8b5cf6] transition w-4 text-center">
+                            {idx + 1}
+                          </span>
+                          {track.imageUrl && (
+                            <img src={track.imageUrl} alt="" referrerPolicy="no-referrer" className="w-8 h-8 rounded object-cover shrink-0" />
+                          )}
                           <div className="min-w-0">
-                            <p className="text-xs font-semibold text-white truncate">{track.title}</p>
+                            <p className="text-xs font-semibold text-[#e0dcd0] truncate group-hover:text-[#8b5cf6] transition">
+                              {track.title}
+                            </p>
                             <p className="text-[10px] text-zinc-500 truncate mt-0.5">{track.artist}</p>
                           </div>
                         </div>
-                        <span className="text-[10px] text-zinc-500 font-mono">{track.duration}</span>
+                        <span className="text-[10px] font-mono text-zinc-600 shrink-0 pr-2">
+                          {track.duration || "--:--"}
+                        </span>
                       </div>
                     ))}
                   </div>
                 </div>
-              </div>
+              </motion.div>
             )}
           </motion.div>
         ) : (
-          /* ================= MY SPOTIFY LIBRARY TAB ================= */
+          /* ================= SPOTIFY LIBRARY SYNC CENTER ================= */
           <motion.div
             key="spotify-tab"
             initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -15 }}
             transition={{ duration: 0.3 }}
-            className="space-y-8 max-w-5xl mx-auto w-full relative z-10 animate-fade-in"
+            className="space-y-8 max-w-5xl mx-auto w-full relative z-10"
           >
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-              <div>
-                <h2 className="text-2xl md:text-3xl font-serif italic tracking-tight text-[#8b5cf6]">Spotify Sync Workspace</h2>
-                <p className="text-xs text-zinc-500 mt-1">
-                  Manage external Spotify connections, download catalogs, and control dynamic setlists.
-                </p>
+            {/* Header banner */}
+            <div className="p-6 rounded-2xl bg-gradient-to-br from-zinc-950 to-[#8b5cf6]/5 border border-[#8b5cf6]/20 shadow-2xl relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-64 h-64 bg-[#8b5cf6]/5 blur-[80px] rounded-full pointer-events-none"></div>
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 relative z-10">
+                <div className="flex items-center gap-4">
+                  <div className="w-14 h-14 rounded-full bg-[#8b5cf6]/10 flex items-center justify-center border border-[#8b5cf6]/20 shadow-inner">
+                    <Disc className="w-8 h-8 text-[#8b5cf6] animate-spin" style={{ animationDuration: "6s" }} />
+                  </div>
+                  <div>
+                    <span className="text-[10px] font-mono bg-[#8b5cf6]/10 border border-[#8b5cf6]/20 text-[#8b5cf6] px-2.5 py-0.5 rounded font-bold uppercase tracking-widest">
+                      Spotify Integration Active
+                    </span>
+                    <h3 className="text-xl font-serif italic text-white mt-1">My Spotify Library Curation</h3>
+                    <p className="text-xs text-zinc-400 mt-1 leading-relaxed">
+                      Clone your personal playlists, saved songs, and favorite artist discographies directly into offline custom compile sets.
+                    </p>
+                  </div>
+                </div>
+                {spotifyToken && (
+                  <button
+                    onClick={handleImportAllLikedSongs}
+                    disabled={importedStatus["liked-all"] || importedStatus["liked-all-loading"]}
+                    className="bg-[#8b5cf6] hover:bg-[#8b5cf6]/90 disabled:bg-[#8b5cf6]/20 disabled:text-[#8b5cf6] text-white font-bold text-xs px-4 py-2.5 rounded-xl transition duration-200 shadow-md flex items-center gap-1.5 shrink-0 self-start sm:self-center font-sans"
+                  >
+                    {importedStatus["liked-all-loading"] ? (
+                      <>
+                        <Disc className="w-4 h-4 text-white animate-spin" />
+                        <span>Syncing Liked Songs...</span>
+                      </>
+                    ) : importedStatus["liked-all"] ? (
+                      <>
+                        <CheckCircle2 className="w-4 h-4 text-white animate-bounce" />
+                        <span>Liked Songs Synced!</span>
+                      </>
+                    ) : (
+                      <>
+                        <ArrowDownToLine className="w-4 h-4 text-white" />
+                        <span>Sync Liked Songs to App</span>
+                      </>
+                    )}
+                  </button>
+                )}
               </div>
             </div>
 
             {loadingSpotifyLibrary ? (
-              <div className="py-24 text-center text-zinc-400 flex flex-col items-center justify-center gap-2">
-                <Disc className="w-10 h-10 animate-spin text-[#8b5cf6]" />
-                <p className="text-sm font-medium mt-2">Connecting to Spotify catalog...</p>
+              /* Loading Screen */
+              <div className="p-12 text-center space-y-4">
+                <div className="relative w-12 h-12 mx-auto">
+                  <Disc className="w-12 h-12 text-[#8b5cf6] animate-spin" />
+                  <Sparkles className="absolute inset-0 m-auto w-4 h-4 text-[#8b5cf6] animate-pulse" />
+                </div>
+                <p className="text-xs text-zinc-400 animate-pulse">Syncing personal lists, recently played, and artist metrics...</p>
               </div>
             ) : (
-              <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
                 
-                {/* Left side: Sync commands */}
-                <div className="lg:col-span-4 space-y-6">
-                  <div className="bg-[#080808]/60 border border-white/5 rounded-2xl p-5 shadow-2xl space-y-5">
-                    <div>
-                      <h3 className="text-xs font-bold text-zinc-400 uppercase tracking-widest font-mono">Sync Operations</h3>
-                      <p className="text-[10px] text-zinc-500 mt-1">
-                        Clone your personal playlists, saved songs, and favorite artist discographies directly into offline custom compile sets.
-                      </p>
-                    </div>
+                {/* COLUMN 1: Playlists (5 cols) */}
+                <div className="lg:col-span-5 space-y-4">
+                  <div className="flex items-center gap-2 px-1">
+                    <ListMusic className="w-4 h-4 text-[#8b5cf6]" />
+                    <h4 className="text-xs font-bold text-zinc-400 uppercase tracking-widest font-sans">Spotify Playlists ({spotifyPlaylists.length})</h4>
+                  </div>
 
-                    <div className="space-y-2">
-                      <button
-                        onClick={handleImportAllLikedSongs}
-                        disabled={importedStatus["liked-all-loading"]}
-                        className={`w-full py-2.5 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 cursor-pointer ${
-                          importedStatus["liked-all"]
-                            ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
-                            : "bg-white/5 hover:bg-white/10 text-white border border-white/10"
-                        }`}
-                      >
-                        {importedStatus["liked-all-loading"] ? (
-                          <>
-                            <Disc className="w-4 h-4 animate-spin text-[#8b5cf6]" />
-                            <span>Downloading library...</span>
-                          </>
-                        ) : importedStatus["liked-all"] ? (
-                          <>
-                            <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-                            <span>Setlist Saved!</span>
-                          </>
-                        ) : (
-                          <>
-                            <ArrowDownToLine className="w-4 h-4 text-[#8b5cf6]" />
-                            <span>Sync All Liked Songs ({likedSongsStatus?.total || "0"})</span>
-                          </>
-                        )}
-                      </button>
-                    </div>
+                  <div className="space-y-3 max-h-[600px] overflow-y-auto pr-1 scrollbar-thin">
+                    {spotifyPlaylists.length === 0 ? (
+                      <div className="p-6 rounded-xl bg-[#080808]/40 border border-white/5 text-center text-zinc-500 text-xs italic">
+                        No public playlists found in your library.
+                      </div>
+                    ) : (
+                      spotifyPlaylists.map((pl) => {
+                        const isImporting = importingPlaylistId === pl.id;
+                        const isImported = importedStatus[pl.id];
+                        return (
+                          <div
+                            key={pl.id}
+                            onClick={() => handleImportPlaylist(pl.id, pl.name, true)}
+                            className="p-3 rounded-xl bg-[#080808]/40 hover:bg-[#080808]/80 border border-white/5 flex items-center justify-between gap-4 transition duration-200 cursor-pointer hover:border-[#8b5cf6]/20"
+                          >
+                            <div className="flex items-center gap-3 min-w-0">
+                              <div className="w-10 h-10 rounded overflow-hidden bg-zinc-900 shrink-0">
+                                {pl.imageUrl ? (
+                                  <img src={pl.imageUrl} alt="" className="w-full h-full object-cover" />
+                                ) : (
+                                  <div className="w-full h-full flex items-center justify-center text-zinc-600">
+                                    <Disc className="w-5 h-5" />
+                                  </div>
+                                )}
+                              </div>
+                              <div className="min-w-0">
+                                <p className="text-xs font-semibold text-white truncate">{pl.name}</p>
+                                <p className="text-[10px] text-zinc-500 mt-0.5 font-mono">
+                                  {pl.tracks.length} tracks
+                                </p>
+                              </div>
+                            </div>
+
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleImportPlaylist(pl.id, pl.name, false);
+                              }}
+                              disabled={isImporting || isImported}
+                              className={`px-3 py-1.5 rounded-lg text-[10px] font-semibold transition ${
+                                isImported
+                                  ? "bg-[#8b5cf6]/10 text-[#8b5cf6] border border-[#8b5cf6]/20"
+                                  : "bg-[#8b5cf6] hover:bg-[#8b5cf6]/90 text-white"
+                              }`}
+                            >
+                              {isImporting ? (
+                                <Disc className="w-3.5 h-3.5 text-white animate-spin mx-auto" />
+                              ) : isImported ? (
+                                <span className="flex items-center gap-1"><CheckCircle2 className="w-3 h-3 text-[#8b5cf6]" /> Cloned</span>
+                              ) : (
+                                <span className="flex items-center gap-1"><ArrowDownToLine className="w-3 h-3" /> Import</span>
+                              )}
+                            </button>
+                          </div>
+                        );
+                      })
+                    )}
                   </div>
                 </div>
 
-                {/* Right side: Top Artists & Top Tracks grid */}
-                <div className="lg:col-span-8 space-y-8">
-                  {/* Top Tracks lists */}
-                  {spotifyTopTracks.length > 0 && (
-                    <div className="space-y-4">
-                      <h3 className="text-xs font-bold text-zinc-400 uppercase tracking-widest flex items-center gap-2 font-serif italic text-[#8b5cf6]">
-                        <TrendingUp className="w-4 h-4" />
-                        My Spotify Top Tracks
-                      </h3>
-
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        {spotifyTopTracks.slice(0, 10).map((track, i) => (
-                          <div
-                            key={track.id}
-                            className="group p-2.5 rounded-xl border border-white/5 bg-[#080808]/40 hover:bg-white/5 hover:border-white/10 flex items-center justify-between gap-3 cursor-pointer transition"
-                            onClick={() => onPlayTrack(track)}
-                          >
-                            <div className="flex items-center gap-3 min-w-0">
-                              <span className="text-xs font-mono text-zinc-600 w-4 text-center shrink-0">{i + 1}</span>
-                              <img src={track.imageUrl} alt="" className="w-10 h-10 rounded object-cover bg-zinc-900 border border-white/5 shrink-0" />
-                              <div className="min-w-0">
-                                <p className="text-xs font-semibold text-white truncate group-hover:text-[#8b5cf6] transition">{track.title}</p>
-                                <p className="text-[10px] text-zinc-500 truncate mt-0.5">{track.artist}</p>
-                              </div>
-                            </div>
-                            <span className="text-[10px] text-zinc-500 font-mono shrink-0 pr-1">{track.duration}</span>
-                          </div>
-                        ))}
+                {/* COLUMN 2: Top / Recently Played Tracks (7 cols) */}
+                <div className="lg:col-span-7 space-y-6">
+                  
+                  {/* Top Songs */}
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between px-1">
+                      <div className="flex items-center gap-2">
+                        <Heart className="w-4 h-4 text-[#8b5cf6] fill-[#8b5cf6]/20" />
+                        <h4 className="text-xs font-bold text-zinc-400 uppercase tracking-widest font-sans">Top Songs & Liked tracks</h4>
                       </div>
                     </div>
-                  )}
 
-                  {/* Top Artists grid */}
-                  {spotifyTopArtists.length > 0 && (
-                    <div className="space-y-4">
-                      <h3 className="text-xs font-bold text-zinc-400 uppercase tracking-widest flex items-center gap-2 font-serif italic text-[#8b5cf6]">
-                        <Users className="w-4 h-4" />
-                        My Favorite Artists
-                      </h3>
+                    <div className="bg-[#080808]/40 rounded-xl border border-white/5 divide-y divide-white/5 max-h-[350px] overflow-y-auto scrollbar-thin">
+                      {spotifyTopTracks.length === 0 ? (
+                        <div className="p-8 text-center text-zinc-600 text-xs italic">
+                          No top tracks returned. Start listening on Spotify to seed these!
+                        </div>
+                      ) : (
+                        spotifyTopTracks.map((track, idx) => {
+                          const isCurrent = currentTrack?.spotifyId === track.spotifyId;
+                          return (
+                            <div
+                              key={`${track.id}-${idx}`}
+                              className="p-3 flex items-center justify-between gap-4 group hover:bg-white/[0.02] cursor-pointer transition"
+                              onClick={() => onPlayTrack(track)}
+                            >
+                              <div className="flex items-center gap-3 min-w-0">
+                                <span className={`text-xs font-mono font-semibold w-4 text-center ${isCurrent ? "text-[#8b5cf6]" : "text-zinc-600"}`}>
+                                  {idx + 1}
+                                </span>
+                                {track.imageUrl && (
+                                  <img src={track.imageUrl} alt="" className="w-8 h-8 rounded object-cover shrink-0" />
+                                )}
+                                <div className="min-w-0">
+                                  <p className={`text-xs font-semibold truncate ${isCurrent ? "text-[#8b5cf6]" : "text-white"}`}>
+                                    {track.title}
+                                  </p>
+                                  <p className="text-[10px] text-zinc-500 truncate mt-0.5">{track.artist}</p>
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-2 shrink-0">
+                                <span className="text-[10px] font-mono text-zinc-600 mr-2">{track.duration || "3:00"}</span>
+                                {/* Add to playlist dropdown */}
+                                <div className="relative font-sans">
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      toggleTrackMenu(track.id, e);
+                                    }}
+                                    className="p-1 rounded bg-white/5 hover:bg-white/10 text-zinc-400 hover:text-white transition"
+                                    title="More Options"
+                                  >
+                                    <MoreHorizontal className="w-3.5 h-3.5" />
+                                  </button>
+                                  {activeMenuTrackId === track.id && (
+                                    <div className="absolute right-0 top-full mt-1 w-48 bg-[#080808] border border-white/5 rounded-lg shadow-2xl z-50 p-1 font-sans">
+                                      <button
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          onAddToQueue(track);
+                                          setActiveMenuTrackId(null);
+                                        }}
+                                        className="w-full text-left text-xs text-zinc-300 hover:text-[#8b5cf6] hover:bg-white/5 px-2.5 py-2 rounded transition flex items-center gap-2 font-sans"
+                                      >
+                                        <ListMusic className="w-3.5 h-3.5 text-[#8b5cf6]" />
+                                        <span>Add to Queue</span>
+                                      </button>
+                                      
+                                      <div className="border-t border-white/5 my-1" />
+                                      <p className="text-[10px] font-bold text-[#8b5cf6]/80 uppercase tracking-widest px-2.5 py-1.5 font-sans">
+                                        Playlists
+                                      </p>
+                                      
+                                      <button
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          const name = prompt("Enter new playlist name:");
+                                          if (name && name.trim()) {
+                                            onCreatePlaylist(name.trim(), "My custom selection", [track]);
+                                          }
+                                          setActiveMenuTrackId(null);
+                                        }}
+                                        className="w-full text-left text-xs text-[#8b5cf6] hover:bg-[#8b5cf6]/10 px-2.5 py-1.5 rounded transition font-semibold flex items-center gap-1.5 font-sans"
+                                      >
+                                        <Plus className="w-3.5 h-3.5" />
+                                        <span>+ Create Playlist</span>
+                                      </button>
 
-                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3.5">
-                        {spotifyTopArtists.slice(0, 8).map((artist) => (
+                                      {userPlaylists.length > 0 && (
+                                        <div className="max-h-28 overflow-y-auto mt-1 border-t border-white/5 pt-1 space-y-0.5 scrollbar-thin">
+                                          {userPlaylists.map((pl) => (
+                                            <button
+                                              key={pl.id}
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                handleAddToPlaylistAction(track, pl.id);
+                                              }}
+                                              className="w-full text-left text-xs text-zinc-300 hover:text-[#8b5cf6] hover:bg-white/5 px-2.5 py-1.5 rounded transition truncate font-sans block"
+                                            >
+                                              {pl.name}
+                                            </button>
+                                          ))}
+                                        </div>
+                                      )}
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Top Artists (Grid) */}
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-2 px-1">
+                      <Users className="w-4 h-4 text-[#8b5cf6]" />
+                      <h4 className="text-xs font-bold text-zinc-400 uppercase tracking-widest font-sans">My Favorite Artists & Discographies</h4>
+                    </div>
+
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                      {spotifyTopArtists.slice(0, 8).map((artist) => {
+                        const hasCover = artist.images?.[0]?.url;
+                        const artistImported = importedStatus[artist.id];
+                        return (
                           <div
                             key={artist.id}
                             onClick={() => handleImportArtistTopTracks(artist.id, artist.name, true)}
-                            className="group p-3 rounded-2xl border border-white/5 bg-[#080808]/40 hover:bg-[#8b5cf6]/10 hover:border-[#8b5cf6]/30 flex flex-col items-center text-center gap-3 cursor-pointer transition-all duration-300"
+                            className="p-3 rounded-xl bg-[#080808]/40 border border-white/5 flex flex-col items-center text-center space-y-2 relative group hover:border-[#8b5cf6]/20 transition duration-300 cursor-pointer"
                           >
-                            <img
-                              src={artist.images?.[0]?.url || "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=300"}
-                              alt={artist.name}
-                              className="w-16 h-16 rounded-full object-cover bg-zinc-900 shadow-md group-hover:scale-105 transition"
-                            />
-                            <div className="w-full">
-                              <p className="text-xs font-semibold text-white truncate">{artist.name}</p>
-                              <p className="text-[9px] text-[#8b5cf6] uppercase tracking-wider font-bold font-mono mt-0.5">
-                                {importedStatus[artist.id] ? "Setlist Loaded!" : "Load Tracks"}
+                            <div className="w-14 h-14 rounded-full overflow-hidden bg-zinc-900 border border-white/5 relative shrink-0">
+                              {hasCover ? (
+                                <img src={hasCover} alt="" className="w-full h-full object-cover" />
+                              ) : (
+                                <div className="w-full h-full flex items-center justify-center text-zinc-600">
+                                  <Users className="w-6 h-6" />
+                                </div>
+                              )}
+                            </div>
+                            <div className="min-w-0 w-full">
+                              <p className="text-[11px] font-semibold text-white truncate px-1">{artist.name}</p>
+                              <p className="text-[9px] text-zinc-500 mt-0.5 truncate uppercase tracking-wider font-mono">
+                                {artist.genres?.[0] || "Artist"}
                               </p>
                             </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
 
-                  {/* Recently Played list */}
-                  {spotifyRecentTracks.length > 0 && (
-                    <div className="space-y-4 pt-2">
-                      <h3 className="text-xs font-bold text-zinc-400 uppercase tracking-widest flex items-center gap-2 font-serif italic text-[#8b5cf6]">
-                        <Clock className="w-4 h-4" />
-                        Recently Played on Spotify
-                      </h3>
-
-                      <div className="divide-y divide-white/5 bg-[#080808]/40 rounded-2xl border border-white/5 overflow-hidden shadow-xl">
-                        {spotifyRecentTracks.map((track) => (
-                          <div
-                            key={track.id}
-                            onClick={() => onPlayTrack(track)}
-                            className="px-5 py-2.5 flex items-center justify-between gap-3 cursor-pointer hover:bg-white/5 transition"
-                          >
-                            <div className="flex items-center gap-3 min-w-0">
-                              <img src={track.imageUrl} alt="" className="w-8 h-8 rounded object-cover shrink-0" />
-                              <div className="min-w-0">
-                                <p className="text-xs font-semibold text-white truncate">{track.title}</p>
-                                <p className="text-[10px] text-zinc-500 truncate mt-0.5">{track.artist}</p>
-                              </div>
-                            </div>
-                            <span className="text-[10px] text-zinc-500 font-mono pr-2">{track.duration}</span>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleImportArtistTopTracks(artist.id, artist.name, false);
+                              }}
+                              disabled={artistImported}
+                              className={`w-full py-1 text-[9px] font-bold rounded-lg transition mt-1 flex items-center justify-center gap-1 ${
+                                artistImported
+                                  ? "bg-[#8b5cf6]/10 text-[#8b5cf6] border border-[#8b5cf6]/15 font-sans"
+                                  : "bg-white/5 hover:bg-[#8b5cf6] hover:text-white text-zinc-300 font-sans"
+                              }`}
+                            >
+                              {artistImported ? (
+                                <>
+                                  <CheckCircle2 className="w-3 h-3 text-[#8b5cf6]" />
+                                  <span>Cloned</span>
+                                </>
+                              ) : (
+                                <>
+                                  <Plus className="w-3 h-3" />
+                                  <span>Best Of</span>
+                                </>
+                              )}
+                            </button>
                           </div>
-                        ))}
-                      </div>
+                        );
+                      })}
                     </div>
-                  )}
+                  </div>
+
                 </div>
+
               </div>
             )}
           </motion.div>
