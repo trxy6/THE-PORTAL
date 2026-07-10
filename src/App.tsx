@@ -4100,26 +4100,27 @@ export default function App() {
           {/* Lower Sidebar status card matching the exact spec from the image */}
           <div className="mt-8 space-y-4">
             <div 
-              className="p-4 rounded-2xl bg-gradient-to-br from-[#120a24] via-[#1d1135] to-[#0d071a] border border-[#cf4fe6]/20 relative overflow-hidden transition-all duration-1000 shadow-xl shadow-purple-950/20 text-left"
+              className="p-4 rounded-2xl bg-gradient-to-br from-[#120a24] via-[#1d1135] to-[#0d071a] border relative overflow-hidden transition-all duration-1000 shadow-xl text-left"
+              style={{ borderColor: 'var(--theme-card-border)', boxShadow: '0 4px 20px var(--theme-card-border)' }}
             >
               {/* Scanline grid details inside card */}
               <div className="absolute inset-0 cyber-grid-dense opacity-10 pointer-events-none" />
-              <div className="absolute -right-10 -bottom-10 w-28 h-28 rounded-full bg-purple-600/10 blur-xl pointer-events-none" />
+              <div className="absolute -right-10 -bottom-10 w-28 h-28 rounded-full blur-xl pointer-events-none" style={{ backgroundColor: 'var(--theme-accent-color2)', opacity: 0.1 }} />
 
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
-                  {/* Glowing purple robot/brain avatar */}
-                  <div className="p-1.5 rounded-xl bg-purple-950/60 border border-purple-500/30 flex items-center justify-center">
+                  {/* Glowing dynamic robot/brain avatar */}
+                  <div className="p-1.5 rounded-xl flex items-center justify-center" style={{ backgroundColor: 'rgba(255,255,255,0.03)', border: '1px solid var(--theme-card-border)' }}>
                     {renderSidebarIcon('chat', true)}
                   </div>
                   <div className="flex flex-col text-left">
                     <span className="text-[10px] text-white font-extrabold tracking-wide leading-none">NextGenPortal AI</span>
-                    <span className="text-[8px] text-[#cf4fe6] font-bold tracking-widest uppercase mt-0.5">Offline • Unlimited</span>
+                    <span className="text-[8px] font-bold tracking-widest uppercase mt-0.5" style={{ color: 'var(--theme-accent-color2)' }}>Offline • Unlimited</span>
                   </div>
                 </div>
               </div>
 
-              {/* Storage progress bar exactly matching the image */}
+              {/* Storage progress bar matching the theme */}
               <div className="space-y-1.5 border-t border-white/5 pt-3">
                 <div className="flex items-center justify-between text-[9px] font-bold text-slate-400">
                   <span>Storage</span>
@@ -4127,12 +4128,9 @@ export default function App() {
                 </div>
                 <div className="w-full h-1.5 bg-[#1b1429] rounded-full overflow-hidden border border-white/5">
                   <div 
-                    className="h-full bg-gradient-to-r from-blue-500 via-[#8b5cf6] to-[#ec4899] rounded-full shadow-[0_0_8px_rgba(139,92,246,0.6)]" 
-                    style={{ width: '58%' }} 
+                    className="h-full rounded-full" 
+                    style={{ width: '58%', background: 'var(--theme-btn-gradient)', boxShadow: '0 0 8px var(--theme-card-border)' }} 
                   />
-                </div>
-                <div className="text-[8px] text-slate-500 font-mono">
-                  512 GB free of 1 TB
                 </div>
               </div>
             </div>
