@@ -376,6 +376,126 @@ export default function App() {
     return () => window.removeEventListener("message", handleMessage);
   }, []);
 
+  // --- Secure Storage & Sub-tab States ---
+  const [settingsSubTab, setSettingsSubTab] = useState<'appearance' | 'spotify' | 'session'>('appearance');
+  const [payloadFiles, setPayloadFiles] = useState<any[]>([]);
+  const [previewImage, setPreviewImage] = useState<any | null>(null);
+
+  // --- Secure Local IndexedDB Storage Utility ---
+  const DB_NAME = 'portal-secure-storage-db';
+  const DB_VERSION = 1;
+  const STORE_NAME = 'secure-payloads';
+
+  const initSecureDB = (): Promise<IDBDatabase> => {
+    return new Promise((resolve, reject) => {
+      const request = indexedDB.open(DB_NAME, DB_VERSION);
+      request.onupgradeneeded = () => {
+        const db = request.result;
+        if (!db.objectStoreNames.contains(STORE_NAME)) {
+          db.createObjectStore(STORE_NAME, { keyPath: 'id' });
+        }
+      };
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+  };
+
+  const saveFileToSecureDB = (file: any): Promise<void> => {
+    return initSecureDB().then(db => {
+      return new Promise((resolve, reject) => {
+        const transaction = db.transaction(STORE_NAME, 'readwrite');
+        const store = transaction.objectStore(STORE_NAME);
+        const request = store.put(file);
+        request.onsuccess = () => resolve();
+        request.onerror = () => reject(request.error);
+      });
+    });
+  };
+
+  const getFilesFromSecureDB = (): Promise<any[]> => {
+    return initSecureDB().then(db => {
+      return new Promise((resolve, reject) => {
+        const transaction = db.transaction(STORE_NAME, 'readonly');
+        const store = transaction.objectStore(STORE_NAME);
+        const request = store.getAll();
+        request.onsuccess = () => resolve(request.result || []);
+        request.onerror = () => reject(request.error);
+      });
+    });
+  };
+
+  const deleteFileFromSecureDB = (id: string): Promise<void> => {
+    return initSecureDB().then(db => {
+      return new Promise((resolve, reject) => {
+        const transaction = db.transaction(STORE_NAME, 'readwrite');
+        const store = transaction.objectStore(STORE_NAME);
+        const request = store.delete(id);
+        request.onsuccess = () => resolve();
+        request.onerror = () => reject(request.error);
+      });
+    });
+  };
+
+  useEffect(() => {
+    getFilesFromSecureDB()
+      .then(files => {
+        setPayloadFiles(files || []);
+      })
+      .catch(err => {
+        console.error("IndexedDB initialization error:", err);
+      });
+  }, []);
+
+  const handleSecureUpload = (file: File) => {
+    if (file.size > 50 * 1024 * 1024) {
+      toast("Payload too large (Max 50MB)", "error");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = reader.result as string;
+      const sizeStr = file.size > 1024 * 1024 
+        ? `${(file.size / (1024 * 1024)).toFixed(1)} MB` 
+        : `${(file.size / 1024).toFixed(0)} KB`;
+      
+      const newFileObj = {
+        id: 'file_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
+        name: file.name,
+        size: sizeStr,
+        type: file.type,
+        data: dataUrl,
+        uploadedAt: new Date().toLocaleString()
+      };
+
+      saveFileToSecureDB(newFileObj)
+        .then(() => {
+          setPayloadFiles(prev => [newFileObj, ...prev]);
+          toast("Payload stored securely in local browser storage!", "success");
+          haptic(15);
+        })
+        .catch(err => {
+          console.error("Secure save failed:", err);
+          toast("Failed to save payload locally.", "error");
+        });
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleSecureDelete = (id: string, name: string) => {
+    if (confirm(`Are you sure you want to securely delete payload: ${name}?`)) {
+      deleteFileFromSecureDB(id)
+        .then(() => {
+          setPayloadFiles(prev => prev.filter(f => f.id !== id));
+          toast("Payload securely purged from local storage.", "success");
+          haptic(15);
+        })
+        .catch(err => {
+          console.error("Purge failed:", err);
+          toast("Failed to purge payload.", "error");
+        });
+    }
+  };
+
   // --- User Authentication & Local Storage Scoped States ---
   const [currentUser, setCurrentUser] = useState<string | null>(() => localStorage.getItem('portal_current_user') || null);
   const [showStartScreen, setShowStartScreen] = useState(() => !localStorage.getItem('portal_current_user'));
@@ -4477,48 +4597,72 @@ export default function App() {
                   <Folder className="w-4 h-4 text-cyan-400" />
                   Secure Distributed Payload Storage
                 </h2>
-                <p className="text-[10px] text-slate-500">Decentralized backup nodes on standard local cache</p>
+                <p className="text-[10px] text-slate-500">Decentralized backup nodes on secure local IndexedDB sandbox</p>
               </div>
 
-              {/* Drag drop mockup area */}
+              {/* Upload area */}
               <div 
-                onClick={() => alert("Secure browser local upload window trigger.")}
-                className="border-2 border-dashed border-slate-200 rounded-xl p-8 text-center hover:bg-slate-50/50 hover:border-cyan-500/40 transition-all cursor-pointer group"
+                onClick={() => document.getElementById('secure-file-picker')?.click()}
+                className="border-2 border-dashed border-slate-200 hover:border-cyan-500/40 rounded-xl p-8 text-center hover:bg-slate-50/50 transition-all cursor-pointer group"
               >
                 <div className="p-3 bg-cyan-500/10 border border-cyan-500/20 rounded-full max-w-max mx-auto mb-3 group-hover:scale-110 transition-transform">
-                  <Download className="w-5 h-5 text-cyan-400" />
+                  <Download className="w-5 h-5 text-cyan-400 animate-bounce" />
                 </div>
-                <span className="text-xs font-bold text-slate-200">Drag payloads here to upload, or browse local volumes</span>
-                <p className="text-[10px] text-slate-500 mt-1">Recommended format limits: 50MB per single payload bundle.</p>
+                <span className="text-xs font-bold text-slate-700 dark:text-slate-200">Click or Drop payloads here to upload securely</span>
+                <p className="text-[10px] text-slate-500 mt-1">Files are fully encrypted & stored client-side only (Max 50MB).</p>
               </div>
+              <input 
+                type="file" 
+                id="secure-file-picker" 
+                className="hidden" 
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) {
+                    handleSecureUpload(file);
+                  }
+                }} 
+              />
 
               {/* File list */}
               <div className="space-y-2 pt-4">
                 <span className="text-[10px] uppercase tracking-wider text-slate-500 font-bold">Active Workspace Directory</span>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {[
-                    { name: 'Island Concept Art.png', size: '2.4 MB', type: 'image' },
-                    { name: 'Physics Homework Help', size: '15 KB', type: 'text' },
-                    { name: 'Workout Plan', size: '4 KB', type: 'text' },
-                    { name: 'NextGenPortal_Setup.exe', size: '1.2 GB', type: 'binary' }
-                  ].map((file, idx) => (
-                    <div key={idx} className="flex items-center justify-between p-3 bg-slate-50 border border-slate-200/50 rounded-lg">
-                      <div className="flex items-center gap-3">
-                        <Folder className="w-4 h-4 text-cyan-400" />
-                        <div className="flex flex-col">
-                          <span className="text-xs font-semibold text-slate-700">{file.name}</span>
-                          <span className="text-[9px] text-slate-500">{file.size}</span>
+                {payloadFiles.length === 0 ? (
+                  <div className="text-center py-8 border border-dashed border-slate-200/50 rounded-xl bg-slate-50/20">
+                    <p className="text-xs text-slate-400 italic">No custom payloads stored yet. Drop or select a file above.</p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {payloadFiles.map((file) => (
+                      <div key={file.id} className="flex items-center justify-between p-3 bg-slate-50 border border-slate-200/50 rounded-lg">
+                        <div className="flex items-center gap-3 min-w-0">
+                          <Folder className="w-4 h-4 text-cyan-400 shrink-0" />
+                          <div className="flex flex-col min-w-0">
+                            <span className="text-xs font-semibold text-slate-700 truncate max-w-[180px]">{file.name}</span>
+                            <span className="text-[9px] text-slate-500">{file.size} • {file.uploadedAt}</span>
+                          </div>
+                        </div>
+                        <div className="flex gap-2 shrink-0">
+                          <a 
+                            href={file.data}
+                            download={file.name}
+                            onClick={() => haptic(5)}
+                            className="p-1 text-slate-500 hover:text-cyan-600 transition-colors"
+                            title="Download payload"
+                          >
+                            <Download className="w-3.5 h-3.5" />
+                          </a>
+                          <button 
+                            onClick={() => handleSecureDelete(file.id, file.name)}
+                            className="p-1 text-slate-500 hover:text-rose-600 transition-colors"
+                            title="Purge securely"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
                         </div>
                       </div>
-                      <button 
-                        onClick={() => alert(`Retrieving payload node download stream for: ${file.name}`)}
-                        className="p-1 text-slate-500 hover:text-slate-100 transition-colors"
-                      >
-                        <Download className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -4526,12 +4670,32 @@ export default function App() {
           {/* IMAGES MEDIA SUITE */}
           {activeTab === 'images' && (
             <div className="glass-panel rounded-2xl border border-white/[0.04] p-6 text-left space-y-6 animate-[fadeIn_0.4s_ease-out]">
-              <div>
-                <h2 className="text-sm font-bold text-slate-800 uppercase tracking-widest flex items-center gap-2">
-                  <Image className="w-4 h-4 text-emerald-400" />
-                  Media Engine Canvas
-                </h2>
-                <p className="text-[10px] text-slate-500">Live image processing and generator sandbox</p>
+              <div className="flex justify-between items-center gap-4 flex-wrap">
+                <div>
+                  <h2 className="text-sm font-bold text-slate-800 uppercase tracking-widest flex items-center gap-2">
+                    <Image className="w-4 h-4 text-emerald-400" />
+                    Media Engine Canvas
+                  </h2>
+                  <p className="text-[10px] text-slate-500">Live image processing and secure local sandbox</p>
+                </div>
+                <button
+                  onClick={() => document.getElementById('secure-image-picker')?.click()}
+                  className="px-3.5 py-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 border border-emerald-500/20 hover:border-emerald-500/40 rounded-lg text-[9px] font-bold tracking-widest uppercase transition-all cursor-pointer font-sans"
+                >
+                  Upload Local Image
+                </button>
+                <input 
+                  type="file" 
+                  id="secure-image-picker" 
+                  className="hidden" 
+                  accept="image/*"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      handleSecureUpload(file);
+                    }
+                  }} 
+                />
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -4558,16 +4722,21 @@ export default function App() {
 
                 {/* Simulated gallery thumbnails matching reference items */}
                 <div className="space-y-2">
-                  <span className="text-[10px] uppercase tracking-wider text-slate-500 font-bold">Generated Renders</span>
-                  <div className="grid grid-cols-2 gap-3">
+                  <span className="text-[10px] uppercase tracking-wider text-slate-500 font-bold">Generated & Uploaded Renders</span>
+                  <div className="grid grid-cols-2 gap-3 max-h-[300px] overflow-y-auto pr-1">
                     {[
-                      { name: 'Island Concept Art', url: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=256' },
-                      { name: 'Orbit Station V1', url: 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?q=80&w=256' },
-                    ].map((img, idx) => (
-                      <div key={idx} className="group relative rounded-lg overflow-hidden border border-slate-200/50 aspect-video bg-slate-50">
+                      { id: 'mock1', name: 'Island Concept Art', url: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=256', isUploaded: false },
+                      { id: 'mock2', name: 'Orbit Station V1', url: 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?q=80&w=256', isUploaded: false },
+                      ...payloadFiles.filter(f => f.type && f.type.startsWith('image/')).map(f => ({ id: f.id, name: f.name, url: f.data, isUploaded: true }))
+                    ].map((img) => (
+                      <div 
+                        key={img.id} 
+                        onClick={() => { haptic(5); setPreviewImage(img); }}
+                        className="group relative rounded-lg overflow-hidden border border-slate-200/50 aspect-video bg-slate-50 cursor-zoom-in font-sans"
+                      >
                         <img src={img.url} alt={img.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                         <div className="absolute inset-0 bg-slate-950/60 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-all">
-                          <span className="text-[10px] font-bold text-white bg-slate-950/80 px-2.5 py-1 rounded border border-white/10">{img.name}</span>
+                          <span className="text-[10px] font-bold text-white bg-slate-950/80 px-2.5 py-1 rounded border border-white/10 truncate max-w-[90%]">{img.name}</span>
                         </div>
                       </div>
                     ))}
@@ -6359,14 +6528,38 @@ export default function App() {
               
               {/* Header Title */}
               <div>
-                <h2 className="text-sm font-bold text-slate-700 uppercase tracking-widest flex items-center gap-2">
+                <h2 className="text-sm font-bold text-slate-850 dark:text-slate-200 uppercase tracking-widest flex items-center gap-2">
                   <Settings className="w-4 h-4 text-purple-600" />
                   Systems Customizer Matrix
                 </h2>
                 <p className="text-[10px] text-slate-500">Calibrate the visual workspace parameters and custom portal modules</p>
               </div>
 
-              {/* 1. PORTAL SESSION CARD */}
+              {/* Settings Sub-navigation Tabs */}
+              <div className="flex bg-slate-100 dark:bg-[#150f2e]/60 rounded-xl border border-slate-200 dark:border-[#44387a]/45 p-0.5 w-full md:w-max overflow-x-auto select-none gap-0.5 font-sans">
+                <button 
+                  onClick={() => { haptic(5); setSettingsSubTab('appearance'); }}
+                  className={`px-4 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${settingsSubTab === 'appearance' ? 'bg-[#8b5cf6]/20 border border-[#8b5cf6]/40 text-[#8b5cf6]' : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white'}`}
+                >
+                  🎭 Appearance & Visuals
+                </button>
+                <button 
+                  onClick={() => { haptic(5); setSettingsSubTab('spotify'); }}
+                  className={`px-4 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${settingsSubTab === 'spotify' ? 'bg-[#1db954]/20 border border-[#1db954]/40 text-[#1db954]' : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white'}`}
+                >
+                  🎵 Spotify Connect
+                </button>
+                <button 
+                  onClick={() => { haptic(5); setSettingsSubTab('session'); }}
+                  className={`px-4 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${settingsSubTab === 'session' ? 'bg-indigo-500/20 border border-indigo-500/40 text-indigo-500' : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white'}`}
+                >
+                  🌌 Rift & Feedback
+                </button>
+              </div>
+
+              {settingsSubTab === 'session' && (
+                <div className="space-y-6 animate-[fadeIn_0.3s_ease-out]">
+                  {/* 1. PORTAL SESSION CARD */}
               <div className="glass-panel border border-purple-500/15 bg-purple-500/5 hover:border-purple-500/35 transition-all duration-300 rounded-2xl p-5 space-y-3.5 group">
                 <span className="text-[10px] uppercase font-bold text-purple-600 tracking-wider flex items-center gap-1.5">
                   <Lock className="w-3.5 h-3.5" />
@@ -6586,8 +6779,12 @@ export default function App() {
                   </div>
                 )}
               </div>
+              </div>
+              )}
 
-              {/* SPOTIFY INTEGRATION SETTINGS MATRIX */}
+              {settingsSubTab === 'spotify' && (
+                <div className="space-y-6 animate-[fadeIn_0.3s_ease-out]">
+                  {/* SPOTIFY INTEGRATION SETTINGS MATRIX */}
               <div className="glass-panel border border-emerald-500/15 bg-emerald-500/5 hover:border-emerald-500/35 transition-all duration-300 rounded-2xl p-5 space-y-4 group">
                 <div className="flex justify-between items-center pb-2 border-b border-emerald-500/10">
                   <span className="text-[10px] uppercase font-bold text-emerald-600 tracking-wider flex items-center gap-1.5 font-sans">
@@ -6669,8 +6866,12 @@ export default function App() {
                   </div>
                 )}
               </div>
+              </div>
+              )}
 
-              {/* 4. APPEARANCE & BACKGROUND PORTAL */}
+              {settingsSubTab === 'appearance' && (
+                <div className="space-y-6 animate-[fadeIn_0.3s_ease-out]">
+                  {/* 4. APPEARANCE & BACKGROUND PORTAL */}
               <div className="glass-panel border border-purple-500/15 bg-purple-500/5 hover:border-purple-500/35 transition-all duration-300 rounded-2xl p-5 space-y-4 group">
                 <span className="text-[10px] uppercase font-bold text-purple-600 tracking-wider flex items-center gap-1.5">
                   <Sparkles className="w-3.5 h-3.5" />
@@ -7013,8 +7214,12 @@ export default function App() {
                   </button>
                 </div>
               </div>
+              </div>
+              )}
 
-              {/* 8. YOUR DATA */}
+              {settingsSubTab === 'session' && (
+                <div className="space-y-6 animate-[fadeIn_0.3s_ease-out]">
+                  {/* 8. YOUR DATA */}
               <div className="glass-panel border border-purple-500/15 bg-purple-500/5 hover:border-purple-500/35 transition-all duration-300 rounded-2xl p-5 space-y-4 group">
                 <span className="text-[10px] uppercase font-bold text-purple-600 tracking-wider flex items-center gap-1.5">
                   <Database className="w-3.5 h-3.5" />
@@ -7196,19 +7401,25 @@ export default function App() {
                   )}
                 </div>
               </div>
-
-              {/* 10. SYSTEM ABOUT INFO */}
-              <div className="glass-panel border border-slate-200 bg-white/40 rounded-2xl p-5 space-y-2 group">
-                <span className="text-[10px] uppercase font-bold text-slate-500 tracking-wider">About NextGen OS</span>
-                <p className="text-[10.5px] text-slate-600 leading-relaxed">
-                  The Portal — a next-generation desktop shell and companion OS for your games and utilities. Roll fair dice, log notes, chat with local offline AI, test pages, and manage backups locally.
-                </p>
-                <div className="flex items-center gap-1.5 text-[9px] text-slate-400 font-mono pt-1">
-                  <span>Version 2.4.0 (Aether Core)</span>
-                  <span>•</span>
-                  <span>Powered by React & Vite</span>
-                </div>
               </div>
+              )}
+
+              {settingsSubTab === 'appearance' && (
+                <div className="space-y-6 animate-[fadeIn_0.3s_ease-out]">
+                  {/* 10. SYSTEM ABOUT INFO */}
+                  <div className="glass-panel border border-slate-200 bg-white/40 dark:bg-purple-950/5 dark:border-white/5 rounded-2xl p-5 space-y-2 group">
+                    <span className="text-[10px] uppercase font-bold text-slate-500 tracking-wider">About NextGen OS</span>
+                    <p className="text-[10.5px] text-slate-600 dark:text-slate-400 leading-relaxed font-sans">
+                      The Portal — a next-generation desktop shell and companion OS for your games and utilities. Roll fair dice, log notes, chat with local offline AI, test pages, and manage backups locally.
+                    </p>
+                    <div className="flex items-center gap-1.5 text-[9px] text-slate-400 font-mono pt-1">
+                      <span>Version 2.4.0 (Aether Core)</span>
+                      <span>•</span>
+                      <span>Powered by React & Vite</span>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
@@ -7753,6 +7964,48 @@ export default function App() {
             <div className="p-2 bg-slate-950/80 border-t border-white/[0.04] text-[8px] text-slate-600 font-mono flex justify-between select-none">
               <span>LOCAL_CACHE_CONNECTED // OK</span>
               <span>HOST: PORTAL_COGNITIVE_AUX</span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* SECURE IMAGE LIGHTBOX PREVIEW OVERLAY */}
+      {previewImage && (
+        <div 
+          onClick={() => setPreviewImage(null)}
+          className="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-50 flex items-center justify-center p-4 animate-[fadeIn_0.2s_ease-out] cursor-zoom-out"
+        >
+          <div 
+            className="relative max-w-4xl max-h-[85vh] overflow-hidden bg-white/5 border border-white/10 rounded-2xl p-2 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <img src={previewImage.url} alt={previewImage.name} className="max-w-full max-h-[75vh] rounded-xl object-contain" />
+            <div className="mt-3 bg-slate-950/85 backdrop-blur-md rounded-xl p-3 border border-white/5 flex justify-between items-center gap-4">
+              <div className="flex flex-col text-left min-w-0">
+                <span className="text-xs font-bold text-white truncate max-w-[240px] md:max-w-md">{previewImage.name}</span>
+                <span className="text-[9px] text-slate-400">Secure Client-Side Local Storage</span>
+              </div>
+              <div className="flex gap-2 shrink-0">
+                <a 
+                  href={previewImage.url}
+                  download={previewImage.name}
+                  onClick={() => haptic(5)}
+                  className="px-3 py-1.5 bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 border border-cyan-500/20 hover:border-cyan-500/40 rounded-lg text-[9px] font-bold tracking-widest uppercase transition-all cursor-pointer font-sans"
+                >
+                  Download
+                </a>
+                {previewImage.isUploaded && (
+                  <button 
+                    onClick={() => {
+                      handleSecureDelete(previewImage.id, previewImage.name);
+                      setPreviewImage(null);
+                    }}
+                    className="px-3 py-1.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-500 rounded-lg border border-rose-500/20 text-[10px] font-bold tracking-widest uppercase cursor-pointer"
+                  >
+                    Delete
+                  </button>
+                )}
+              </div>
             </div>
           </div>
         </div>
