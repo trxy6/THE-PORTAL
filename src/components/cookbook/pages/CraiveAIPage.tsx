@@ -427,7 +427,7 @@ export const CraiveAIPage: React.FC<CraiveAIPageProps> = ({ user, setActiveTab, 
     
     return (
         <div className="h-full flex flex-col">
-            <div className="flex-grow overflow-y-auto p-6 pb-32 space-y-4">
+            <div className="flex-grow overflow-y-auto p-6 pb-6 space-y-4">
                 {messages.map((msg, index) => {
                     const isEmpty = msg.content.trim() === '';
                     if (msg.role === 'user' && isEmpty && isLiveSessionActive && index === messages.length - 1) {
@@ -450,9 +450,9 @@ export const CraiveAIPage: React.FC<CraiveAIPageProps> = ({ user, setActiveTab, 
                 <div ref={messagesEndRef} />
             </div>
             
-            <div className="fixed bottom-20 left-0 right-0 w-full bg-cream">
+            <div className="w-full bg-cream border-t border-gold-light/30 shrink-0 mt-auto pb-4">
                 {chatError && <p className="text-center text-red-500 px-6 pb-2 text-sm">{chatError}</p>}
-                <form onSubmit={handleSendMessage} className="p-4 bg-cream/80 backdrop-blur-sm border-t border-gold-light/30">
+                <form onSubmit={handleSendMessage} className="p-4 bg-cream/80 backdrop-blur-sm">
                      <div className="relative max-w-md mx-auto flex items-center gap-2">
                         <div className="relative flex-grow">
                             <input type="text" value={userInput} onChange={(e) => setUserInput(e.target.value)} placeholder={isLiveSessionActive ? "Listening..." : "Ask Mila about a craving..."} className="w-full pl-4 pr-12 py-3 bg-white border-2 border-gold-light rounded-full text-deep-green placeholder-deep-green/60 focus:ring-2 focus:ring-gold focus:outline-none transition-all duration-300 shadow-sm" disabled={isChatLoading || isLiveSessionActive} autoFocus />
