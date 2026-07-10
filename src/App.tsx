@@ -3451,11 +3451,21 @@ export default function App() {
   );
 
   if (!currentUser) {
+    const loginThemeStyles = {
+      '--theme-accent-color-1': '#8b5cf6',
+      '--theme-accent-color-2': '#db2777',
+      '--theme-bg-gradient-start': '#06000f',
+      '--theme-bg-gradient-end': '#0d0221',
+      '--theme-card-bg': 'rgba(12, 8, 30, 0.88)',
+      '--theme-card-border': 'rgba(139, 92, 246, 0.25)',
+      '--theme-btn-gradient': 'linear-gradient(135deg, #8b5cf6, #db2777)',
+    } as React.CSSProperties;
+
     return (
-      <div className="fixed inset-0 w-full h-full font-sans overflow-hidden select-none"
+      <div className="fixed inset-0 w-full h-full font-sans overflow-hidden select-none portal-dark"
         style={{ 
-          background: 'linear-gradient(135deg, var(--theme-bg-gradient-start, #06000f) 0%, var(--theme-bg-gradient-end, #0d0221) 100%)',
-          ...currentThemeStyles
+          background: 'linear-gradient(135deg, #06000f 0%, #0d0221 100%)',
+          ...loginThemeStyles
         }}>
 
         {/* ── ANIMATED COLOUR ORBS ── */}
