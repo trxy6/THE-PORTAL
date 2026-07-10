@@ -4176,9 +4176,10 @@ export default function App() {
                   onClick={() => setHomeSubTab('launch')}
                   className={`flex-1 py-2 text-[10px] sm:text-xs font-bold uppercase tracking-widest rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
                     homeSubTab === 'launch' 
-                      ? 'bg-[#8b5cf6] text-white shadow-sm font-extrabold' 
+                      ? 'text-white shadow-sm font-extrabold' 
                       : 'text-slate-500 hover:text-slate-800'
                   }`}
+                  style={homeSubTab === 'launch' ? { background: 'var(--theme-btn-gradient)', boxShadow: '0 0 12px var(--theme-card-border)' } : undefined}
                 >
                   🚀 Launchpad
                 </button>
@@ -4186,9 +4187,10 @@ export default function App() {
                   onClick={() => setHomeSubTab('activity')}
                   className={`flex-1 py-2 text-[10px] sm:text-xs font-bold uppercase tracking-widest rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
                     homeSubTab === 'activity' 
-                      ? 'bg-[#8b5cf6] text-white shadow-sm font-extrabold' 
+                      ? 'text-white shadow-sm font-extrabold' 
                       : 'text-slate-500 hover:text-slate-800'
                   }`}
+                  style={homeSubTab === 'activity' ? { background: 'var(--theme-btn-gradient)', boxShadow: '0 0 12px var(--theme-card-border)' } : undefined}
                 >
                   📋 Activity & Plans
                 </button>
@@ -4196,9 +4198,10 @@ export default function App() {
                   onClick={() => setHomeSubTab('diagnostics')}
                   className={`flex-1 py-2 text-[10px] sm:text-xs font-bold uppercase tracking-widest rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
                     homeSubTab === 'diagnostics' 
-                      ? 'bg-[#8b5cf6] text-white shadow-sm font-extrabold' 
+                      ? 'text-white shadow-sm font-extrabold' 
                       : 'text-slate-500 hover:text-slate-800'
                   }`}
+                  style={homeSubTab === 'diagnostics' ? { background: 'var(--theme-btn-gradient)', boxShadow: '0 0 12px var(--theme-card-border)' } : undefined}
                 >
                   ⚡ Telemetry
                 </button>
@@ -4251,7 +4254,7 @@ export default function App() {
                         Good morning, Trey 👋
                       </div>
                       <h1 className="text-2xl sm:text-4xl font-extrabold text-slate-950 tracking-tight leading-none mt-1">
-                        Everything you need,<br />all in <span className="text-[#8b5cf6]">one</span> place.
+                        Everything you need,<br />all in <span style={{ color: getThemeHex() }}>one</span> place.
                       </h1>
 
                       {/* Embedded Search bar inside the welcome banner matching the target image */}
@@ -4328,18 +4331,6 @@ export default function App() {
                     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2.5 sm:gap-4">
                       {filteredQuickAccess.map((item) => {
                         const Icon = item.icon;
-                        
-                        const getIconBgColor = () => {
-                          switch (item.color) {
-                            case 'blue': return 'text-white bg-gradient-to-br from-[#6366f1] to-[#4f46e5] border-indigo-400/20 shadow-md shadow-indigo-500/10'; // Indigo-Violet
-                            case 'cyan': return 'text-white bg-gradient-to-br from-[#a855f7] to-[#7c3aed] border-purple-400/20 shadow-md shadow-purple-500/10'; // Amethyst
-                            case 'emerald': return 'text-white bg-gradient-to-br from-purple-600 to-fuchsia-700 border-fuchsia-500/20 shadow-md shadow-fuchsia-500/10'; // Fuchsia Plum
-                            case 'amber': return 'text-slate-800 bg-gradient-to-br from-[#f8fafc] to-[#cbd5e1] border-slate-300/30 shadow-md shadow-slate-400/10'; // White-Silver
-                            case 'pink': return 'text-white bg-gradient-to-br from-[#cf4fe6] to-[#ec4899] border-pink-400/20 shadow-md shadow-pink-500/10'; // Orchid Magenta
-                            default: return 'text-white bg-gradient-to-br from-purple-500 to-indigo-600 border-purple-400/20 shadow-md shadow-purple-500/10';
-                          }
-                        };
-
                         return (
                           <button
                             id={`quick-access-${item.id}`}
@@ -4348,13 +4339,16 @@ export default function App() {
                               setActiveTab(item.id);
                               window.scrollTo({ top: 0, behavior: 'smooth' });
                             }}
-                            className="glass-panel p-4 sm:p-5 rounded-2xl border border-slate-200/50 hover:bg-white/95 flex flex-col items-center justify-center text-center group transition-all duration-300 hover:scale-102 hover:shadow-xl cursor-pointer"
+                            className="glass-panel p-4 sm:p-5 rounded-2xl border border-slate-200/50 dark:border-white/5 hover:bg-white/95 dark:hover:bg-slate-900 flex flex-col items-center justify-center text-center group transition-all duration-300 hover:scale-102 hover:shadow-xl cursor-pointer bg-white/45 dark:bg-slate-950/20"
                           >
                             {/* Rounded glowing square icon exactly like reference image */}
-                            <div className={`p-3.5 rounded-xl border mb-2.5 sm:mb-3.5 transition-all duration-300 group-hover:scale-112 ${getIconBgColor()}`}>
+                            <div 
+                              className="p-3.5 rounded-xl border mb-2.5 sm:mb-3.5 transition-all duration-300 group-hover:scale-112 text-white"
+                              style={{ background: 'var(--theme-btn-gradient)', borderColor: 'var(--theme-card-border)', boxShadow: '0 4px 12px var(--theme-card-border)' }}
+                            >
                               <Icon className="w-5 h-5 sm:w-6 sm:h-6" />
                             </div>
-                            <span className="text-[11px] sm:text-xs font-bold text-slate-700 tracking-wide group-hover:text-indigo-600 transition-colors">{item.label}</span>
+                            <span className="text-[11px] sm:text-xs font-bold text-slate-700 dark:text-slate-350 tracking-wide group-hover:text-[var(--theme-accent-color1)] transition-colors">{item.label}</span>
                           </button>
                         );
                       })}
