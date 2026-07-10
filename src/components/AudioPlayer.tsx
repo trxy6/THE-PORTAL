@@ -7,9 +7,9 @@ interface AudioPlayerProps {
 
 // Track definitions
 export const TRACKS = [
-  { id: 'synth', name: 'Chill Synthwave', genre: 'Synthwave Beat' },
-  { id: 'space', name: 'Deep Cosmic Drone', genre: 'Sci-Fi Ambient' },
-  { id: 'pulse', name: 'Quantum Pulse', genre: 'Electronic Arp' },
+  { id: 'synth', name: 'Chill Synthwave', genre: 'Synthwave Radio', url: 'https://radio.loficafe.net/listen/chilling/radio.mp3' },
+  { id: 'space', name: 'Deep Cosmic Drone', genre: 'Sci-Fi Ambient', url: 'https://live.lofiradio.ru/lofi_mp3_128' },
+  { id: 'pulse', name: 'Quantum Pulse', genre: 'Electronic Arp', url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3' },
 ];
 
 export function AudioPlayer({ themeColor }: AudioPlayerProps) {
@@ -18,18 +18,9 @@ export function AudioPlayer({ themeColor }: AudioPlayerProps) {
   const [volume, setVolume] = useState(0.4);
   const [progress, setProgress] = useState(15); // Simulated starting progress %
   
-  // Audio synthesis nodes
-  const audioCtxRef = useRef<AudioContext | null>(null);
-  const synthNodesRef = useRef<any[]>([]);
-  const synthIntervalRef = useRef<any>(null);
+  // Real Streaming Audio Element Ref
+  const audioRef = useRef<HTMLAudioElement | null>(null);
   const visualizerIntervalRef = useRef<any>(null);
-  
-  const volumeRef = useRef(volume);
-  const gainNodeRef = useRef<GainNode | null>(null);
-
-  useEffect(() => {
-    volumeRef.current = volume;
-  }, [volume]);
   
   // Fake animated visualizer bars state
   const [bars, setBars] = useState<number[]>(new Array(16).fill(2));
@@ -48,129 +39,58 @@ export function AudioPlayer({ themeColor }: AudioPlayerProps) {
   // Start sound synthesis
   const startSynth = () => {
     try {
-      if (!audioCtxRef.current) {
-        audioCtxRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
-      }
-      
-      const ctx = audioCtxRef.current;
-      if (ctx.state === 'suspended') {
-        ctx.resume();
-      }
-
-      // Clear any previous nodes
       stopSynth();
 
       const track = TRACKS[currentTrackIndex];
+      if (!audioRef.current) {
+        audioRef.current = new Audio();
+        audioRef.current.crossOrigin = "anonymous";
+      }
       
-      if (track.id === 'space') {
-        // Generate a deep ambient drone using 2 detuned oscillators
-        const osc1 = ctx.createOscillator();
-        const osc2 = ctx.createOscillator();
-        const gainNode = ctx.createGain();
-        gainNodeRef.current = gainNode;
-        const filter = ctx.createBiquadFilter();
-
-        osc1.type = 'sawtooth';
-        osc1.frequency.setValueAtTime(65.41, ctx.currentTime); // C2
-        osc1.detune.setValueAtTime(-15, ctx.currentTime);
-
-        osc2.type = 'triangle';
-        osc2.frequency.setValueAtTime(65.41, ctx.currentTime);
-        osc2.detune.setValueAtTime(15, ctx.currentTime);
-
-        filter.type = 'lowpass';
-        filter.frequency.setValueAtTime(300, ctx.currentTime);
-
-        gainNode.gain.setValueAtTime(0, ctx.currentTime);
-        gainNode.gain.linearRampToValueAtTime(volume * 0.15, ctx.currentTime + 1.5);
-
-        osc1.connect(filter);
-        osc2.connect(filter);
-        filter.connect(gainNode);
-        gainNode.connect(ctx.destination);
-
-        osc1.start();
-        osc2.start();
-
-        synthNodesRef.current = [osc1, osc2, gainNode];
-      } else if (track.id === 'pulse' || track.id === 'synth') {
-        // Arpeggiator synth sequence loop
-        const synthLoop = () => {
-          const notes = track.id === 'pulse' 
-            ? [110.00, 130.81, 146.83, 164.81, 196.00, 220.00] // A minor chord notes (A2, C3, D3, E3, G3, A3)
-            : [130.81, 164.81, 196.00, 246.94, 261.63, 329.63]; // C major 7 notes (C3, E3, G3, B3, C4, E4)
-          
-          let index = 0;
-          
-          synthIntervalRef.current = setInterval(() => {
-            if (!ctx || ctx.state === 'suspended') return;
-            const noteFreq = notes[index % notes.length];
-            index++;
-
-            const osc = ctx.createOscillator();
-            const noteGain = ctx.createGain();
-            const filterNode = ctx.createBiquadFilter();
-
-            osc.type = track.id === 'pulse' ? 'triangle' : 'sine';
-            osc.frequency.setValueAtTime(noteFreq, ctx.currentTime);
-            
-            filterNode.type = 'lowpass';
-            filterNode.frequency.setValueAtTime(800, ctx.currentTime);
-            filterNode.frequency.exponentialRampToValueAtTime(150, ctx.currentTime + 0.3);
-
-            noteGain.gain.setValueAtTime(volumeRef.current * 0.1, ctx.currentTime);
-            noteGain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.4);
-
-            osc.connect(filterNode);
-            filterNode.connect(noteGain);
-            noteGain.connect(ctx.destination);
-
-            osc.start();
-            osc.stop(ctx.currentTime + 0.5);
-          }, track.id === 'pulse' ? 200 : 400); // Sequence rhythm speed
-        };
-        synthLoop();
+      audioRef.current.src = track.url;
+      audioRef.current.volume = volume;
+      
+      const playPromise = audioRef.current.play();
+      if (playPromise !== undefined) {
+        playPromise.catch((err) => {
+          console.error("Playback failed:", err);
+        });
       }
     } catch (e) {
-      console.error("Audio Synthesis Error: ", e);
+      console.error("Audio Playback Error: ", e);
     }
   };
 
-  // Stop synthesis nodes
   const stopSynth = () => {
-    if (synthIntervalRef.current) {
-      clearInterval(synthIntervalRef.current);
-      synthIntervalRef.current = null;
+    if (audioRef.current) {
+      try {
+        audioRef.current.pause();
+        audioRef.current.currentTime = 0;
+      } catch (e) {}
     }
-    synthNodesRef.current.forEach(node => {
-      try {
-        node.stop();
-      } catch (e) {}
-      try {
-        node.disconnect();
-      } catch (e) {}
-    });
-    synthNodesRef.current = [];
-    gainNodeRef.current = null;
   };
 
-  // Update sound when track changes
   useEffect(() => {
     if (isPlaying) {
       startSynth();
     }
   }, [currentTrackIndex]);
 
-  // Adjust drone volume dynamically without restarting sound nodes
   useEffect(() => {
-    if (gainNodeRef.current && audioCtxRef.current) {
-      try {
-        gainNodeRef.current.gain.setValueAtTime(volume * 0.15, audioCtxRef.current.currentTime);
-      } catch (e) {
-        console.error("Failed to adjust synth gain node:", e);
-      }
+    if (audioRef.current) {
+      audioRef.current.volume = volume;
     }
   }, [volume]);
+
+  useEffect(() => {
+    return () => {
+      if (audioRef.current) {
+        try {
+          audioRef.current.pause();
+        } catch (e) {}
+      }
+    };
+  }, []);
 
   // Main playback control
   const togglePlay = () => {

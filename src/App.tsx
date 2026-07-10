@@ -3534,8 +3534,11 @@ export default function App() {
           </div>
         </aside>
 
-        {/* MIDDLE MAIN WORKSPACE */}
-        <main className={`flex-1 relative ${activeTab === 'music' ? 'p-0 overflow-hidden' : 'p-6 overflow-y-auto'}`}>
+        <main className={`flex-1 flex flex-col min-h-0 relative ${
+          activeTab === 'music' ? 'p-0 overflow-hidden' :
+          activeTab === 'browser' ? 'p-6 overflow-hidden' :
+          'p-6 overflow-y-auto'
+        }`}>
           
           {/* Quick tab switch notifications */}
           {activeTab !== 'home' && activeTab !== 'music' && (
@@ -5294,7 +5297,7 @@ export default function App() {
 
           {/* BROWSER VIEW (ENCRYPTED SANDBOX) */}
           {activeTab === 'browser' && (
-            <div className="glass-panel rounded-2xl border border-purple-500/15 bg-[#070312]/80 backdrop-blur-xl p-4 flex flex-col h-[calc(100vh-9rem)] text-left relative overflow-hidden group shadow-2xl shadow-purple-950/20 animate-[fadeIn_0.4s_ease-out]">
+            <div className="glass-panel rounded-2xl border border-purple-500/15 bg-[#070312]/80 backdrop-blur-xl p-4 flex flex-col h-full text-left relative overflow-hidden group shadow-2xl shadow-purple-950/20 animate-[fadeIn_0.4s_ease-out]">
               {/* Top Banner and Navigation Bar */}
               <div className="flex flex-col gap-3 pb-3 border-b border-purple-500/10 shrink-0">
                 <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-2">
