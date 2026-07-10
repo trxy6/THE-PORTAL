@@ -932,6 +932,12 @@ export default function App() {
           bgEnd = '#f3e8ff'; // White with Purple gradient
           cardBorder = 'rgba(139, 92, 246, 0.15)';
           break;
+        case 'blue':
+          color1 = '#3b82f6';
+          color2 = '#06b6d4';
+          bgEnd = '#eff6ff'; // White with Blue gradient
+          cardBorder = 'rgba(59, 130, 246, 0.15)';
+          break;
         case 'red':
           color1 = '#dc2626';
           color2 = '#f87171';
@@ -974,6 +980,14 @@ export default function App() {
           bgEnd = '#25023a'; // Purple with Pink gradient background
           cardBg = 'rgba(13, 2, 33, 0.82)';
           cardBorder = 'rgba(139, 92, 246, 0.25)';
+          break;
+        case 'blue':
+          color1 = '#3b82f6';
+          color2 = '#06b6d4';
+          bgStart = '#020817';
+          bgEnd = '#0b1528'; // Blue with Cyan gradient background
+          cardBg = 'rgba(2, 8, 23, 0.82)';
+          cardBorder = 'rgba(59, 130, 246, 0.25)';
           break;
         case 'red':
           color1 = '#dc2626';
@@ -7108,6 +7122,11 @@ export default function App() {
                           setCustomColor2Light('#db2777'); localStorage.setItem('portal_custom_color2_light', '#db2777');
                           setCustomBgStartLight('#ffffff'); localStorage.setItem('portal_custom_bg_start_light', '#ffffff');
                           setCustomBgEndLight('#f3e8ff'); localStorage.setItem('portal_custom_bg_end_light', '#f3e8ff');
+                        } else if (val === 'blue') {
+                          setCustomColor1Light('#3b82f6'); localStorage.setItem('portal_custom_color1_light', '#3b82f6');
+                          setCustomColor2Light('#06b6d4'); localStorage.setItem('portal_custom_color2_light', '#06b6d4');
+                          setCustomBgStartLight('#ffffff'); localStorage.setItem('portal_custom_bg_start_light', '#ffffff');
+                          setCustomBgEndLight('#eff6ff'); localStorage.setItem('portal_custom_bg_end_light', '#eff6ff');
                         } else if (val === 'red') {
                           setCustomColor1Light('#dc2626'); localStorage.setItem('portal_custom_color1_light', '#dc2626');
                           setCustomColor2Light('#f87171'); localStorage.setItem('portal_custom_color2_light', '#f87171');
@@ -7133,6 +7152,7 @@ export default function App() {
                       className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl p-2.5 text-xs text-slate-800 dark:text-slate-250 cursor-pointer focus:outline-none focus:border-[#8b5cf6] font-bold transition-all"
                     >
                       <option value="purple">🌌 Purple Preset (White + Purple)</option>
+                      <option value="blue">🔵 Blue Preset (White + Blue)</option>
                       <option value="red">🩸 Red Preset (White + Red)</option>
                       <option value="green">🟢 Green Preset (White + Green)</option>
                       <option value="black">🌑 Black Preset (White + Black)</option>
@@ -7158,6 +7178,11 @@ export default function App() {
                           setCustomColor2Dark('#ec4899'); localStorage.setItem('portal_custom_color2_dark', '#ec4899');
                           setCustomBgStartDark('#0d0221'); localStorage.setItem('portal_custom_bg_start_dark', '#0d0221');
                           setCustomBgEndDark('#25023a'); localStorage.setItem('portal_custom_bg_end_dark', '#25023a');
+                        } else if (val === 'blue') {
+                          setCustomColor1Dark('#3b82f6'); localStorage.setItem('portal_custom_color1_dark', '#3b82f6');
+                          setCustomColor2Dark('#06b6d4'); localStorage.setItem('portal_custom_color2_dark', '#06b6d4');
+                          setCustomBgStartDark('#020817'); localStorage.setItem('portal_custom_bg_start_dark', '#020817');
+                          setCustomBgEndDark('#0b1528'); localStorage.setItem('portal_custom_bg_end_dark', '#0b1528');
                         } else if (val === 'red') {
                           setCustomColor1Dark('#dc2626'); localStorage.setItem('portal_custom_color1_dark', '#dc2626');
                           setCustomColor2Dark('#000000'); localStorage.setItem('portal_custom_color2_dark', '#000000');
@@ -7183,6 +7208,7 @@ export default function App() {
                       className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl p-2.5 text-xs text-slate-800 dark:text-slate-250 cursor-pointer focus:outline-none focus:border-[#8b5cf6] font-bold transition-all"
                     >
                       <option value="purple">🌌 Purple Preset (Purple + Pink)</option>
+                      <option value="blue">🔵 Blue Preset (Blue + Cyan)</option>
                       <option value="red">🩸 Red Preset (Red + Black)</option>
                       <option value="green">🟢 Green Preset (Green + Pink)</option>
                       <option value="black">🌑 Black Preset (Monochrome)</option>
@@ -7201,7 +7227,7 @@ export default function App() {
                     <div className="space-y-3.5">
                       <div className="grid grid-cols-2 gap-3.5">
                         <div className="flex flex-col text-left gap-1">
-                          <label className="text-[9px] font-bold text-slate-505 uppercase">Light Accent Color 1</label>
+                          <label className="text-[9px] font-bold text-slate-505 uppercase">Light Main Color</label>
                           <div className="flex items-center gap-2">
                             <input 
                               type="color" 
@@ -7216,7 +7242,7 @@ export default function App() {
                           </div>
                         </div>
                         <div className="flex flex-col text-left gap-1">
-                          <label className="text-[9px] font-bold text-slate-505 uppercase">Light Accent Color 2</label>
+                          <label className="text-[9px] font-bold text-slate-505 uppercase">Light Trim Color</label>
                           <div className="flex items-center gap-2">
                             <input 
                               type="color" 
@@ -7277,7 +7303,7 @@ export default function App() {
                     <div className="space-y-3.5">
                       <div className="grid grid-cols-2 gap-3.5">
                         <div className="flex flex-col text-left gap-1">
-                          <label className="text-[9px] font-bold text-slate-400 uppercase">Dark Accent Color 1</label>
+                          <label className="text-[9px] font-bold text-slate-400 uppercase">Dark Main Color</label>
                           <div className="flex items-center gap-2">
                             <input 
                               type="color" 
@@ -7292,7 +7318,7 @@ export default function App() {
                           </div>
                         </div>
                         <div className="flex flex-col text-left gap-1">
-                          <label className="text-[9px] font-bold text-slate-400 uppercase">Dark Accent Color 2</label>
+                          <label className="text-[9px] font-bold text-slate-400 uppercase">Dark Trim Color</label>
                           <div className="flex items-center gap-2">
                             <input 
                               type="color" 
