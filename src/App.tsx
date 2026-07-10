@@ -874,6 +874,9 @@ export default function App() {
   const [darkThemePreset, setDarkThemePreset] = useState<'purple' | 'red' | 'black' | 'pink' | 'green' | 'custom'>(() => {
     return (localStorage.getItem('portal_dark_theme_preset') as any) || 'purple';
   });
+  const [lightThemePreset, setLightThemePreset] = useState<'purple' | 'red' | 'black' | 'pink' | 'green' | 'custom'>(() => {
+    return (localStorage.getItem('portal_light_theme_preset') as any) || 'purple';
+  });
   const [themeUseGradient, setThemeUseGradient] = useState<boolean>(() => {
     const v = localStorage.getItem('portal_theme_use_gradient');
     return v !== 'false';
@@ -922,7 +925,7 @@ export default function App() {
       cardBg = 'rgba(255, 255, 255, 0.72)';
       cardBorder = 'rgba(139, 92, 246, 0.15)';
 
-      switch (darkThemePreset) {
+      switch (lightThemePreset) {
         case 'purple':
           color1 = '#8b5cf6';
           color2 = '#db2777';
@@ -7087,270 +7090,257 @@ export default function App() {
                 </span>
 
                 {/* Theme Preset Selection */}
-                <div className="space-y-3 py-2 border-b border-slate-100 dark:border-white/5">
-                  <div className="flex flex-col text-left">
-                    <span className="text-xs font-bold text-slate-700 dark:text-slate-200">Theme Preset</span>
-                    <span className="text-[9px] text-slate-450 dark:text-slate-400">Select preset cosmic styling values or craft a custom mix.</span>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 py-2 border-b border-slate-100 dark:border-white/5 text-left">
+                  {/* Light Mode Selector */}
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold text-slate-700 dark:text-slate-200 block">☀️ Light Mode Theme Preset</label>
+                    <select
+                      value={lightThemePreset}
+                      onChange={(e) => {
+                        haptic(10);
+                        const val = e.target.value;
+                        setLightThemePreset(val as any);
+                        localStorage.setItem('portal_light_theme_preset', val);
+                        
+                        // Initialize custom states so they can tweak them immediately
+                        if (val === 'purple') {
+                          setCustomColor1Light('#8b5cf6'); localStorage.setItem('portal_custom_color1_light', '#8b5cf6');
+                          setCustomColor2Light('#db2777'); localStorage.setItem('portal_custom_color2_light', '#db2777');
+                          setCustomBgStartLight('#ffffff'); localStorage.setItem('portal_custom_bg_start_light', '#ffffff');
+                          setCustomBgEndLight('#f3e8ff'); localStorage.setItem('portal_custom_bg_end_light', '#f3e8ff');
+                        } else if (val === 'red') {
+                          setCustomColor1Light('#dc2626'); localStorage.setItem('portal_custom_color1_light', '#dc2626');
+                          setCustomColor2Light('#f87171'); localStorage.setItem('portal_custom_color2_light', '#f87171');
+                          setCustomBgStartLight('#ffffff'); localStorage.setItem('portal_custom_bg_start_light', '#ffffff');
+                          setCustomBgEndLight('#fee2e2'); localStorage.setItem('portal_custom_bg_end_light', '#fee2e2');
+                        } else if (val === 'green') {
+                          setCustomColor1Light('#10b981'); localStorage.setItem('portal_custom_color1_light', '#10b981');
+                          setCustomColor2Light('#34d399'); localStorage.setItem('portal_custom_color2_light', '#34d399');
+                          setCustomBgStartLight('#ffffff'); localStorage.setItem('portal_custom_bg_start_light', '#ffffff');
+                          setCustomBgEndLight('#d1fae5'); localStorage.setItem('portal_custom_bg_end_light', '#d1fae5');
+                        } else if (val === 'black') {
+                          setCustomColor1Light('#1f2937'); localStorage.setItem('portal_custom_color1_light', '#1f2937');
+                          setCustomColor2Light('#9ca3af'); localStorage.setItem('portal_custom_color2_light', '#9ca3af');
+                          setCustomBgStartLight('#ffffff'); localStorage.setItem('portal_custom_bg_start_light', '#ffffff');
+                          setCustomBgEndLight('#f3f4f6'); localStorage.setItem('portal_custom_bg_end_light', '#f3f4f6');
+                        } else if (val === 'pink') {
+                          setCustomColor1Light('#db2777'); localStorage.setItem('portal_custom_color1_light', '#db2777');
+                          setCustomColor2Light('#fbcfe8'); localStorage.setItem('portal_custom_color2_light', '#fbcfe8');
+                          setCustomBgStartLight('#ffffff'); localStorage.setItem('portal_custom_bg_start_light', '#ffffff');
+                          setCustomBgEndLight('#fce7f3'); localStorage.setItem('portal_custom_bg_end_light', '#fce7f3');
+                        }
+                      }}
+                      className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl p-2.5 text-xs text-slate-800 dark:text-slate-250 cursor-pointer focus:outline-none focus:border-[#8b5cf6] font-bold transition-all"
+                    >
+                      <option value="purple">🌌 Purple Preset (White + Purple)</option>
+                      <option value="red">🩸 Red Preset (White + Red)</option>
+                      <option value="green">🟢 Green Preset (White + Green)</option>
+                      <option value="black">🌑 Black Preset (White + Black)</option>
+                      <option value="pink">🌸 Pink Preset (White + Pink)</option>
+                      <option value="custom">🎨 Custom Color Mix</option>
+                    </select>
                   </div>
-                  <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
-                    {[
-                      { id: 'purple', label: '🌌 Purple', desc: 'Purple + Pink' },
-                      { id: 'red', label: '🩸 Red', desc: 'Red + Black' },
-                      { id: 'green', label: '🟢 Green', desc: 'Green + Pink' },
-                      { id: 'black', label: '🌑 Black', desc: 'Monochrome' },
-                      { id: 'pink', label: '🌸 Pink', desc: 'Pink + Purple' },
-                      { id: 'custom', label: '🎨 Custom', desc: 'Design own' },
-                    ].map(preset => (
-                      <button 
-                        key={preset.id}
-                        onClick={() => {
-                          haptic(10);
-                          setDarkThemePreset(preset.id as any);
-                          localStorage.setItem('portal_dark_theme_preset', preset.id);
-                          
-                          // Initialize custom picker states to preset values for instant customizability
-                          if (preset.id === 'purple') {
-                            setCustomColor1Light('#8b5cf6'); localStorage.setItem('portal_custom_color1_light', '#8b5cf6');
-                            setCustomColor2Light('#db2777'); localStorage.setItem('portal_custom_color2_light', '#db2777');
-                            setCustomColor1Dark('#8b5cf6'); localStorage.setItem('portal_custom_color1_dark', '#8b5cf6');
-                            setCustomColor2Dark('#ec4899'); localStorage.setItem('portal_custom_color2_dark', '#ec4899');
-                            setCustomBgStartLight('#ffffff'); localStorage.setItem('portal_custom_bg_start_light', '#ffffff');
-                            setCustomBgEndLight('#f3e8ff'); localStorage.setItem('portal_custom_bg_end_light', '#f3e8ff');
-                            setCustomBgStartDark('#0d0221'); localStorage.setItem('portal_custom_bg_start_dark', '#0d0221');
-                            setCustomBgEndDark('#25023a'); localStorage.setItem('portal_custom_bg_end_dark', '#25023a');
-                          } else if (preset.id === 'red') {
-                            setCustomColor1Light('#dc2626'); localStorage.setItem('portal_custom_color1_light', '#dc2626');
-                            setCustomColor2Light('#f87171'); localStorage.setItem('portal_custom_color2_light', '#f87171');
-                            setCustomColor1Dark('#dc2626'); localStorage.setItem('portal_custom_color1_dark', '#dc2626');
-                            setCustomColor2Dark('#000000'); localStorage.setItem('portal_custom_color2_dark', '#000000');
-                            setCustomBgStartLight('#ffffff'); localStorage.setItem('portal_custom_bg_start_light', '#ffffff');
-                            setCustomBgEndLight('#fee2e2'); localStorage.setItem('portal_custom_bg_end_light', '#fee2e2');
-                            setCustomBgStartDark('#1a0505'); localStorage.setItem('portal_custom_bg_start_dark', '#1a0505');
-                            setCustomBgEndDark('#050000'); localStorage.setItem('portal_custom_bg_end_dark', '#050000');
-                          } else if (preset.id === 'green') {
-                            setCustomColor1Light('#10b981'); localStorage.setItem('portal_custom_color1_light', '#10b981');
-                            setCustomColor2Light('#34d399'); localStorage.setItem('portal_custom_color2_light', '#34d399');
-                            setCustomColor1Dark('#10b981'); localStorage.setItem('portal_custom_color1_dark', '#10b981');
-                            setCustomColor2Dark('#db2777'); localStorage.setItem('portal_custom_color2_dark', '#db2777');
-                            setCustomBgStartLight('#ffffff'); localStorage.setItem('portal_custom_bg_start_light', '#ffffff');
-                            setCustomBgEndLight('#d1fae5'); localStorage.setItem('portal_custom_bg_end_light', '#d1fae5');
-                            setCustomBgStartDark('#021a0c'); localStorage.setItem('portal_custom_bg_start_dark', '#021a0c');
-                            setCustomBgEndDark('#000000'); localStorage.setItem('portal_custom_bg_end_dark', '#000000');
-                          } else if (preset.id === 'black') {
-                            setCustomColor1Light('#1f2937'); localStorage.setItem('portal_custom_color1_light', '#1f2937');
-                            setCustomColor2Light('#9ca3af'); localStorage.setItem('portal_custom_color2_light', '#9ca3af');
-                            setCustomColor1Dark('#ffffff'); localStorage.setItem('portal_custom_color1_dark', '#ffffff');
-                            setCustomColor2Dark('#1f2937'); localStorage.setItem('portal_custom_color2_dark', '#1f2937');
-                            setCustomBgStartLight('#ffffff'); localStorage.setItem('portal_custom_bg_start_light', '#ffffff');
-                            setCustomBgEndLight('#f3f4f6'); localStorage.setItem('portal_custom_bg_end_light', '#f3f4f6');
-                            setCustomBgStartDark('#050505'); localStorage.setItem('portal_custom_bg_start_dark', '#050505');
-                            setCustomBgEndDark('#121212'); localStorage.setItem('portal_custom_bg_end_dark', '#121212');
-                          } else if (preset.id === 'pink') {
-                            setCustomColor1Light('#db2777'); localStorage.setItem('portal_custom_color1_light', '#db2777');
-                            setCustomColor2Light('#fbcfe8'); localStorage.setItem('portal_custom_color2_light', '#fbcfe8');
-                            setCustomColor1Dark('#db2777'); localStorage.setItem('portal_custom_color1_dark', '#db2777');
-                            setCustomColor2Dark('#8b5cf6'); localStorage.setItem('portal_custom_color2_dark', '#8b5cf6');
-                            setCustomBgStartLight('#ffffff'); localStorage.setItem('portal_custom_bg_start_light', '#ffffff');
-                            setCustomBgEndLight('#fce7f3'); localStorage.setItem('portal_custom_bg_end_light', '#fce7f3');
-                            setCustomBgStartDark('#260218'); localStorage.setItem('portal_custom_bg_start_dark', '#260218');
-                            setCustomBgEndDark('#0d0008'); localStorage.setItem('portal_custom_bg_end_dark', '#0d0008');
-                          }
-                        }}
-                        className={`p-2 rounded-xl text-[10px] font-bold border transition-all cursor-pointer flex flex-col items-center justify-center text-center gap-0.5 ${
-                          darkThemePreset === preset.id 
-                            ? 'bg-[#8b5cf6]/10 border-[#8b5cf6] text-[#8b5cf6]' 
-                            : 'bg-white/40 dark:bg-white/5 border-slate-200 dark:border-white/10 text-slate-700 dark:text-slate-350 hover:bg-slate-50 dark:hover:bg-white/10'
-                        }`}
-                      >
-                        <span className="font-semibold">{preset.label}</span>
-                        <span className="text-[7.5px] opacity-65 font-medium">{preset.desc}</span>
-                      </button>
-                    ))}
+
+                  {/* Dark Mode Selector */}
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold text-slate-700 dark:text-slate-200 block">🌌 Dark Mode Theme Preset</label>
+                    <select
+                      value={darkThemePreset}
+                      onChange={(e) => {
+                        haptic(10);
+                        const val = e.target.value;
+                        setDarkThemePreset(val as any);
+                        localStorage.setItem('portal_dark_theme_preset', val);
+                        
+                        // Initialize custom states so they can tweak them immediately
+                        if (val === 'purple') {
+                          setCustomColor1Dark('#8b5cf6'); localStorage.setItem('portal_custom_color1_dark', '#8b5cf6');
+                          setCustomColor2Dark('#ec4899'); localStorage.setItem('portal_custom_color2_dark', '#ec4899');
+                          setCustomBgStartDark('#0d0221'); localStorage.setItem('portal_custom_bg_start_dark', '#0d0221');
+                          setCustomBgEndDark('#25023a'); localStorage.setItem('portal_custom_bg_end_dark', '#25023a');
+                        } else if (val === 'red') {
+                          setCustomColor1Dark('#dc2626'); localStorage.setItem('portal_custom_color1_dark', '#dc2626');
+                          setCustomColor2Dark('#000000'); localStorage.setItem('portal_custom_color2_dark', '#000000');
+                          setCustomBgStartDark('#1a0505'); localStorage.setItem('portal_custom_bg_start_dark', '#1a0505');
+                          setCustomBgEndDark('#050000'); localStorage.setItem('portal_custom_bg_end_dark', '#050000');
+                        } else if (val === 'green') {
+                          setCustomColor1Dark('#10b981'); localStorage.setItem('portal_custom_color1_dark', '#10b981');
+                          setCustomColor2Dark('#db2777'); localStorage.setItem('portal_custom_color2_dark', '#db2777');
+                          setCustomBgStartDark('#021a0c'); localStorage.setItem('portal_custom_bg_start_dark', '#021a0c');
+                          setCustomBgEndDark('#000000'); localStorage.setItem('portal_custom_bg_end_dark', '#000000');
+                        } else if (val === 'black') {
+                          setCustomColor1Dark('#ffffff'); localStorage.setItem('portal_custom_color1_dark', '#ffffff');
+                          setCustomColor2Dark('#1f2937'); localStorage.setItem('portal_custom_color2_dark', '#1f2937');
+                          setCustomBgStartDark('#050505'); localStorage.setItem('portal_custom_bg_start_dark', '#050505');
+                          setCustomBgEndDark('#121212'); localStorage.setItem('portal_custom_bg_end_dark', '#121212');
+                        } else if (val === 'pink') {
+                          setCustomColor1Dark('#db2777'); localStorage.setItem('portal_custom_color1_dark', '#db2777');
+                          setCustomColor2Dark('#8b5cf6'); localStorage.setItem('portal_custom_color2_dark', '#8b5cf6');
+                          setCustomBgStartDark('#260218'); localStorage.setItem('portal_custom_bg_start_dark', '#260218');
+                          setCustomBgEndDark('#0d0008'); localStorage.setItem('portal_custom_bg_end_dark', '#0d0008');
+                        }
+                      }}
+                      className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl p-2.5 text-xs text-slate-800 dark:text-slate-250 cursor-pointer focus:outline-none focus:border-[#8b5cf6] font-bold transition-all"
+                    >
+                      <option value="purple">🌌 Purple Preset (Purple + Pink)</option>
+                      <option value="red">🩸 Red Preset (Red + Black)</option>
+                      <option value="green">🟢 Green Preset (Green + Pink)</option>
+                      <option value="black">🌑 Black Preset (Monochrome)</option>
+                      <option value="pink">🌸 Pink Preset (Pink + Purple)</option>
+                      <option value="custom">🎨 Custom Color Mix</option>
+                    </select>
                   </div>
                 </div>
 
-                {/* Gradient Accent Toggler */}
-                <div className="flex justify-between items-center py-2 border-b border-slate-100 dark:border-white/5">
-                  <div className="flex flex-col text-left">
-                    <span className="text-xs font-bold text-slate-700 dark:text-slate-200">Gradient Accents Look</span>
-                    <span className="text-[9px] text-slate-450 dark:text-slate-400">Enable modern dual-color gradient styles on system buttons and highlights.</span>
-                  </div>
-                  <button 
-                    onClick={() => {
-                      haptic(10);
-                      const newVal = !themeUseGradient;
-                      setThemeUseGradient(newVal);
-                      localStorage.setItem('portal_theme_use_gradient', String(newVal));
-                    }}
-                    className={`w-8 h-4 rounded-full relative p-0.5 transition-colors cursor-pointer ${themeUseGradient ? 'bg-[#8b5cf6]' : 'bg-slate-200'}`}
-                  >
-                    <div className={`w-3 h-3 rounded-full bg-white transition-transform ${themeUseGradient ? 'translate-x-4' : 'translate-x-0'}`} />
-                  </button>
-                </div>
+                {/* Light Mode Custom Color Pickers Panel */}
+                {lightThemePreset === 'custom' && (
+                  <div className="p-3 bg-white/60 dark:bg-[#12082b]/30 border border-slate-200/40 dark:border-white/5 rounded-xl space-y-3.5 animate-[fadeIn_0.25s_ease-out]">
+                    <span className="text-[9px] uppercase font-bold tracking-wider text-[#8b5cf6] block text-left">
+                      🎨 Custom Light Mode Color Mix Matrix
+                    </span>
+                    <div className="space-y-3.5">
+                      <div className="grid grid-cols-2 gap-3.5">
+                        <div className="flex flex-col text-left gap-1">
+                          <label className="text-[9px] font-bold text-slate-505 uppercase">Light Accent Color 1</label>
+                          <div className="flex items-center gap-2">
+                            <input 
+                              type="color" 
+                              value={customColor1Light} 
+                              onChange={(e) => {
+                                setCustomColor1Light(e.target.value);
+                                localStorage.setItem('portal_custom_color1_light', e.target.value);
+                              }}
+                              className="w-8 h-7 rounded border border-slate-200 cursor-pointer bg-transparent"
+                            />
+                            <span className="text-[10px] font-mono text-slate-600 uppercase">{customColor1Light}</span>
+                          </div>
+                        </div>
+                        <div className="flex flex-col text-left gap-1">
+                          <label className="text-[9px] font-bold text-slate-505 uppercase">Light Accent Color 2</label>
+                          <div className="flex items-center gap-2">
+                            <input 
+                              type="color" 
+                              value={customColor2Light} 
+                              onChange={(e) => {
+                                setCustomColor2Light(e.target.value);
+                                localStorage.setItem('portal_custom_color2_light', e.target.value);
+                              }}
+                              className="w-8 h-7 rounded border border-slate-200 cursor-pointer bg-transparent"
+                            />
+                            <span className="text-[10px] font-mono text-slate-600 uppercase">{customColor2Light}</span>
+                          </div>
+                        </div>
+                      </div>
 
-                {/* Vice Versa Swap Toggler */}
-                <div className="flex justify-between items-center py-2 border-b border-slate-100 dark:border-white/5">
-                  <div className="flex flex-col text-left">
-                    <span className="text-xs font-bold text-slate-700 dark:text-slate-200">Swap Accent & Trim (Vice Versa)</span>
-                    <span className="text-[9px] text-slate-450 dark:text-slate-400">Swap the primary and secondary trim colors (e.g. Red with Black trim becomes Black with Red trim).</span>
+                      <div className="grid grid-cols-2 gap-3.5 border-t border-slate-200/40 pt-3">
+                        <div className="flex flex-col text-left gap-1">
+                          <label className="text-[9px] font-bold text-slate-505 uppercase">Background Start</label>
+                          <div className="flex items-center gap-2">
+                            <input 
+                              type="color" 
+                              value={customBgStartLight} 
+                              onChange={(e) => {
+                                setCustomBgStartLight(e.target.value);
+                                localStorage.setItem('portal_custom_bg_start_light', e.target.value);
+                              }}
+                              className="w-8 h-7 rounded border border-slate-200 cursor-pointer bg-transparent"
+                            />
+                            <span className="text-[10px] font-mono text-slate-600 uppercase">{customBgStartLight}</span>
+                          </div>
+                        </div>
+                        <div className="flex flex-col text-left gap-1">
+                          <label className="text-[9px] font-bold text-slate-505 uppercase">Background End</label>
+                          <div className="flex items-center gap-2">
+                            <input 
+                              type="color" 
+                              value={customBgEndLight} 
+                              onChange={(e) => {
+                                setCustomBgEndLight(e.target.value);
+                                localStorage.setItem('portal_custom_bg_end_light', e.target.value);
+                              }}
+                              className="w-8 h-7 rounded border border-slate-200 cursor-pointer bg-transparent"
+                            />
+                            <span className="text-[10px] font-mono text-slate-600 uppercase">{customBgEndLight}</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
                   </div>
-                  <button 
-                    onClick={() => {
-                      haptic(10);
-                      const newVal = !themePresetViceVersa;
-                      setThemePresetViceVersa(newVal);
-                      localStorage.setItem('portal_theme_preset_vice_versa', String(newVal));
-                    }}
-                    className={`w-8 h-4 rounded-full relative p-0.5 transition-colors cursor-pointer ${themePresetViceVersa ? 'bg-[#8b5cf6]' : 'bg-slate-200'}`}
-                  >
-                    <div className={`w-3 h-3 rounded-full bg-white transition-transform ${themePresetViceVersa ? 'translate-x-4' : 'translate-x-0'}`} />
-                  </button>
-                </div>
+                )}
 
-                {/* Custom Color Pickers Panel */}
+                {/* Dark Mode Custom Color Pickers Panel */}
                 {darkThemePreset === 'custom' && (
                   <div className="p-3 bg-white/60 dark:bg-[#12082b]/30 border border-slate-200/40 dark:border-white/5 rounded-xl space-y-3.5 animate-[fadeIn_0.25s_ease-out]">
-                    <span className="text-[9px] uppercase font-bold tracking-wider text-[#8b5cf6] block">
-                      🎨 Custom Color Mix Matrix
+                    <span className="text-[9px] uppercase font-bold tracking-wider text-[#8b5cf6] block text-left">
+                      🎨 Custom Dark Mode Color Mix Matrix
                     </span>
-                    
-                    {!portalDarkMode ? (
-                      <div className="space-y-3.5">
-                        <div className="grid grid-cols-2 gap-3.5">
-                          <div className="flex flex-col text-left gap-1">
-                            <label className="text-[9px] font-bold text-slate-500 uppercase">Light Mode Color 1</label>
-                            <div className="flex items-center gap-2">
-                              <input 
-                                type="color" 
-                                value={customColor1Light} 
-                                onChange={(e) => {
-                                  setCustomColor1Light(e.target.value);
-                                  localStorage.setItem('portal_custom_color1_light', e.target.value);
-                                }}
-                                className="w-8 h-7 rounded border border-slate-200 cursor-pointer bg-transparent"
-                              />
-                              <span className="text-[10px] font-mono text-slate-600 uppercase">{customColor1Light}</span>
-                            </div>
-                          </div>
-                          <div className="flex flex-col text-left gap-1">
-                            <label className="text-[9px] font-bold text-slate-500 uppercase">Light Mode Color 2</label>
-                            <div className="flex items-center gap-2">
-                              <input 
-                                type="color" 
-                                value={customColor2Light} 
-                                onChange={(e) => {
-                                  setCustomColor2Light(e.target.value);
-                                  localStorage.setItem('portal_custom_color2_light', e.target.value);
-                                }}
-                                className="w-8 h-7 rounded border border-slate-200 cursor-pointer bg-transparent"
-                              />
-                              <span className="text-[10px] font-mono text-slate-600 uppercase">{customColor2Light}</span>
-                            </div>
+                    <div className="space-y-3.5">
+                      <div className="grid grid-cols-2 gap-3.5">
+                        <div className="flex flex-col text-left gap-1">
+                          <label className="text-[9px] font-bold text-slate-400 uppercase">Dark Accent Color 1</label>
+                          <div className="flex items-center gap-2">
+                            <input 
+                              type="color" 
+                              value={customColor1Dark} 
+                              onChange={(e) => {
+                                setCustomColor1Dark(e.target.value);
+                                localStorage.setItem('portal_custom_color1_dark', e.target.value);
+                              }}
+                              className="w-8 h-7 rounded border border-white/10 bg-transparent cursor-pointer"
+                            />
+                            <span className="text-[10px] font-mono text-slate-350 uppercase">{customColor1Dark}</span>
                           </div>
                         </div>
-
-                        <div className="grid grid-cols-2 gap-3.5 border-t border-slate-200/40 pt-3">
-                          <div className="flex flex-col text-left gap-1">
-                            <label className="text-[9px] font-bold text-slate-500 uppercase">Background Start</label>
-                            <div className="flex items-center gap-2">
-                              <input 
-                                type="color" 
-                                value={customBgStartLight} 
-                                onChange={(e) => {
-                                  setCustomBgStartLight(e.target.value);
-                                  localStorage.setItem('portal_custom_bg_start_light', e.target.value);
-                                }}
-                                className="w-8 h-7 rounded border border-slate-200 cursor-pointer bg-transparent"
-                              />
-                              <span className="text-[10px] font-mono text-slate-600 uppercase">{customBgStartLight}</span>
-                            </div>
-                          </div>
-                          <div className="flex flex-col text-left gap-1">
-                            <label className="text-[9px] font-bold text-slate-500 uppercase">Background End</label>
-                            <div className="flex items-center gap-2">
-                              <input 
-                                type="color" 
-                                value={customBgEndLight} 
-                                onChange={(e) => {
-                                  setCustomBgEndLight(e.target.value);
-                                  localStorage.setItem('portal_custom_bg_end_light', e.target.value);
-                                }}
-                                className="w-8 h-7 rounded border border-slate-200 cursor-pointer bg-transparent"
-                              />
-                              <span className="text-[10px] font-mono text-slate-600 uppercase">{customBgEndLight}</span>
-                            </div>
+                        <div className="flex flex-col text-left gap-1">
+                          <label className="text-[9px] font-bold text-slate-400 uppercase">Dark Accent Color 2</label>
+                          <div className="flex items-center gap-2">
+                            <input 
+                              type="color" 
+                              value={customColor2Dark} 
+                              onChange={(e) => {
+                                setCustomColor2Dark(e.target.value);
+                                localStorage.setItem('portal_custom_color2_dark', e.target.value);
+                              }}
+                              className="w-8 h-7 rounded border border-white/10 bg-transparent cursor-pointer"
+                            />
+                            <span className="text-[10px] font-mono text-slate-350 uppercase">{customColor2Dark}</span>
                           </div>
                         </div>
                       </div>
-                    ) : (
-                      <div className="space-y-3.5">
-                        <div className="grid grid-cols-2 gap-3.5">
-                          <div className="flex flex-col text-left gap-1">
-                            <label className="text-[9px] font-bold text-slate-400 uppercase">Dark Mode Color 1</label>
-                            <div className="flex items-center gap-2">
-                              <input 
-                                type="color" 
-                                value={customColor1Dark} 
-                                onChange={(e) => {
-                                  setCustomColor1Dark(e.target.value);
-                                  localStorage.setItem('portal_custom_color1_dark', e.target.value);
-                                }}
-                                className="w-8 h-7 rounded border border-white/10 bg-transparent cursor-pointer"
-                              />
-                              <span className="text-[10px] font-mono text-slate-350 uppercase">{customColor1Dark}</span>
-                            </div>
-                          </div>
-                          <div className="flex flex-col text-left gap-1">
-                            <label className="text-[9px] font-bold text-slate-400 uppercase">Dark Mode Color 2</label>
-                            <div className="flex items-center gap-2">
-                              <input 
-                                type="color" 
-                                value={customColor2Dark} 
-                                onChange={(e) => {
-                                  setCustomColor2Dark(e.target.value);
-                                  localStorage.setItem('portal_custom_color2_dark', e.target.value);
-                                }}
-                                className="w-8 h-7 rounded border border-white/10 bg-transparent cursor-pointer"
-                              />
-                              <span className="text-[10px] font-mono text-slate-350 uppercase">{customColor2Dark}</span>
-                            </div>
+
+                      <div className="grid grid-cols-2 gap-3.5 border-t border-slate-200/40 dark:border-white/5 pt-3">
+                        <div className="flex flex-col text-left gap-1">
+                          <label className="text-[9px] font-bold text-slate-400 uppercase">Background Start</label>
+                          <div className="flex items-center gap-2">
+                            <input 
+                              type="color" 
+                              value={customBgStartDark} 
+                              onChange={(e) => {
+                                setCustomBgStartDark(e.target.value);
+                                localStorage.setItem('portal_custom_bg_start_dark', e.target.value);
+                              }}
+                              className="w-8 h-7 rounded border border-white/10 bg-transparent cursor-pointer"
+                            />
+                            <span className="text-[10px] font-mono text-slate-350 uppercase">{customBgStartDark}</span>
                           </div>
                         </div>
-
-                        <div className="grid grid-cols-2 gap-3.5 border-t border-slate-200/40 dark:border-white/5 pt-3">
-                          <div className="flex flex-col text-left gap-1">
-                            <label className="text-[9px] font-bold text-slate-400 uppercase">Background Start</label>
-                            <div className="flex items-center gap-2">
-                              <input 
-                                type="color" 
-                                value={customBgStartDark} 
-                                onChange={(e) => {
-                                  setCustomBgStartDark(e.target.value);
-                                  localStorage.setItem('portal_custom_bg_start_dark', e.target.value);
-                                }}
-                                className="w-8 h-7 rounded border border-white/10 bg-transparent cursor-pointer"
-                              />
-                              <span className="text-[10px] font-mono text-slate-350 uppercase">{customBgStartDark}</span>
-                            </div>
-                          </div>
-                          <div className="flex flex-col text-left gap-1">
-                            <label className="text-[9px] font-bold text-slate-400 uppercase">Background End</label>
-                            <div className="flex items-center gap-2">
-                              <input 
-                                type="color" 
-                                value={customBgEndDark} 
-                                onChange={(e) => {
-                                  setCustomBgEndDark(e.target.value);
-                                  localStorage.setItem('portal_custom_bg_end_dark', e.target.value);
-                                }}
-                                className="w-8 h-7 rounded border border-white/10 bg-transparent cursor-pointer"
-                              />
-                              <span className="text-[10px] font-mono text-slate-350 uppercase">{customBgEndDark}</span>
-                            </div>
+                        <div className="flex flex-col text-left gap-1">
+                          <label className="text-[9px] font-bold text-slate-400 uppercase">Background End</label>
+                          <div className="flex items-center gap-2">
+                            <input 
+                              type="color" 
+                              value={customBgEndDark} 
+                              onChange={(e) => {
+                                setCustomBgEndDark(e.target.value);
+                                localStorage.setItem('portal_custom_bg_end_dark', e.target.value);
+                              }}
+                              className="w-8 h-7 rounded border border-white/10 bg-transparent cursor-pointer"
+                            />
+                            <span className="text-[10px] font-mono text-slate-350 uppercase">{customBgEndDark}</span>
                           </div>
                         </div>
                       </div>
-                    )}
+                    </div>
                   </div>
                 )}
 
