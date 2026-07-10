@@ -91,17 +91,14 @@ const store = {
 const NAV_ITEMS = [
   { id: 'home', label: 'Home', icon: Home },
   { id: 'chat', label: 'AI Chat', icon: Bot },
-  { id: 'games', label: 'Games', icon: Trophy },
+  { id: 'games', label: 'Games', icon: Gamepad2 },
   { id: 'files', label: 'Files', icon: Folder },
   { id: 'images', label: 'Images', icon: Image },
   { id: 'browser', label: 'Browser', icon: Globe },
   { id: 'music', label: 'Music', icon: Music },
   { id: 'utilities', label: 'Utilities', icon: Dices },
-  { id: 'tools', label: 'Tools', icon: Wrench },
+  { id: 'sports', label: 'Sports', icon: Trophy },
   { id: 'code', label: 'Code', icon: Code2 },
-  { id: 'notes', label: 'Notes', icon: FileText },
-  { id: 'calendar', label: 'Calendar', icon: CalendarRange },
-  { id: 'alarms', label: 'Alarms', icon: AlarmClock },
   { id: 'settings', label: 'Settings', icon: Settings },
 ];
 
@@ -521,7 +518,7 @@ export default function App() {
   const [localAIEngineError, setLocalAIEngineError] = useState<string>('');
 
   // --- Sub-Tab & View Custom Interface States ---
-  const [utilityTab, setUtilityTab] = useState<'dice' | 'sheet'>('dice');
+  const [utilityTab, setUtilityTab] = useState<'dice' | 'sheet' | 'notes' | 'calendar' | 'tasks' | 'calc' | 'timer' | 'cookbook'>('dice');
   const [browserUrl, setBrowserUrl] = useState('https://treydog-ramirez.github.io/dnd-portal/');
   const [browserInput, setBrowserInput] = useState('https://treydog-ramirez.github.io/dnd-portal/');
   const [browserHistory, setBrowserHistory] = useState<string[]>(['https://treydog-ramirez.github.io/dnd-portal/']);
@@ -537,6 +534,151 @@ export default function App() {
   const [calendarEventText, setCalendarEventText] = useState('');
   const [newAlarmTime, setNewAlarmTime] = useState('12:00');
   const [newAlarmLabel, setNewAlarmLabel] = useState('');
+
+  // --- Cookbook State Variables ---
+  const [recipes, setRecipes] = useState<any[]>(() => {
+    const saved = localStorage.getItem('portal_recipes');
+    if (saved) return JSON.parse(saved);
+    return [
+      {
+        id: '1',
+        title: 'Campfire Elixir (Lofi Chai)',
+        category: 'Camp Brew',
+        time: '10 mins',
+        description: 'Warm Chai tea brewed with star anise, cardamom, and clove, ideal for cold dungeon nights.',
+        ingredients: 'Black Tea, Star Anise, Cardamom pods, Milk, Honey',
+        instructions: 'Boil spices in water. Add tea leaves, then milk and honey. Simmer for 5 minutes. Strain and serve.',
+        effects: '+15 Temp HP, +2 Focus'
+      },
+      {
+        id: '2',
+        title: 'Dwarven Trail Bread',
+        category: 'Camp Ration',
+        time: '45 mins',
+        description: 'Dense, nut-packed bread baked with honey and berries that lasts months without spoiling.',
+        ingredients: 'Almond flour, Dried cranberries, Honey, Eggs, Walnuts',
+        instructions: 'Mix ingredients into a thick dough. Bake at 350°F (175°C) for 35 minutes until golden brown.',
+        effects: 'Satisfies hunger for 24 hours'
+      },
+      {
+        id: '3',
+        title: 'Mana Draught (Star Fruit Tonic)',
+        category: 'Magic Brew',
+        time: '5 mins',
+        description: 'Sparkling blue elixir brewed from star fruit and mint leaf.',
+        ingredients: 'Star fruit syrup, Mint, Sparkling water, Blue spirulina',
+        instructions: 'Muddle mint with syrup. Add spirulina, ice, and top with sparkling water. Stir gently.',
+        effects: 'Restores +20 Mana'
+      }
+    ];
+  });
+  const [selectedRecipeId, setSelectedRecipeId] = useState<string>('1');
+  const [decryptUrl, setDecryptUrl] = useState('');
+  const [decrypting, setDecrypting] = useState(false);
+  const [decryptLogs, setDecryptLogs] = useState<string[]>([]);
+  const [recipeActiveSubMode, setRecipeActiveSubMode] = useState<'transcribe' | 'manual'>('transcribe');
+
+  // Manual recipe form state
+  const [newRecipeTitle, setNewRecipeTitle] = useState('');
+  const [newRecipeCategory, setNewRecipeCategory] = useState('Camp Brew');
+  const [newRecipeTime, setNewRecipeTime] = useState('15 mins');
+  const [newRecipeDesc, setNewRecipeDesc] = useState('');
+  const [newRecipeIngredients, setNewRecipeIngredients] = useState('');
+  const [newRecipeInstructions, setNewRecipeInstructions] = useState('');
+  const [newRecipeEffects, setNewRecipeEffects] = useState('');
+
+  // Link decoder simulator
+  const handleDecodeRecipe = () => {
+    if (!decryptUrl.trim()) {
+      toast("⚠️ Please enter a recipe link first!");
+      return;
+    }
+    haptic(15);
+    setDecrypting(true);
+    setDecryptLogs([]);
+    
+    const logs = [
+      "📡 CONNECTING TO EXTERNAL MEDIA PORTAL...",
+      "⚡ STREAMING AUDIO FROM CAPTIONS CHANNELS...",
+      "🔮 DECRYPTING ALCHEMICAL PARAMETERS...",
+      "📝 EXTRACTING PANTRY INGREDIENTS...",
+      "✨ COMPILING INSTRUCTIONS VECTOR...",
+      "🏆 FUSION COMPLETED SUCCESS!"
+    ];
+
+    let currentLogIdx = 0;
+    const interval = setInterval(() => {
+      if (currentLogIdx < logs.length) {
+        setDecryptLogs(prev => [...prev, logs[currentLogIdx]]);
+        currentLogIdx++;
+      } else {
+        clearInterval(interval);
+        // Add new simulated decoded recipe
+        const newId = String(Date.now());
+        const domain = decryptUrl.includes('tiktok.com') ? 'TikTok' : decryptUrl.includes('youtube.com') ? 'YouTube' : 'Instagram';
+        const newDecoded = {
+          id: newId,
+          title: `Decoded ${domain} Ramen Potion`,
+          category: 'Camp Ration',
+          time: '15 mins',
+          description: `Alchemical ramen variant transcribed from the shared social link: ${decryptUrl}`,
+          ingredients: 'Instant Ramen Noodles, Soy Sauce, Sesame Oil, Soft Boiled Egg, Scallions, Chili flakes',
+          instructions: 'Cook noodles in boiling water. Stir in soy sauce and sesame oil. Top with scallions, chili flakes, and egg.',
+          effects: '+10 Agility, +5 Health restoration'
+        };
+        const updated = [...recipes, newDecoded];
+        setRecipes(updated);
+        localStorage.setItem('portal_recipes', JSON.stringify(updated));
+        setSelectedRecipeId(newId);
+        setDecrypting(false);
+        setDecryptUrl('');
+        toast("🧙‍♂️ Recipe successfully decoded and stored in Codex!");
+      }
+    }, 800);
+  };
+
+  const handleSaveManualRecipe = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newRecipeTitle.trim() || !newRecipeIngredients.trim() || !newRecipeInstructions.trim()) {
+      toast("⚠️ Please fill in Title, Ingredients, and Instructions!");
+      return;
+    }
+    const newId = String(Date.now());
+    const manualRecipe = {
+      id: newId,
+      title: newRecipeTitle.trim(),
+      category: newRecipeCategory,
+      time: newRecipeTime.trim(),
+      description: newRecipeDesc.trim() || 'Custom alchemical concoction.',
+      ingredients: newRecipeIngredients.trim(),
+      instructions: newRecipeInstructions.trim(),
+      effects: newRecipeEffects.trim() || 'N/A'
+    };
+    const updated = [...recipes, manualRecipe];
+    setRecipes(updated);
+    localStorage.setItem('portal_recipes', JSON.stringify(updated));
+    setSelectedRecipeId(newId);
+    
+    // reset form
+    setNewRecipeTitle('');
+    setNewRecipeDesc('');
+    setNewRecipeIngredients('');
+    setNewRecipeInstructions('');
+    setNewRecipeEffects('');
+    setRecipeActiveSubMode('transcribe');
+    toast("🏆 Custom recipe successfully enscribed in Codex!");
+  };
+
+  const handleDeleteRecipe = (id: string) => {
+    haptic(10);
+    const updated = recipes.filter(r => r.id !== id);
+    setRecipes(updated);
+    localStorage.setItem('portal_recipes', JSON.stringify(updated));
+    if (selectedRecipeId === id && updated.length > 0) {
+      setSelectedRecipeId(updated[0].id);
+    }
+    toast("Purged alchemical recipe from Codex.");
+  };
 
   // Refs
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -4408,91 +4550,76 @@ export default function App() {
             </div>
           )}
 
-          {/* NOTES Rich Suite */}
-          {activeTab === 'notes' && (
-            <div className="glass-panel rounded-2xl border border-slate-200 dark:border-white/[0.04] p-6 text-left space-y-4 animate-[fadeIn_0.4s_ease-out]">
-              <div>
-                <h2 className="text-sm font-bold text-slate-800 uppercase tracking-widest flex items-center gap-2">
-                  <FileText className="w-4 h-4 text-amber-400" />
-                  Notes Sandbox Suite
-                </h2>
-                <p className="text-[10px] text-slate-500">Embedded Markdown Editor sandbox</p>
-              </div>
-
-              <div className="grid grid-cols-3 gap-6">
-                {/* Note list column */}
-                <div className="col-span-1 border-r border-slate-200/50 pr-4 space-y-2">
-                  <span className="text-[9px] uppercase tracking-wider text-slate-500 font-bold">Catalog</span>
-                  {[
-                    { title: 'Workout Plan', time: '1h ago' },
-                    { title: 'Weekly Core Standup notes', time: '1d ago' },
-                    { title: 'Hardware requirements', time: '4d ago' }
-                  ].map((note, idx) => (
-                    <button key={idx} className="w-full text-left p-2.5 rounded-lg bg-slate-50 dark:bg-slate-950 border border-slate-200/50 dark:border-white/5 hover:border-amber-500/40 transition-all">
-                      <div className="text-xs font-bold text-slate-700 dark:text-slate-200 truncate">{note.title}</div>
-                      <div className="text-[8px] text-slate-500 mt-0.5">{note.time}</div>
+          {/* UTILITIES TAB */}
+          {activeTab === 'utilities' && (
+            <div className="glass-panel rounded-2xl border border-white/[0.04] p-6 text-left space-y-6 animate-[fadeIn_0.4s_ease-out]">
+              <div className="flex flex-col xl:flex-row gap-4 items-stretch xl:items-center justify-between border-b border-slate-200/50 dark:border-white/5 pb-4 mb-4 select-none">
+                {/* ORGANIZER GROUP */}
+                <div className="flex items-center bg-slate-100 dark:bg-[#150f2e]/60 rounded-xl border border-slate-200 dark:border-[#44387a]/45 p-0.5 w-full xl:w-auto overflow-x-auto">
+                  <span className="text-[9px] font-extrabold text-[#ff7597] tracking-wider uppercase pl-2.5 pr-1.5 py-1">Organizer</span>
+                  <div className="flex items-center gap-0.5">
+                    <button 
+                      onClick={() => { haptic(5); setUtilityTab('notes'); }}
+                      className={`px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all cursor-pointer whitespace-nowrap ${utilityTab === 'notes' ? 'bg-[#ff7597]/20 border border-[#ff7597]/40 text-[#ff7597]' : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white'}`}
+                    >
+                      Notes
                     </button>
-                  ))}
+                    <button 
+                      onClick={() => { haptic(5); setUtilityTab('calendar'); }}
+                      className={`px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all cursor-pointer whitespace-nowrap ${utilityTab === 'calendar' ? 'bg-[#ff7597]/20 border border-[#ff7597]/40 text-[#ff7597]' : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white'}`}
+                    >
+                      Calendar
+                    </button>
+                    <button 
+                      onClick={() => { haptic(5); setUtilityTab('tasks'); }}
+                      className={`px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all cursor-pointer whitespace-nowrap ${utilityTab === 'tasks' ? 'bg-[#ff7597]/20 border border-[#ff7597]/40 text-[#ff7597]' : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white'}`}
+                    >
+                      Tasks
+                    </button>
+                    <button 
+                      onClick={() => { haptic(5); setUtilityTab('cookbook'); }}
+                      className={`px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all cursor-pointer whitespace-nowrap ${utilityTab === 'cookbook' ? 'bg-[#ff7597]/20 border border-[#ff7597]/40 text-[#ff7597]' : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white'}`}
+                    >
+                      Cookbook
+                    </button>
+                  </div>
                 </div>
 
-                {/* Working Area */}
-                <div className="col-span-2 space-y-4">
-                  <input 
-                    type="text" 
-                    defaultValue="Workout Plan"
-                    className="w-full bg-transparent text-slate-800 dark:text-slate-100 font-bold text-sm focus:outline-none border-b border-slate-200 dark:border-white/5 pb-2"
-                  />
-                  <textarea 
-                    defaultValue={`# Workout Plan\n- 15m warm-up stretch\n- Core routine cycle\n- Weighted dynamic squats (3 sets x 12 reps)\n- Treadmill sprint (Intervals: 20 mins)`}
-                    className="w-full bg-slate-100 dark:bg-slate-950/40 border border-slate-200 dark:border-white/5 rounded-lg p-3 text-xs text-slate-800 dark:text-slate-200 h-48 focus:outline-none"
-                  />
-                  <div className="flex justify-end gap-2">
+                {/* TOOLS GROUP */}
+                <div className="flex items-center bg-slate-100 dark:bg-[#150f2e]/60 rounded-xl border border-slate-200 dark:border-[#44387a]/45 p-0.5 w-full xl:w-auto overflow-x-auto">
+                  <span className="text-[9px] font-extrabold text-[#3fd9c7] tracking-wider uppercase pl-2.5 pr-1.5 py-1">Tools</span>
+                  <div className="flex items-center gap-0.5">
                     <button 
-                      onClick={() => alert("Payload compiled and stored to local matrix storage.")}
-                      className="px-4 py-1.5 rounded text-white text-xs font-bold transition-all duration-300 cursor-pointer active:scale-95 hover:shadow-[0_0_20px_rgba(139,92,246,0.5)]"
-                      style={{
-                        background: 'linear-gradient(135deg, #7c3aed, #9333ea, #c026d3)',
-                        boxShadow: '0 0 12px rgba(139,92,246,0.3)',
-                      }}
+                      onClick={() => { haptic(5); setUtilityTab('dice'); }}
+                      className={`px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all cursor-pointer whitespace-nowrap ${utilityTab === 'dice' ? 'bg-[#3fd9c7]/20 border border-[#3fd9c7]/40 text-[#3fd9c7]' : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white'}`}
                     >
-                      Save Note
+                      Dice
+                    </button>
+                    <button 
+                      onClick={() => { haptic(5); setUtilityTab('sheet'); }}
+                      className={`px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all cursor-pointer whitespace-nowrap ${utilityTab === 'sheet' ? 'bg-[#3fd9c7]/20 border border-[#3fd9c7]/40 text-[#3fd9c7]' : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white'}`}
+                    >
+                      Codex
+                    </button>
+                    <button 
+                      onClick={() => { haptic(5); setUtilityTab('calc'); }}
+                      className={`px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all cursor-pointer whitespace-nowrap ${utilityTab === 'calc' ? 'bg-[#3fd9c7]/20 border border-[#3fd9c7]/40 text-[#3fd9c7]' : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white'}`}
+                    >
+                      Calc
+                    </button>
+                    <button 
+                      onClick={() => { haptic(5); setUtilityTab('timer'); }}
+                      className={`px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all cursor-pointer whitespace-nowrap ${utilityTab === 'timer' ? 'bg-[#3fd9c7]/20 border border-[#3fd9c7]/40 text-[#3fd9c7]' : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white'}`}
+                    >
+                      Timer
                     </button>
                   </div>
                 </div>
               </div>
-            </div>
-          )}
-
-          {/* UTILITIES TAB */}
-          {activeTab === 'utilities' && (
-            <div className="glass-panel rounded-2xl border border-white/[0.04] p-6 text-left space-y-6 animate-[fadeIn_0.4s_ease-out]">
-              <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4 border-b border-white/5 pb-4">
-                <div>
-                  <h2 className="text-sm font-bold text-slate-800 uppercase tracking-widest flex items-center gap-2">
-                    <Sparkles className="w-4 h-4 text-purple-400" />
-                    Rift Utilities & Combat Toolkit
-                  </h2>
-                  <p className="text-[10px] text-slate-500">Zero-latency alchemical tabletop accessories</p>
-                </div>
-                <div className="flex bg-slate-100 p-1 rounded-lg border border-slate-200/50">
-                  <button 
-                    onClick={() => { haptic(5); setUtilityTab('dice'); }}
-                    className={`px-3 py-1.5 rounded-md text-[10px] font-bold transition-all cursor-pointer ${utilityTab === 'dice' ? 'bg-purple-600 text-white shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}
-                  >
-                    Dice Tray Field
-                  </button>
-                  <button 
-                    onClick={() => { haptic(5); setUtilityTab('sheet'); }}
-                    className={`px-3 py-1.5 rounded-md text-[10px] font-bold transition-all cursor-pointer ${utilityTab === 'sheet' ? 'bg-purple-600 text-white shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}
-                  >
-                    D&D Character Codex
-                  </button>
-                </div>
-              </div>
 
               {/* UTILITY MODULE RENDER */}
-              {utilityTab === 'dice' ? (
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              {utilityTab === 'dice' && (
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-[fadeIn_0.3s_ease-out]">
                   {/* Left Column: Canvas Field */}
                   <div className="lg:col-span-2 space-y-4">
                     <div className="bg-slate-50 rounded-xl overflow-hidden border border-slate-200/50 relative aspect-video flex flex-col">
@@ -4579,9 +4706,10 @@ export default function App() {
                     </div>
                   </div>
                 </div>
-              ) : (
-                /* Character Sheet Render */
-                <div className="space-y-6">
+              )}
+
+              {utilityTab === 'sheet' && (
+                <div className="space-y-6 animate-[fadeIn_0.3s_ease-out]">
                   {/* Identity Row */}
                   <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 p-4 bg-slate-950 border border-white/5 rounded-xl">
                     <div className="flex flex-col gap-1.5">
@@ -4732,14 +4860,14 @@ export default function App() {
                               if (!file) return;
                               const reader = new FileReader();
                               reader.onload = () => {
-                                try {
-                                  const parsed = JSON.parse(reader.result as string);
-                                  store.set('char_sheet', parsed);
-                                  setCharSheet(parsed);
-                                  toast('Traveler sheet successfully enscribed from file!');
-                                } catch (err) {
-                                  toast('Interference detected. Failed to read sheet.', 'error');
-                                }
+                                  try {
+                                    const parsed = JSON.parse(reader.result as string);
+                                    store.set('char_sheet', parsed);
+                                    setCharSheet(parsed);
+                                    toast('Traveler sheet successfully enscribed from file!');
+                                  } catch (err) {
+                                    toast('Interference detected. Failed to read sheet.', 'error');
+                                  }
                               };
                               reader.readAsText(file);
                             };
@@ -4754,12 +4882,440 @@ export default function App() {
                   </div>
                 </div>
               )}
-            </div>
-          )}
 
-          {/* TOOLS VIEW (TI-84 CALCULATOR & EMULATORS) */}
-          {activeTab === 'tools' && (
-            <div className="glass-panel rounded-2xl border border-white/[0.04] p-6 text-left space-y-6 animate-[fadeIn_0.4s_ease-out] flex flex-col md:flex-row gap-6">
+              {utilityTab === 'notes' && (
+                <div className="space-y-4 animate-[fadeIn_0.3s_ease-out]">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    {/* Note list column */}
+                    <div className="col-span-1 border-r border-slate-200/50 dark:border-white/5 pr-4 space-y-2">
+                      <span className="text-[9px] uppercase tracking-wider text-slate-500 font-bold">Catalog</span>
+                      {[
+                        { title: 'Workout Plan', time: '1h ago' },
+                        { title: 'Weekly Core Standup notes', time: '1d ago' },
+                        { title: 'Hardware requirements', time: '4d ago' }
+                      ].map((note, idx) => (
+                        <button key={idx} className="w-full text-left p-2.5 rounded-lg bg-slate-50 dark:bg-slate-950 border border-slate-200/50 dark:border-white/5 hover:border-amber-500/40 transition-all">
+                          <div className="text-xs font-bold text-slate-700 dark:text-slate-200 truncate">{note.title}</div>
+                          <div className="text-[8px] text-slate-500 mt-0.5">{note.time}</div>
+                        </button>
+                      ))}
+                    </div>
+
+                    {/* Working Area */}
+                    <div className="col-span-2 space-y-4">
+                      <input 
+                        type="text" 
+                        defaultValue="Workout Plan"
+                        className="w-full bg-transparent text-slate-800 dark:text-slate-100 font-bold text-sm focus:outline-none border-b border-slate-200 dark:border-white/5 pb-2"
+                      />
+                      <textarea 
+                        defaultValue={`# Workout Plan\n- 15m warm-up stretch\n- Core routine cycle\n- Weighted dynamic squats (3 sets x 12 reps)\n- Treadmill sprint (Intervals: 20 mins)`}
+                        className="w-full bg-slate-100 dark:bg-slate-950/40 border border-slate-200 dark:border-white/5 rounded-lg p-3 text-xs text-slate-800 dark:text-slate-200 h-48 focus:outline-none"
+                      />
+                      <div className="flex justify-end gap-2">
+                        <button 
+                          onClick={() => alert("Payload compiled and stored to local matrix storage.")}
+                          className="px-4 py-1.5 rounded text-white text-xs font-bold transition-all duration-300 cursor-pointer active:scale-95 hover:shadow-[0_0_20px_rgba(139,92,246,0.5)]"
+                          style={{
+                            background: 'linear-gradient(135deg, #7c3aed, #9333ea, #c026d3)',
+                            boxShadow: '0 0 12px rgba(139,92,246,0.3)',
+                          }}
+                        >
+                          Save Note
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {utilityTab === 'calendar' && (
+                <div className="space-y-6 animate-[fadeIn_0.3s_ease-out]">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-4">
+                      <span className="text-[10px] uppercase tracking-wider text-slate-500 font-bold">Month view (Simulation)</span>
+                      <div className="grid grid-cols-7 gap-2 text-center text-[10px] font-mono">
+                        {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map(d => (
+                          <span key={d} className="text-slate-500 font-bold py-1">{d}</span>
+                        ))}
+                        {Array.from({ length: 30 }).map((_, idx) => {
+                          const dayVal = idx + 1;
+                          const dateStr = `2026-07-${String(dayVal).padStart(2, '0')}`;
+                          const isSelected = calendarSelectedDate === dateStr;
+                          const hasEvents = calEvents[dateStr] && calEvents[dateStr].length > 0;
+                          return (
+                            <button
+                              key={idx}
+                              onClick={() => { haptic(5); setCalendarSelectedDate(dateStr); }}
+                              className={`p-2.5 rounded-lg border font-bold transition-all relative cursor-pointer ${
+                                isSelected ? 'bg-amber-500 text-slate-950 border-amber-500 font-black shadow-md' :
+                                'bg-slate-950 border-white/5 text-slate-300 hover:border-white/20'
+                              }`}
+                            >
+                              <span>{dayVal}</span>
+                              {hasEvents && !isSelected && (
+                                <span className="absolute bottom-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 bg-amber-400 rounded-full"></span>
+                              )}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    <div className="p-4 bg-slate-950 border border-white/5 rounded-xl space-y-4">
+                      <div className="border-b border-white/5 pb-2 text-[10px] font-bold text-amber-400 uppercase tracking-widest">
+                        Timeline ledger • {calendarSelectedDate}
+                      </div>
+
+                      <div className="space-y-2 max-h-[140px] overflow-y-auto pr-0.5">
+                        {(calEvents[calendarSelectedDate] || []).length === 0 ? (
+                          <div className="text-[10px] text-slate-500 italic py-4">No events scheduled.</div>
+                        ) : (
+                          calEvents[calendarSelectedDate].map((ev, i) => (
+                            <div key={i} className="flex justify-between items-center bg-slate-900 border border-white/5 p-2 rounded-lg text-xs text-slate-200">
+                              <span>{ev}</span>
+                              <button 
+                                onClick={() => {
+                                  haptic(8);
+                                  setCalEvents(prev => {
+                                    const next = { ...prev };
+                                    next[calendarSelectedDate] = next[calendarSelectedDate].filter((_, idx) => idx !== i);
+                                    store.set('cal_events', next);
+                                    return next;
+                                  });
+                                  toast('Event cleared.');
+                                }}
+                                className="text-slate-500 hover:text-red-400 font-bold px-1.5"
+                              >
+                                ×
+                              </button>
+                            </div>
+                          ))
+                        )}
+                      </div>
+
+                      <div className="flex gap-2 pt-2 border-t border-white/5">
+                        <input 
+                          type="text" 
+                          placeholder="Event description..."
+                          value={calendarEventText}
+                          onChange={(e) => setCalendarEventText(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' && calendarEventText.trim()) {
+                              haptic(10);
+                              setCalEvents(prev => {
+                                const next = { ...prev };
+                                if (!next[calendarSelectedDate]) next[calendarSelectedDate] = [];
+                                next[calendarSelectedDate].push(calendarEventText.trim());
+                                store.set('cal_events', next);
+                                return next;
+                              });
+                              setCalendarEventText('');
+                              toast('Campaign checkin registered.');
+                            }
+                          }}
+                          className="flex-1 bg-slate-950 border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-amber-500/50"
+                        />
+                        <button 
+                          onClick={() => {
+                            if (!calendarEventText.trim()) return;
+                            haptic(10);
+                            setCalEvents(prev => {
+                              const next = { ...prev };
+                              if (!next[calendarSelectedDate]) next[calendarSelectedDate] = [];
+                              next[calendarSelectedDate].push(calendarEventText.trim());
+                              store.set('cal_events', next);
+                              return next;
+                            });
+                            setCalendarEventText('');
+                            toast('Campaign checkin registered.');
+                          }}
+                          className="px-3 bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-bold rounded-lg cursor-pointer transition-all active:scale-95"
+                        >
+                          +
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {utilityTab === 'tasks' && (
+                <div className="space-y-4 animate-[fadeIn_0.3s_ease-out] max-w-2xl mx-auto">
+                  <div className="p-5 bg-slate-950 border border-white/5 rounded-2xl shadow-xl">
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest">Alchemical Tasks Tracker</h3>
+                      <span className="text-[10px] text-purple-400 font-mono font-semibold">
+                        {tasks.filter(t=>t.completed).length}/{tasks.length} Completed
+                      </span>
+                    </div>
+
+                    {/* Task checklist container */}
+                    <div className="space-y-3.5">
+                      {tasks.map(task => (
+                        <div 
+                          key={task.id} 
+                          onClick={() => toggleTask(task.id)}
+                          className="flex items-center justify-between group cursor-pointer py-1 select-none"
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className={`w-4 h-4 rounded-full border flex items-center justify-center transition-all ${
+                              task.completed 
+                                ? 'bg-purple-600 border-purple-600 text-white' 
+                                : 'border-slate-700 group-hover:border-purple-500'
+                            }`}>
+                              {task.completed && <Check className="w-3 h-3 stroke-[3]" />}
+                            </div>
+                            <span className={`text-xs font-medium transition-all ${
+                              task.completed ? 'text-slate-500 line-through font-normal' : 'text-slate-200'
+                            }`}>
+                              {task.label}
+                            </span>
+                          </div>
+                          <span className="text-[10px] font-mono text-slate-500">{task.time}</span>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Add interactive task form */}
+                    <form onSubmit={handleAddTask} className="mt-6 pt-4 border-t border-white/5 flex gap-2">
+                      <input 
+                        type="text"
+                        placeholder="Add homework, test study, workout..."
+                        value={newTaskText}
+                        onChange={(e) => setNewTaskText(e.target.value)}
+                        className="flex-grow bg-slate-950 border border-white/10 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-purple-500/60"
+                      />
+                      <button 
+                        type="submit"
+                        className="px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold rounded-xl transition-all cursor-pointer"
+                      >
+                        + Add Task
+                      </button>
+                    </form>
+                  </div>
+                </div>
+              )}
+
+              {utilityTab === 'cookbook' && (
+                <div className="space-y-6 animate-[fadeIn_0.3s_ease-out]">
+                  <div className="flex justify-between items-center pb-2.5 border-b border-slate-200/50 dark:border-white/5 select-none">
+                    <div className="flex items-center gap-2">
+                      <span className="text-pink-400 text-sm animate-pulse">🧪</span>
+                      <span className="text-xs font-bold text-slate-700 dark:text-slate-200 uppercase tracking-wider">Alchemist Cook's Codex</span>
+                    </div>
+                    <div className="flex bg-slate-100 dark:bg-slate-950 p-1 rounded-lg border border-slate-200/50 dark:border-white/5">
+                      <button 
+                        onClick={() => { haptic(5); setRecipeActiveSubMode('transcribe'); }}
+                        className={`px-3 py-1.5 rounded-md text-[9px] font-bold transition-all cursor-pointer ${recipeActiveSubMode === 'transcribe' ? 'bg-purple-600 text-white shadow-sm' : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'}`}
+                      >
+                        Social Link Decoder
+                      </button>
+                      <button 
+                        onClick={() => { haptic(5); setRecipeActiveSubMode('manual'); }}
+                        className={`px-3 py-1.5 rounded-md text-[9px] font-bold transition-all cursor-pointer ${recipeActiveSubMode === 'manual' ? 'bg-purple-600 text-white shadow-sm' : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'}`}
+                      >
+                        Enscribe Recipe
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 w-full">
+                    {/* Left Column: Input / Creation Area */}
+                    <div className="lg:col-span-8 flex flex-col gap-4">
+                      {recipeActiveSubMode === 'transcribe' ? (
+                        <div className="p-4 bg-slate-50 dark:bg-slate-950/40 border border-slate-200 dark:border-white/5 rounded-xl space-y-4">
+                          <div className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Social Link Transcription</div>
+                          <p className="text-[10px] text-slate-400 leading-relaxed">
+                            Paste any TikTok, Instagram, YouTube, or Facebook recipe link below. The alchemical portal will decrypt subtitles and parse the cooking steps automatically.
+                          </p>
+                          <div className="flex gap-2">
+                            <input 
+                              type="url" 
+                              placeholder="https://www.tiktok.com/@creator/video/..." 
+                              value={decryptUrl}
+                              onChange={(e) => setDecryptUrl(e.target.value)}
+                              className="flex-grow bg-slate-100 dark:bg-slate-950 border border-slate-200 dark:border-white/10 rounded-lg px-3 py-2 text-xs text-slate-800 dark:text-slate-100 outline-none focus:border-purple-500/60"
+                            />
+                            <button 
+                              onClick={handleDecodeRecipe}
+                              disabled={decrypting}
+                              className="px-4 py-2 bg-gradient-to-r from-pink-500 to-rose-600 hover:from-pink-400 hover:to-rose-500 text-white rounded-lg font-bold text-xs uppercase tracking-wider transition-all disabled:opacity-40"
+                            >
+                              {decrypting ? 'DECODING...' : 'DECODE LINK'}
+                            </button>
+                          </div>
+
+                          {decryptLogs.length > 0 && (
+                            <div className="p-3 bg-slate-950 border border-purple-500/20 text-[#ffd6ea] font-mono text-[9px] rounded-lg leading-relaxed space-y-1">
+                              {decryptLogs.map((log, idx) => (
+                                <div key={idx}>{log}</div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <form onSubmit={handleSaveManualRecipe} className="p-4 bg-slate-50 dark:bg-slate-950/40 border border-slate-200 dark:border-white/5 rounded-xl space-y-3.5">
+                          <div className="grid grid-cols-2 gap-3">
+                            <div className="flex flex-col gap-1">
+                              <label className="text-[9px] uppercase tracking-wider text-slate-500 font-bold">Recipe Title</label>
+                              <input 
+                                type="text"
+                                placeholder="e.g. Iron Skin Stew"
+                                value={newRecipeTitle}
+                                onChange={(e) => setNewRecipeTitle(e.target.value)}
+                                className="bg-slate-100 dark:bg-slate-950 border border-slate-200 dark:border-white/10 rounded-lg p-2 text-xs text-slate-800 dark:text-slate-100 outline-none"
+                              />
+                            </div>
+                            <div className="flex flex-col gap-1">
+                              <label className="text-[9px] uppercase tracking-wider text-slate-500 font-bold">Cooking Time</label>
+                              <input 
+                                type="text"
+                                placeholder="e.g. 20 mins"
+                                value={newRecipeTime}
+                                onChange={(e) => setNewRecipeTime(e.target.value)}
+                                className="bg-slate-100 dark:bg-slate-950 border border-slate-200 dark:border-white/10 rounded-lg p-2 text-xs text-slate-800 dark:text-slate-100 outline-none"
+                              />
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-3">
+                            <div className="flex flex-col gap-1">
+                              <label className="text-[9px] uppercase tracking-wider text-slate-500 font-bold">Category</label>
+                              <select 
+                                value={newRecipeCategory}
+                                onChange={(e) => setNewRecipeCategory(e.target.value)}
+                                className="bg-slate-100 dark:bg-slate-950 border border-slate-200/10 rounded-lg p-2 text-xs text-slate-800 dark:text-slate-100 outline-none"
+                              >
+                                <option value="Camp Brew">Camp Brew</option>
+                                <option value="Camp Ration">Camp Ration</option>
+                                <option value="Magic Brew">Magic Brew</option>
+                                <option value="Combat Potion">Combat Potion</option>
+                              </select>
+                            </div>
+                            <div className="flex flex-col gap-1">
+                              <label className="text-[9px] uppercase tracking-wider text-slate-500 font-bold">Elixir Effects</label>
+                              <input 
+                                type="text"
+                                placeholder="e.g. +10 Armor for 1 hour"
+                                value={newRecipeEffects}
+                                onChange={(e) => setNewRecipeEffects(e.target.value)}
+                                className="bg-slate-100 dark:bg-slate-950 border border-slate-200 dark:border-white/10 rounded-lg p-2 text-xs text-slate-800 dark:text-slate-100 outline-none"
+                              />
+                            </div>
+                          </div>
+
+                          <div className="flex flex-col gap-1">
+                            <label className="text-[9px] uppercase tracking-wider text-slate-500 font-bold">Short Description</label>
+                            <input 
+                              type="text"
+                              placeholder="Describe the brew..."
+                              value={newRecipeDesc}
+                              onChange={(e) => setNewRecipeDesc(e.target.value)}
+                              className="bg-slate-100 dark:bg-slate-950 border border-slate-200 dark:border-white/10 rounded-lg p-2 text-xs text-slate-800 dark:text-slate-100 outline-none"
+                            />
+                          </div>
+
+                          <div className="flex flex-col gap-1">
+                            <label className="text-[9px] uppercase tracking-wider text-slate-500 font-bold">Ingredients</label>
+                            <textarea 
+                              placeholder="List ingredients separated by commas..."
+                              value={newRecipeIngredients}
+                              onChange={(e) => setNewRecipeIngredients(e.target.value)}
+                              className="bg-slate-100 dark:bg-slate-950 border border-slate-200 dark:border-white/10 rounded-lg p-2 text-xs text-slate-800 dark:text-slate-100 outline-none h-14 resize-none"
+                            />
+                          </div>
+
+                          <div className="flex flex-col gap-1">
+                            <label className="text-[9px] uppercase tracking-wider text-slate-500 font-bold">Preparation & Cooking Steps</label>
+                            <textarea 
+                              placeholder="Step by step preparation details..."
+                              value={newRecipeInstructions}
+                              onChange={(e) => setNewRecipeInstructions(e.target.value)}
+                              className="bg-slate-100 dark:bg-slate-950 border border-slate-200 dark:border-white/10 rounded-lg p-2 text-xs text-slate-800 dark:text-slate-100 outline-none h-20 resize-none"
+                            />
+                          </div>
+
+                          <button 
+                            type="submit"
+                            className="w-full py-2 bg-purple-600 hover:bg-purple-500 text-white rounded-lg text-xs font-bold transition-all text-center"
+                          >
+                            Enscribe into Codex
+                          </button>
+                        </form>
+                      )}
+
+                      {/* SELECTED RECIPE DETAIL CARD */}
+                      {(() => {
+                        const rec = recipes.find(r => r.id === selectedRecipeId);
+                        if (!rec) return null;
+                        return (
+                          <div className="p-4 bg-slate-950 border border-white/5 rounded-xl space-y-3.5 text-left relative overflow-hidden">
+                            <div className="flex justify-between items-center pb-2 border-b border-white/5">
+                              <div>
+                                <span className="text-[8px] font-mono text-purple-400 uppercase tracking-widest bg-purple-500/10 px-2 py-0.5 rounded border border-purple-500/20">{rec.category}</span>
+                                <h3 className="text-sm font-bold text-white mt-1.5">{rec.title}</h3>
+                              </div>
+                              <span className="text-[10px] font-mono text-slate-400">{rec.time}</span>
+                            </div>
+
+                            <p className="text-xs text-slate-400 italic font-medium leading-relaxed">"{rec.description}"</p>
+
+                            <div className="space-y-2">
+                              <span className="text-[9px] uppercase tracking-wider text-slate-500 font-bold block">Required Reagents:</span>
+                              <p className="text-xs text-slate-200 font-mono leading-relaxed bg-slate-900 border border-white/5 p-2.5 rounded-lg">{rec.ingredients}</p>
+                            </div>
+
+                            <div className="space-y-2">
+                              <span className="text-[9px] uppercase tracking-wider text-slate-500 font-bold block">Brewing Directions:</span>
+                              <p className="text-xs text-slate-300 leading-relaxed bg-slate-900 border border-white/5 p-2.5 rounded-lg whitespace-pre-line">{rec.instructions}</p>
+                            </div>
+
+                            <div className="p-2.5 bg-pink-500/5 border border-pink-500/20 rounded-xl flex items-center justify-between">
+                              <span className="text-[9px] font-bold text-pink-400 uppercase tracking-wider">Active Alchemical Effects</span>
+                              <span className="text-xs font-bold text-white font-mono">{rec.effects}</span>
+                            </div>
+                          </div>
+                        );
+                      })()}
+                    </div>
+
+                    {/* Right Column: Codex List */}
+                    <div className="lg:col-span-4 space-y-4">
+                      <div className="p-4 bg-slate-50 dark:bg-slate-950/40 border border-slate-200 dark:border-white/5 rounded-xl flex flex-col">
+                        <span className="text-[10px] uppercase tracking-wider text-slate-500 font-bold mb-3 block">Codex Library</span>
+                        <div className="space-y-2 max-h-[380px] overflow-y-auto pr-0.5">
+                          {recipes.map((rec) => (
+                            <div 
+                              key={rec.id} 
+                              onClick={() => { haptic(5); setSelectedRecipeId(rec.id); }}
+                              className={`p-3 rounded-lg border transition-all cursor-pointer flex justify-between items-center ${selectedRecipeId === rec.id ? 'bg-purple-950/30 border-purple-500/40 shadow-[0_0_8px_rgba(168,85,247,0.15)]' : 'bg-transparent border-slate-200/50 dark:border-white/5'}`}
+                            >
+                              <div className="flex flex-col text-left max-w-[80%]">
+                                <span className="text-xs font-bold text-slate-700 dark:text-slate-200 truncate">{rec.title}</span>
+                                <span className="text-[8px] text-slate-500 font-mono mt-0.5">{rec.category} • {rec.time}</span>
+                              </div>
+                              <button 
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleDeleteRecipe(rec.id);
+                                }}
+                                className="text-slate-400 hover:text-red-400 p-1 text-xs font-bold transition-colors cursor-pointer"
+                                title="Purge recipe"
+                              >
+                                ×
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {utilityTab === 'calc' && (
+                <div className="flex flex-col md:flex-row gap-6 w-full animate-[fadeIn_0.3s_ease-out]">
               
               {/* Left sidebar info column */}
               <div className="md:w-1/3 space-y-4">
@@ -5289,9 +5845,109 @@ export default function App() {
                       </button>
                     ))}
                   </div>
-
                 </div>
               </div>
+            </div>
+          )}
+
+              {utilityTab === 'timer' && (
+                <div className="space-y-6 animate-[fadeIn_0.3s_ease-out]">
+                  <div className="flex justify-between items-center border-b border-white/5 pb-3">
+                    <span className="text-[10px] text-slate-500 uppercase tracking-widest">Countdown alarms and temporal loops</span>
+                    <div className="text-sm font-black text-pink-400 font-mono tracking-wider">
+                      {currentTime.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-3">
+                      <span className="text-[10px] uppercase tracking-wider text-slate-500 font-bold">Active System Alarms</span>
+                      <div className="space-y-2.5 max-h-[220px] overflow-y-auto pr-0.5">
+                        {alarms.map((alarm) => (
+                          <div key={alarm.id} className="p-3.5 bg-slate-950 border border-white/5 rounded-xl flex items-center justify-between transition-all">
+                            <div className="flex flex-col">
+                              <span className="text-xl font-black text-slate-100 font-mono tracking-wider">{alarm.time}</span>
+                              <span className="text-[9px] text-slate-500 uppercase font-mono mt-0.5">{alarm.label}</span>
+                            </div>
+                            <div className="flex items-center gap-3">
+                              <button
+                                onClick={() => {
+                                  haptic(8);
+                                  setAlarms(prev => prev.map(a => a.id === alarm.id ? { ...a, active: !a.active } : a));
+                                  toast(`Alarm ${alarm.label} ${!alarm.active ? 'activated' : 'disabled'}.`);
+                                }}
+                                className={`px-3 py-1 rounded-lg text-[9px] font-bold font-mono transition-all cursor-pointer ${
+                                  alarm.active 
+                                    ? 'bg-pink-600/10 border border-pink-500/20 text-pink-400' 
+                                    : 'bg-slate-900 border border-slate-700/20 text-slate-500'
+                                }`}
+                              >
+                                {alarm.active ? 'ACTIVE' : 'MUTED'}
+                              </button>
+                              <button
+                                onClick={() => {
+                                  haptic(12);
+                                  setAlarms(prev => prev.filter(a => a.id !== alarm.id));
+                                  toast('System alarm purged.');
+                                }}
+                                className="p-1 text-slate-600 hover:text-rose-400 transition-colors cursor-pointer"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="p-4 bg-slate-950 border border-white/5 rounded-xl space-y-4 self-start">
+                      <div className="border-b border-white/5 pb-2 text-[10px] font-bold text-pink-400 uppercase tracking-widest">Register New Time Trigger</div>
+                      
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="flex flex-col gap-1.5">
+                          <label className="text-[9px] uppercase tracking-wider text-slate-500 font-bold">Trigger Time</label>
+                          <input 
+                            type="time" 
+                            value={newAlarmTime} 
+                            onChange={(e) => setNewAlarmTime(e.target.value)}
+                            className="bg-slate-950 border border-white/10 hover:border-white/20 focus:border-pink-500/50 rounded-lg p-2 text-xs text-slate-100 outline-none font-mono"
+                          />
+                        </div>
+                        <div className="flex flex-col gap-1.5">
+                          <label className="text-[9px] uppercase tracking-wider text-slate-500 font-bold">Label</label>
+                          <input 
+                            type="text" 
+                            placeholder="Alchemical Wakeup"
+                            value={newAlarmLabel} 
+                            onChange={(e) => setNewAlarmLabel(e.target.value)}
+                            className="bg-slate-950 border border-white/10 hover:border-white/20 focus:border-pink-500/50 rounded-lg p-2 text-xs text-slate-100 outline-none"
+                          />
+                        </div>
+                      </div>
+
+                      <button
+                        onClick={() => {
+                          if (!newAlarmTime) return;
+                          haptic(15);
+                          const nextAlarm = {
+                            id: String(Date.now()),
+                            time: newAlarmTime,
+                            label: newAlarmLabel.trim() || 'Temporal sync alert',
+                            active: true
+                          };
+
+                          setAlarms(prev => [...prev, nextAlarm]);
+                          setNewAlarmLabel('');
+                          toast('Alarm trigger configured successfully!');
+                        }}
+                        className="w-full py-2 bg-pink-600 hover:bg-pink-500 text-white rounded-lg text-xs font-bold transition-all cursor-pointer text-center"
+                      >
+                        Configure Time Trigger
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
@@ -5539,223 +6195,347 @@ export default function App() {
             </div>
           )}
 
-          {/* CALENDAR VIEW */}
-          {activeTab === 'calendar' && (
+          {/* SPORTS SCOREBOARD TAB */}
+          {activeTab === 'sports' && (
             <div className="glass-panel rounded-2xl border border-white/[0.04] p-6 text-left space-y-6 animate-[fadeIn_0.4s_ease-out]">
-              <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
+              <div className="flex flex-col xl:flex-row justify-between xl:items-center gap-4 border-b border-slate-200/50 dark:border-white/5 pb-4">
                 <div>
-                  <h2 className="text-sm font-bold text-slate-100 uppercase tracking-widest flex items-center gap-2">
-                    <Calendar className="w-4 h-4 text-amber-400" />
-                    Traveler Calendar Ledger
+                  <h2 className="text-sm font-bold text-slate-800 dark:text-slate-100 uppercase tracking-widest flex items-center gap-2">
+                    <Trophy className="w-4 h-4 text-amber-400" />
+                    SportCast Real-time Scoreboard
                   </h2>
-                  <p className="text-[10px] text-slate-500">Coordinate and schedules campaign checkins</p>
+                  <p className="text-[10px] text-slate-500">Zero-cost live feeds directly from public endpoints</p>
                 </div>
-                <span className="text-xs font-bold text-amber-400 font-mono bg-amber-400/10 px-2.5 py-1 rounded-lg border border-amber-400/20">
-                  {new Date().toLocaleDateString(undefined, { month: 'long', year: 'numeric' })}
-                </span>
+                <div className="flex items-center gap-2.5">
+                  <button 
+                    onClick={() => { haptic(10); loadSportsScores(); }}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-[#7c3aed] hover:bg-[#6d28d9] text-white rounded-lg text-[10px] font-extrabold uppercase tracking-wider transition cursor-pointer"
+                  >
+                    <RefreshCw className="w-3.5 h-3.5" />
+                    Fetch Live
+                  </button>
+                </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-4">
-                  <span className="text-[10px] uppercase tracking-wider text-slate-500 font-bold">Month view (Simulation)</span>
-                  <div className="grid grid-cols-7 gap-2 text-center text-[10px] font-mono">
-                    {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map(d => (
-                      <span key={d} className="text-slate-500 font-bold py-1">{d}</span>
-                    ))}
-                    {Array.from({ length: 30 }).map((_, idx) => {
-                      const dayVal = idx + 1;
-                      const dateStr = `2026-07-${String(dayVal).padStart(2, '0')}`;
-                      const isSelected = calendarSelectedDate === dateStr;
-                      const hasEvents = calEvents[dateStr] && calEvents[dateStr].length > 0;
-                      return (
-                        <button
-                          key={idx}
-                          onClick={() => { haptic(5); setCalendarSelectedDate(dateStr); }}
-                          className={`p-2.5 rounded-lg border font-bold transition-all relative cursor-pointer ${
-                            isSelected ? 'bg-amber-500 text-slate-950 border-amber-500 font-black shadow-md' :
-                            'bg-slate-950 border-white/5 text-slate-300 hover:border-white/20'
-                          }`}
-                        >
-                          <span>{dayVal}</span>
-                          {hasEvents && !isSelected && (
-                            <span className="absolute bottom-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 bg-amber-400 rounded-full"></span>
-                          )}
-                        </button>
-                      );
-                    })}
+              {/* Online warning */}
+              <div className="p-3 bg-indigo-500/5 border border-indigo-500/10 rounded-xl flex items-start gap-2.5">
+                <Globe className="w-4 h-4 text-indigo-400 shrink-0 mt-0.5" />
+                <div>
+                  <h4 className="text-[10.5px] font-bold text-slate-850 dark:text-slate-200 uppercase tracking-wider">Free live feeds connectivity</h4>
+                  <p className="text-[9.5px] text-slate-500 dark:text-slate-400 leading-relaxed mt-0.5">
+                    SportCast directly streams live updates from public API feeds. An active internet connection is required to sync latest results.
+                  </p>
+                </div>
+              </div>
+
+              {/* Category buttons / League filters */}
+              <div className="flex flex-wrap gap-1.5">
+                {Object.entries(SPORTS_LEAGUES).map(([key, league]) => (
+                  <button
+                    key={key}
+                    className={`px-3 py-1.5 rounded-lg text-[10px] font-bold tracking-wider uppercase transition-all border cursor-pointer ${
+                      activeSportsLeague === key 
+                        ? 'bg-[#7c3aed] border-[#7c3aed] text-white shadow-md' 
+                        : 'bg-slate-100 dark:bg-slate-950 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-white/5 hover:bg-slate-200 dark:hover:bg-slate-900'
+                    }`}
+                    onClick={() => { haptic(8); setActiveSportsLeague(key as SportsLeague); }}
+                  >
+                    {league.label.split(' ')[0]}
+                  </button>
+                ))}
+              </div>
+
+              {/* Status/last refreshed */}
+              <div className="flex items-center justify-between text-[9px] text-slate-500 bg-slate-50 dark:bg-slate-950/40 px-3 py-2 rounded-lg border border-slate-200/50 dark:border-white/5 select-none font-mono">
+                <span>{sportsStatus}</span>
+                <span>Updated: {sportsUpdated}</span>
+              </div>
+
+              {/* Sub-tabs: Live & Results vs Upcoming Schedule */}
+              <div className="flex border-b border-slate-200 dark:border-white/5 select-none">
+                <button 
+                  className={`flex-grow py-2 text-center text-[10px] font-bold uppercase tracking-wider transition-all cursor-pointer border-b-2 ${
+                    sportsSubTab === 'scores' 
+                      ? 'text-[#7c3aed] border-[#7c3aed] bg-[#7c3aed]/5' 
+                      : 'text-slate-500 border-transparent hover:text-slate-800 dark:hover:text-slate-200'
+                  }`}
+                  onClick={() => { haptic(5); setSportsSubTab('scores'); }}
+                >
+                  🔴 Live & Results
+                </button>
+                <button 
+                  className={`flex-grow py-2 text-center text-[10px] font-bold uppercase tracking-wider transition-all cursor-pointer border-b-2 ${
+                    sportsSubTab === 'schedule' 
+                      ? 'text-pink-600 border-pink-600 bg-pink-500/5' 
+                      : 'text-slate-500 border-transparent hover:text-slate-800 dark:hover:text-slate-200'
+                  }`}
+                  onClick={() => { haptic(5); setSportsSubTab('schedule'); }}
+                >
+                  📅 Upcoming Schedule
+                </button>
+              </div>
+
+              {/* Grid Layout: Scores vs Pinned & Parlay */}
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 w-full">
+                {/* Left side: Score lists */}
+                <div className="lg:col-span-8 space-y-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                    {(() => {
+                      const filteredGames = sportsGames.filter((event) => {
+                        const competition = event.competitions?.[0];
+                        const state = competition?.status?.type?.state || event.status?.type?.state || '';
+                        if (sportsSubTab === 'schedule') {
+                          return state === 'pre';
+                        } else {
+                          return state !== 'pre';
+                        }
+                      });
+
+                      if (filteredGames.length === 0) {
+                        return (
+                          <div className="col-span-full py-12 text-center text-slate-500 text-[11px] italic border border-dashed border-slate-200 dark:border-white/10 rounded-xl bg-slate-50/50 dark:bg-transparent">
+                            {sportsSubTab === 'schedule' 
+                              ? 'No upcoming games scheduled on this league feed.' 
+                              : 'No live or recently completed games on this league feed.'}
+                          </div>
+                        );
+                      }
+
+                      return filteredGames.map((event) => {
+                        const competition = event.competitions?.[0];
+                        const competitors = (competition?.competitors || [])
+                          .slice()
+                          .sort((a: any) => (a.homeAway === 'away' ? -1 : 1));
+
+                        const statusType = competition?.status?.type || event.status?.type || {};
+                        const state = statusType.state || '';
+                        const detail = statusType.detail || formatSportsDate(event.date);
+
+                        const isFavorite = competitors.some(teamMatchesFavorite);
+
+                        return (
+                          <article
+                            key={event.id}
+                            className={`p-3.5 border rounded-xl flex flex-col justify-between gap-3 transition-all duration-200 ${
+                              isFavorite 
+                                ? 'border-teal-500/60 bg-teal-500/5 shadow-[0_0_12px_rgba(20,184,166,0.1)]' 
+                                : 'border-slate-200/50 dark:border-white/5 bg-slate-50/50 dark:bg-slate-950/20 hover:border-purple-500/40'
+                            }`}
+                          >
+                            <div className="flex justify-between items-center text-[9px] text-slate-500 font-mono uppercase tracking-wider">
+                              <span className="font-bold text-slate-650 dark:text-slate-400">{SPORTS_LEAGUES[activeSportsLeague].label}</span>
+                              <span className={state === 'in' ? 'text-red-500 animate-pulse font-black' : state === 'post' ? 'text-slate-400' : 'text-purple-500'}>
+                                {detail || 'Scheduled'}
+                              </span>
+                            </div>
+
+                            <div className="flex flex-col gap-2">
+                              {competitors.map((competitor: any) => {
+                                const logoUrl = competitor.team?.logo || competitor.team?.logos?.[0]?.href;
+
+                                return (
+                                  <div key={competitor.id} className="flex items-center justify-between">
+                                    <div className="flex items-center gap-2 max-w-[70%]">
+                                      <button
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          haptic(10);
+                                          addToParlaySlip(event, competition, competitor);
+                                        }}
+                                        className={`w-4 h-4 rounded border flex items-center justify-center text-[8px] font-bold transition-all shrink-0 cursor-pointer ${
+                                          isTeamInSlip(competitor.id)
+                                            ? 'bg-purple-600 border-purple-600 text-white'
+                                            : 'bg-black/5 dark:bg-white/5 border-slate-200 dark:border-white/10 text-slate-400 hover:border-purple-500/50'
+                                        }`}
+                                        title={isTeamInSlip(competitor.id) ? "Remove from parlay slip" : "Add to parlay slip"}
+                                      >
+                                        {isTeamInSlip(competitor.id) ? '✓' : '+'}
+                                      </button>
+                                      {logoUrl ? (
+                                        <img className="w-4 h-4 object-contain shrink-0" src={logoUrl} alt="" referrerPolicy="no-referrer" />
+                                      ) : (
+                                        <div className="w-4 h-4 bg-slate-205 dark:bg-[#1a1138] rounded-full flex items-center justify-center text-[8px] font-mono font-bold text-teal-400 shrink-0">
+                                          {competitor.team?.abbreviation || '--'}
+                                        </div>
+                                      )}
+                                      <span className={`text-[11px] font-semibold truncate ${competitor.winner ? 'text-teal-500 font-bold' : 'text-slate-800 dark:text-[#faebd7]'}`}>
+                                        {competitor.team?.shortDisplayName || competitor.team?.displayName || 'Team'}
+                                      </span>
+                                      <span className="text-[8.5px] text-slate-450 font-normal shrink-0">{getRecord(competitor)}</span>
+                                    </div>
+                                    <span className={`text-[11.5px] font-mono font-black ${state === 'in' ? 'text-teal-500' : 'text-slate-800 dark:text-[#faebd7]'}`}>
+                                      {competitor.score || (state === 'pre' ? '-' : '0')}
+                                    </span>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </article>
+                        );
+                      });
+                    })()}
                   </div>
                 </div>
 
-                <div className="space-y-4 flex flex-col justify-between">
-                  <div className="space-y-3">
-                    <div className="flex justify-between items-center border-b border-white/5 pb-2">
-                      <span className="text-[10px] uppercase tracking-wider text-slate-300 font-bold">Schedules for {calendarSelectedDate}</span>
-                      <span className="text-[8px] text-slate-500 font-mono">{(calEvents[calendarSelectedDate] || []).length} events</span>
+                {/* Right side: Pinned favorites and Parlay Slip */}
+                <div className="lg:col-span-4 flex flex-col gap-4">
+                  {/* PINNED FAVORITES WIDGET */}
+                  <div className="p-4 bg-slate-50 dark:bg-slate-950/40 border border-slate-200 dark:border-white/5 rounded-xl space-y-3.5">
+                    <span className="text-[10px] uppercase tracking-wider text-slate-500 font-bold flex items-center gap-1.5">
+                      <Bookmark className="w-3.5 h-3.5 text-teal-400" />
+                      Pinned Favorites
+                    </span>
+                    <p className="text-[10px] text-slate-500 leading-normal">
+                      Keywords of teams to highlight instantly in teal across all scoreboard streams.
+                    </p>
+                    <div className="flex gap-2">
+                      <input 
+                        type="text" 
+                        placeholder="Yankees, Lakers, Arsenal..." 
+                        value={sportsFavoriteInput}
+                        onChange={(e) => setSportsFavoriteInput(e.target.value)}
+                        onKeyDown={(e) => e.key === 'Enter' && addSportsFavorite()}
+                        className="flex-grow bg-slate-105 dark:bg-slate-950 border border-slate-200 dark:border-white/10 rounded-lg px-2.5 py-1.5 text-xs outline-none text-slate-800 dark:text-slate-200 focus:border-teal-500/50"
+                      />
+                      <button 
+                        onClick={addSportsFavorite}
+                        className="px-3 py-1.5 bg-gradient-to-r from-teal-500 to-emerald-600 hover:from-teal-400 hover:to-emerald-500 text-white rounded-lg text-[10px] font-bold uppercase transition"
+                      >
+                        Pin
+                      </button>
                     </div>
 
-                    <div className="space-y-2 max-h-[160px] overflow-y-auto pr-0.5 font-mono">
-                      {(calEvents[calendarSelectedDate] || []).length === 0 ? (
-                        <div className="text-xs text-slate-500 italic py-4">No travelers checked in for this dimensional offset.</div>
+                    <div className="flex flex-wrap gap-1.5">
+                      {sportsFavorites.length === 0 ? (
+                        <div className="text-center py-2 text-[9px] text-slate-500 italic w-full">No pinned keywords yet.</div>
                       ) : (
-                        calEvents[calendarSelectedDate].map((ev, idx) => (
-                          <div key={idx} className="p-3 bg-slate-950 border border-white/5 rounded-lg text-xs text-slate-200 leading-relaxed">
-                            {ev}
-                          </div>
+                        sportsFavorites.map((team, idx) => (
+                          <span key={team} className="inline-flex items-center gap-1.5 border border-teal-500/30 bg-teal-500/5 text-slate-700 dark:text-teal-200 rounded-lg px-2.5 py-1 text-[10px] font-mono">
+                            <span>{team}</span>
+                            <button onClick={() => removeSportsFavorite(idx)} className="text-slate-400 hover:text-red-400 font-bold">×</button>
+                          </span>
                         ))
                       )}
                     </div>
                   </div>
 
-                  <div className="p-4 bg-slate-950 border border-white/5 rounded-xl space-y-3">
-                    <span className="text-[9px] uppercase tracking-wider text-slate-400 font-bold font-mono">Log New Portal Event</span>
-                    <div className="flex gap-2">
-                      <input 
-                        type="text" 
-                        placeholder="e.g. Boss Fight Session [7:00 PM]"
-                        value={calendarEventText}
-                        onChange={(e) => setCalendarEventText(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter' && calendarEventText.trim()) {
-                            const next = { ...calEvents };
-                            if (!next[calendarSelectedDate]) next[calendarSelectedDate] = [];
-                            next[calendarSelectedDate].push(calendarEventText.trim());
-                            store.set('cal_events', next);
-                            setCalEvents(next);
-                            setCalendarEventText('');
-                            toast('Event scheduled!');
-                          }
-                        }}
-                        className="flex-1 bg-slate-950 border border-white/5 rounded-lg px-3 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-amber-500/60"
-                      />
-                      <button 
-                        onClick={() => {
-                          if (!calendarEventText.trim()) return;
-                          const next = { ...calEvents };
-                          if (!next[calendarSelectedDate]) next[calendarSelectedDate] = [];
-                          next[calendarSelectedDate].push(calendarEventText.trim());
-                          store.set('cal_events', next);
-                          setCalEvents(next);
-                          setCalendarEventText('');
-                          toast('Event scheduled!');
-                        }}
-                        className="px-3 bg-amber-500 hover:bg-amber-400 text-slate-950 rounded-lg text-xs font-bold transition-all cursor-pointer"
-                      >
-                        Add
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
+                  {/* PARLAY TRACKER WIDGET */}
+                  <div className="p-4 bg-slate-50 dark:bg-slate-950/40 border border-slate-200 dark:border-white/5 rounded-xl space-y-3.5">
+                    <span className="text-[10px] uppercase tracking-wider text-slate-500 font-bold flex items-center gap-1.5">
+                      <Award className="w-3.5 h-3.5 text-purple-400" />
+                      Parlay Tracker
+                    </span>
 
-          {/* ALARMS VIEW */}
-          {activeTab === 'alarms' && (
-            <div className="glass-panel rounded-2xl border border-white/[0.04] p-6 text-left space-y-6 animate-[fadeIn_0.4s_ease-out]">
-              <div className="flex justify-between items-center border-b border-white/5 pb-3">
-                <div>
-                  <h2 className="text-sm font-bold text-slate-100 uppercase tracking-widest flex items-center gap-2">
-                    <AlarmClock className="w-4 h-4 text-pink-400" />
-                    Temporal Sync Alarms
-                  </h2>
-                  <p className="text-[10px] text-slate-500">Configure time triggers and system clocks</p>
-                </div>
-                <div className="text-sm font-black text-pink-400 font-mono tracking-wider">
-                  {currentTime.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-3">
-                  <span className="text-[10px] uppercase tracking-wider text-slate-500 font-bold">Active System Alarms</span>
-                  <div className="space-y-2.5 max-h-[220px] overflow-y-auto pr-0.5">
-                    {alarms.map((alarm) => (
-                      <div key={alarm.id} className="p-3.5 bg-slate-950 border border-white/5 rounded-xl flex items-center justify-between transition-all">
-                        <div className="flex flex-col">
-                          <span className="text-xl font-black text-slate-100 font-mono tracking-wider">{alarm.time}</span>
-                          <span className="text-[9px] text-slate-500 uppercase font-mono mt-0.5">{alarm.label}</span>
-                        </div>
-                        <div className="flex items-center gap-3">
-                          <button
-                            onClick={() => {
-                              haptic(8);
-                              setAlarms(prev => prev.map(a => a.id === alarm.id ? { ...a, active: !a.active } : a));
-                              toast(`Alarm ${alarm.label} ${!alarm.active ? 'activated' : 'disabled'}.`);
-                            }}
-                            className={`px-3 py-1 rounded-lg text-[9px] font-bold font-mono transition-all cursor-pointer ${
-                              alarm.active 
-                                ? 'bg-pink-600/10 border border-pink-500/20 text-pink-400' 
-                                : 'bg-slate-900 border border-slate-700/20 text-slate-500'
-                            }`}
-                          >
-                            {alarm.active ? 'ACTIVE' : 'MUTED'}
-                          </button>
-                          <button
-                            onClick={() => {
-                              haptic(12);
-                              setAlarms(prev => prev.filter(a => a.id !== alarm.id));
-                              toast('System alarm purged.');
-                            }}
-                            className="p-1 text-slate-600 hover:text-rose-400 transition-colors cursor-pointer"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
+                    {/* Active Slip */}
+                    <div className="space-y-2">
+                      <div className="flex justify-between items-center">
+                        <span className="text-[9px] font-bold text-slate-500 uppercase tracking-wider">Active Slip</span>
+                        {parlaySlip.length > 0 && (
+                          <span className="text-[8px] font-mono bg-purple-500/10 text-purple-650 dark:text-purple-400 px-1.5 py-0.5 rounded border border-purple-500/20">{parlaySlip.length} Picks</span>
+                        )}
                       </div>
-                    ))}
-                  </div>
-                </div>
 
-                <div className="p-4 bg-slate-950 border border-white/5 rounded-xl space-y-4 self-start">
-                  <div className="border-b border-white/5 pb-2 text-[10px] font-bold text-pink-400 uppercase tracking-widest">Register New Time Trigger</div>
-                  
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="flex flex-col gap-1.5">
-                      <label className="text-[9px] uppercase tracking-wider text-slate-500 font-bold">Trigger Time</label>
-                      <input 
-                        type="time" 
-                        value={newAlarmTime} 
-                        onChange={(e) => setNewAlarmTime(e.target.value)}
-                        className="bg-slate-950 border border-white/10 hover:border-white/20 focus:border-pink-500/50 rounded-lg p-2 text-xs text-slate-100 outline-none font-mono"
-                      />
+                      {parlaySlip.length === 0 ? (
+                        <div className="text-center py-5 px-3 border border-dashed border-slate-200 dark:border-white/10 rounded-xl text-[10px] text-slate-400 italic bg-white/20 dark:bg-slate-950/20">
+                          Click the "+" next to teams to build a free simulated parlay slip.
+                        </div>
+                      ) : (
+                        <div className="space-y-1.5">
+                          {parlaySlip.map((leg) => (
+                            <div key={leg.id} className="flex items-center justify-between p-2 rounded-lg bg-white dark:bg-slate-950 border border-slate-200/60 dark:border-white/5 text-xs text-slate-805 dark:text-slate-205">
+                              <div className="flex flex-col text-left max-w-[80%]">
+                                <span className="font-bold truncate">{leg.teamName}</span>
+                                <span className="text-[8px] text-slate-500 truncate">vs {leg.opponentName} ({leg.league.toUpperCase()})</span>
+                              </div>
+                              <button 
+                                onClick={() => setParlaySlip(prev => prev.filter(l => l.id !== leg.id))}
+                                className="text-slate-400 hover:text-red-400 p-1 font-bold text-xs"
+                              >
+                                ×
+                              </button>
+                            </div>
+                          ))}
+
+                          <div className="flex gap-2 pt-1.5">
+                            <button 
+                              onClick={() => { haptic(15); saveParlay(); }}
+                              className="flex-1 py-1.5 bg-purple-600 hover:bg-purple-500 text-white rounded-lg text-[9px] font-bold uppercase transition"
+                            >
+                              Save Parlay
+                            </button>
+                            <button 
+                              onClick={() => { haptic(10); clearParlaySlip(); }}
+                              className="px-2.5 py-1.5 bg-slate-100 dark:bg-slate-900 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-white/10 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-lg text-[9px] font-bold uppercase transition"
+                            >
+                              Clear
+                            </button>
+                          </div>
+                        </div>
+                      )}
                     </div>
-                    <div className="flex flex-col gap-1.5">
-                      <label className="text-[9px] uppercase tracking-wider text-slate-500 font-bold">Alarm Name</label>
-                      <input 
-                        type="text" 
-                        placeholder="DnD session alarm"
-                        value={newAlarmLabel} 
-                        onChange={(e) => setNewAlarmLabel(e.target.value)}
-                        className="bg-slate-950 border border-white/10 hover:border-white/20 focus:border-pink-500/50 rounded-lg p-2 text-xs text-slate-100 outline-none"
-                      />
+
+                    {/* Saved Parlays List */}
+                    <div className="space-y-2 pt-2.5 border-t border-slate-200 dark:border-white/5">
+                      <div className="flex justify-between items-center">
+                        <span className="text-[9px] font-bold text-slate-500 uppercase tracking-wider">Saved Parlays</span>
+                        {sportsParlays.length > 0 && (
+                          <button 
+                            onClick={() => { haptic(10); refreshParlays(); }}
+                            className="text-[8px] text-purple-600 dark:text-purple-400 hover:underline uppercase font-bold"
+                          >
+                            Refresh
+                          </button>
+                        )}
+                      </div>
+
+                      {sportsParlays.length === 0 ? (
+                        <div className="text-center py-4 text-[9px] text-slate-500 italic">No saved slips yet.</div>
+                      ) : (
+                        <div className="space-y-2 max-h-[220px] overflow-y-auto pr-0.5">
+                          {sportsParlays.slice().reverse().map((parlay) => (
+                            <div key={parlay.id} className="p-3 bg-white dark:bg-slate-950 border border-slate-200/80 dark:border-white/5 rounded-xl space-y-2 text-left">
+                              <div className="flex justify-between items-center">
+                                <div className="flex flex-col">
+                                  <span className="text-[8px] text-slate-500 font-mono">{new Date(parlay.savedAt).toLocaleDateString()}</span>
+                                  <span className="text-[10px] font-bold text-slate-800 dark:text-slate-200">{parlay.legs.length} Leg slip</span>
+                                </div>
+                                <div className="flex items-center gap-1.5">
+                                  <span className={`text-[8px] font-bold px-2 py-0.5 rounded-full border uppercase tracking-wider ${
+                                    parlay.status === 'won' ? 'bg-green-500/10 text-green-600 border-green-500/20' :
+                                    parlay.status === 'lost' ? 'bg-red-500/10 text-red-650 border-red-500/20' :
+                                    parlay.status === 'live' ? 'bg-amber-500/10 text-amber-600 border-amber-500/20 animate-pulse' :
+                                    'bg-slate-100 dark:bg-slate-900 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-white/10'
+                                  }`}>
+                                    {parlay.status}
+                                  </span>
+                                  <button onClick={() => deleteParlay(parlay.id)} className="text-slate-400 hover:text-red-400">
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
+                                </div>
+                              </div>
+
+                              <div className="space-y-1 pl-2 border-l-2 border-purple-500/30">
+                                {parlay.legs.map((leg) => {
+                                  const legStatus = leg.status || 'pending';
+                                  return (
+                                    <div key={leg.id} className="flex items-center justify-between text-[10px]">
+                                      <span className="font-bold text-slate-700 dark:text-slate-300 truncate max-w-[70%]">{leg.teamName}</span>
+                                      <span className={`text-[8.5px] font-bold uppercase ${
+                                        legStatus === 'won' ? 'text-green-500' :
+                                        legStatus === 'lost' ? 'text-red-500' :
+                                        legStatus === 'live' ? 'text-amber-500 animate-pulse' :
+                                        'text-slate-400'
+                                      }`}>{legStatus}</span>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   </div>
-
-                  <button
-                    onClick={() => {
-                      haptic(15);
-                      const timeStr = newAlarmTime;
-                      const [h, m] = timeStr.split(':');
-                      const hourNum = parseInt(h);
-                      const ampm = hourNum >= 12 ? 'PM' : 'AM';
-                      const hour12 = hourNum % 12 || 12;
-                      const formattedTime = `${hour12}:${m} ${ampm}`;
-
-                      const nextAlarm = {
-                        id: Date.now(),
-                        time: formattedTime,
-                        label: newAlarmLabel.trim() || 'Custom Trigger',
-                        active: true
-                      };
-
-                      setAlarms(prev => [...prev, nextAlarm]);
-                      setNewAlarmLabel('');
-                      toast('Alarm trigger configured successfully!');
-                    }}
-                    className="w-full py-2 bg-pink-600 hover:bg-pink-500 text-white rounded-lg text-xs font-bold transition-all cursor-pointer text-center"
-                  >
-                    Configure Time Trigger
-                  </button>
                 </div>
               </div>
             </div>

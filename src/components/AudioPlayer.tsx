@@ -44,7 +44,6 @@ export function AudioPlayer({ themeColor }: AudioPlayerProps) {
       const track = TRACKS[currentTrackIndex];
       if (!audioRef.current) {
         audioRef.current = new Audio();
-        audioRef.current.crossOrigin = "anonymous";
       }
       
       audioRef.current.src = track.url;
