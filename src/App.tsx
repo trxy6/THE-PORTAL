@@ -3801,7 +3801,7 @@ export default function App() {
       <canvas id="starfield" />
 
       {/* TOP HEADER */}
-      <header id="main-header" className={`app-header sticky top-0 z-40 backdrop-blur-md border-b px-4 sm:px-6 py-3 flex items-center justify-between transition-all duration-500 ${portalDarkMode ? 'bg-[rgba(6,0,15,0.85)] border-purple-500/15' : 'bg-white/50 border-slate-200/45'}`}>
+      <header id="main-header" className={`app-header sticky top-0 z-50 backdrop-blur-md border-b px-4 sm:px-6 py-3 flex items-center justify-between transition-all duration-500 ${portalDarkMode ? 'bg-[rgba(6,0,15,0.85)] border-purple-500/15' : 'bg-white/50 border-slate-200/45'}`}>
         
         {/* Left: Brand logo, name, & Left Sidebar Toggle */}
         <div className="flex items-center gap-2 sm:gap-3">
@@ -3970,7 +3970,7 @@ export default function App() {
             {/* Dropdown Menu */}
             {showProfileDropdown && (
               <div 
-                className={`absolute right-0 mt-2 w-52 rounded-xl border shadow-xl p-1.5 z-[100] animate-[fadeIn_0.15s_ease-out] text-left ${
+                className={`absolute right-0 mt-2 w-52 rounded-xl border shadow-xl p-1.5 z-[9999] animate-[fadeIn_0.15s_ease-out] text-left ${
                   portalDarkMode 
                     ? 'border-purple-500/20 bg-[#0f0724] text-purple-200' 
                     : 'border-slate-200 bg-white text-slate-700'
