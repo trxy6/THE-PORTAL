@@ -285,27 +285,44 @@ export default function MusicHub({ portalDarkMode, themeColor }: MusicHubProps) 
     }
   };
 
-  // Refresh token using the server-side proxy
+  // Refresh token using client-side PKCE flow directly (completely serverless for GitHub Pages)
   const handleSpotifyTokenRefresh = async () => {
     const refresh = localStorage.getItem("spotify_refresh_token");
     if (!refresh) return;
 
     try {
-      const res = await fetch("/api/auth/spotify/refresh", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ refreshToken: refresh }),
+      const clientId = "6238dcf567664f328bde1570c68f9eae";
+      const payload = new URLSearchParams({
+        client_id: clientId,
+        grant_type: "refresh_token",
+        refresh_token: refresh,
       });
+
+      const res = await fetch("https://accounts.spotify.com/api/token", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+        body: payload.toString(),
+      });
+
       if (res.ok) {
         const data = await res.json();
-        setSpotifyToken(data.accessToken);
-        localStorage.setItem("spotify_access_token", data.accessToken);
-        fetchSpotifyData(data.accessToken);
+        const nextToken = data.access_token;
+        const nextRefresh = data.refresh_token || refresh;
+
+        setSpotifyToken(nextToken);
+        localStorage.setItem("spotify_access_token", nextToken);
+        setSpotifyRefreshToken(nextRefresh);
+        localStorage.setItem("spotify_refresh_token", nextRefresh);
+
+        fetchSpotifyData(nextToken);
       } else {
         handleDisconnectSpotify();
       }
     } catch (e) {
       console.error("Failed to refresh Spotify token:", e);
+      handleDisconnectSpotify();
     }
   };
 
