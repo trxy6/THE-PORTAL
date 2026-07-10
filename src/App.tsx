@@ -4208,7 +4208,14 @@ export default function App() {
               {homeSubTab === 'launch' && (
                 <div className="space-y-6 animate-[fadeIn_0.3s_ease-out]">
                   {/* Top Welcome Banner with Space/Cosmic Nebula background */}
-                  <div className="relative rounded-2xl overflow-hidden border border-white/85 shadow-xl p-6 sm:p-8 bg-gradient-to-r from-[#eef2ff] via-[#f5f3ff] to-[#fdf3f8] min-h-[130px] sm:min-h-[200px] flex flex-col justify-between silver-shimmer">
+                  <div 
+                    className={`relative rounded-2xl overflow-hidden shadow-xl p-6 sm:p-8 min-h-[130px] sm:min-h-[200px] flex flex-col justify-between silver-shimmer transition-all duration-300 ${
+                      portalDarkMode 
+                        ? 'border border-purple-500/20 bg-gradient-to-br from-[#12082b]/80 via-[#0a021c]/90 to-[#1d0a3a]/80' 
+                        : 'border border-white/85 bg-gradient-to-r from-[#eef2ff] via-[#f5f3ff] to-[#fdf3f8]'
+                    }`}
+                    style={portalDarkMode ? { borderColor: 'var(--theme-card-border)', background: 'linear-gradient(135deg, rgba(18, 10, 36, 0.85), rgba(8, 2, 18, 0.95))' } : undefined}
+                  >
                     {/* Flowing Portal Wave aurora ribbon */}
                     <div className="portal-wave" />
                     
@@ -4219,7 +4226,7 @@ export default function App() {
                       
                       {/* Holographic Spinning Interactive Globe SVG */}
                       <div className="absolute right-[-30px] sm:right-[10%] top-1/2 -translate-y-1/2 w-32 h-32 sm:w-56 sm:h-56 opacity-25 sm:opacity-85">
-                        <svg viewBox="0 0 100 100" className="w-full h-full text-indigo-400/80 drop-shadow-[0_0_15px_rgba(99,102,241,0.1)]">
+                        <svg viewBox="0 0 100 100" className="w-full h-full drop-shadow-[0_0_15px_rgba(99,102,241,0.1)]" style={{ color: 'var(--theme-accent-color1)' }}>
                           {/* Outer orbital rings */}
                           <ellipse cx="50" cy="50" rx="45" ry="12" fill="none" stroke="currentColor" strokeWidth="0.25" strokeDasharray="3 3" className="animate-[spin_16s_linear_infinite]" />
                           <ellipse cx="50" cy="50" rx="40" ry="16" fill="none" stroke="rgba(99,102,241,0.2)" strokeWidth="0.15" className="animate-[spin_24s_linear_infinite_reverse]" />
@@ -4235,10 +4242,10 @@ export default function App() {
                           <line x1="26" y1="64" x2="74" y2="64" stroke="rgba(99,102,241,0.3)" strokeWidth="0.15" />
                           
                           {/* Glowing satellite nodes */}
-                          <circle cx="26" cy="36" r="1.5" fill="#4f46e5" className="animate-pulse" />
-                          <circle cx="74" cy="64" r="1.5" fill="#4f46e5" className="animate-pulse" />
-                          <circle cx="50" cy="22" r="1.5" fill="#4f46e5" />
-                          <circle cx="50" cy="78" r="1.5" fill="#6366f1" />
+                          <circle cx="26" cy="36" r="1.5" fill="currentColor" className="animate-pulse" />
+                          <circle cx="74" cy="64" r="1.5" fill="currentColor" className="animate-pulse" />
+                          <circle cx="50" cy="22" r="1.5" fill="currentColor" />
+                          <circle cx="50" cy="78" r="1.5" fill="currentColor" />
                         </svg>
                       </div>
                       
@@ -4251,7 +4258,7 @@ export default function App() {
                       <div className="text-xs font-bold text-amber-600 tracking-wider flex items-center gap-2">
                         Good morning, Trey 👋
                       </div>
-                      <h1 className="text-2xl sm:text-4xl font-extrabold text-slate-950 tracking-tight leading-none mt-1">
+                      <h1 className="text-2xl sm:text-4xl font-extrabold text-slate-950 dark:text-slate-100 tracking-tight leading-none mt-1">
                         Everything you need,<br />all in <span style={{ color: getThemeHex() }}>one</span> place.
                       </h1>
 
@@ -6191,9 +6198,13 @@ export default function App() {
                                 }}
                                 className={`px-3 py-1 rounded-lg text-[9px] font-bold font-mono transition-all cursor-pointer ${
                                   alarm.active 
-                                    ? 'bg-pink-600/10 border border-pink-500/20 text-pink-400' 
+                                    ? 'bg-slate-900/60 border' 
                                     : 'bg-slate-900 border border-slate-700/20 text-slate-500'
                                 }`}
+                                style={alarm.active ? {
+                                  borderColor: 'var(--theme-card-border)',
+                                  color: 'var(--theme-accent-color1)',
+                                } : undefined}
                               >
                                 {alarm.active ? 'ACTIVE' : 'MUTED'}
                               </button>
@@ -8181,14 +8192,17 @@ export default function App() {
               </button>
             </div>
 
-            <div className="glass-panel p-3 rounded-xl border border-pink-500/15 bg-pink-500/5 hover:bg-pink-500/10 hover:border-pink-500/35 transition-all duration-300 space-y-3 group text-left">
+            <div 
+              className="glass-panel p-3 rounded-xl border transition-all duration-300 space-y-3 group text-left bg-white/45 dark:bg-slate-950/20"
+              style={{ borderColor: 'var(--theme-card-border)', boxShadow: '0 4px 12px var(--theme-card-border)' }}
+            >
               {alarms.map(alarm => (
                 <div key={alarm.id} className="flex items-center justify-between py-0.5">
                   <div className="flex items-center gap-2.5">
-                    <AlarmClock className="w-4 h-4 text-pink-500 transition-all duration-300 group-hover:scale-110" style={{ filter: 'drop-shadow(0 0 8px rgba(236,72,153,0.4))' }} />
+                    <AlarmClock className="w-4 h-4 transition-all duration-300 group-hover:scale-110" style={{ color: 'var(--theme-accent-color1)', filter: 'drop-shadow(0 0 8px var(--theme-card-border))' }} />
                     <div className="flex flex-col text-left">
-                      <span className="text-xs font-bold text-slate-700">{alarm.time}</span>
-                      <span className="text-[9px] text-slate-400 font-medium">{alarm.label}</span>
+                      <span className="text-xs font-bold text-slate-700 dark:text-slate-200">{alarm.time}</span>
+                      <span className="text-[9px] text-slate-400 dark:text-slate-500 font-medium">{alarm.label}</span>
                     </div>
                   </div>
 
@@ -8198,7 +8212,8 @@ export default function App() {
                     onClick={() => {
                       setAlarms(prev => prev.map(a => a.id === alarm.id ? { ...a, active: !a.active } : a));
                     }}
-                    className={`w-8 h-4 rounded-full relative p-0.5 transition-colors cursor-pointer ${alarm.active ? 'bg-[#8b5cf6]' : 'bg-slate-100 border border-slate-200'}`}
+                    className="w-8 h-4 rounded-full relative p-0.5 transition-colors cursor-pointer bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-white/10"
+                    style={alarm.active ? { background: 'var(--theme-btn-gradient)' } : undefined}
                   >
                     <div className={`w-3 h-3 rounded-full bg-white transition-all ${alarm.active ? 'translate-x-4' : 'translate-x-0'}`} />
                   </button>
@@ -8219,7 +8234,10 @@ export default function App() {
               </button>
             </div>
 
-            <div className="glass-panel p-3.5 rounded-xl border border-indigo-500/15 bg-indigo-500/5 hover:bg-indigo-500/10 hover:border-indigo-500/35 transition-all duration-300 space-y-3 group text-left">
+            <div 
+              className="glass-panel p-3.5 rounded-xl border transition-all duration-300 space-y-3 group text-left bg-white/45 dark:bg-slate-950/20"
+              style={{ borderColor: 'var(--theme-card-border)', boxShadow: '0 4px 12px var(--theme-card-border)' }}
+            >
               {[
                 { name: 'Neon Drift', category: 'Racing', img: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=128' },
                 { name: 'Void Raiders', category: 'Action', img: 'https://images.unsplash.com/photo-1542751371-adc38448a05e?q=80&w=128' },
