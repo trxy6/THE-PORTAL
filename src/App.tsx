@@ -44,6 +44,34 @@ const SPORTS_LEAGUES = {
 
 type SportsLeague = keyof typeof SPORTS_LEAGUES;
 
+const THEME_PRESET_COLORS = [
+  { name: 'Purple', hex: '#8b5cf6' },
+  { name: 'Blue', hex: '#3b82f6' },
+  { name: 'Red', hex: '#dc2626' },
+  { name: 'Green', hex: '#10b981' },
+  { name: 'Black', hex: '#000000' },
+  { name: 'White', hex: '#ffffff' },
+  { name: 'Pink', hex: '#db2777' },
+  { name: 'Cyan', hex: '#06b6d4' },
+  { name: 'Grey', hex: '#9ca3af' },
+];
+
+const getColorPresetValue = (hexValue: string) => {
+  if (!hexValue) return 'custom';
+  const match = THEME_PRESET_COLORS.find(c => c.hex.toLowerCase() === hexValue.toLowerCase());
+  return match ? match.name.toLowerCase() : 'custom';
+};
+
+const handlePresetColorChange = (value: string, setter: (hex: string) => void, storageKey: string) => {
+  if (value !== 'custom') {
+    const match = THEME_PRESET_COLORS.find(c => c.name.toLowerCase() === value);
+    if (match) {
+      setter(match.hex);
+      localStorage.setItem(storageKey, match.hex);
+    }
+  }
+};
+
 interface ParlayLeg {
   id: string;
   league: SportsLeague;
@@ -7228,33 +7256,57 @@ export default function App() {
                       <div className="grid grid-cols-2 gap-3.5">
                         <div className="flex flex-col text-left gap-1">
                           <label className="text-[9px] font-bold text-slate-505 uppercase">Light Main Color</label>
-                          <div className="flex items-center gap-2">
-                            <input 
-                              type="color" 
-                              value={customColor1Light} 
-                              onChange={(e) => {
-                                setCustomColor1Light(e.target.value);
-                                localStorage.setItem('portal_custom_color1_light', e.target.value);
-                              }}
-                              className="w-8 h-7 rounded border border-slate-200 cursor-pointer bg-transparent"
-                            />
-                            <span className="text-[10px] font-mono text-slate-600 uppercase">{customColor1Light}</span>
-                          </div>
+                          <select
+                            value={getColorPresetValue(customColor1Light)}
+                            onChange={(e) => handlePresetColorChange(e.target.value, setCustomColor1Light, 'portal_custom_color1_light')}
+                            className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-lg p-2 text-xs text-slate-800 dark:text-slate-250 cursor-pointer focus:outline-none"
+                          >
+                            {THEME_PRESET_COLORS.map(c => (
+                              <option key={c.name} value={c.name.toLowerCase()}>{c.name}</option>
+                            ))}
+                            <option value="custom">🎨 Custom Hex Picker</option>
+                          </select>
+                          {getColorPresetValue(customColor1Light) === 'custom' && (
+                            <div className="flex items-center gap-2 mt-1.5">
+                              <input 
+                                type="color" 
+                                value={customColor1Light} 
+                                onChange={(e) => {
+                                  setCustomColor1Light(e.target.value);
+                                  localStorage.setItem('portal_custom_color1_light', e.target.value);
+                                }}
+                                className="w-8 h-7 rounded border border-slate-200 cursor-pointer bg-transparent"
+                              />
+                              <span className="text-[10px] font-mono text-slate-600 uppercase">{customColor1Light}</span>
+                            </div>
+                          )}
                         </div>
                         <div className="flex flex-col text-left gap-1">
                           <label className="text-[9px] font-bold text-slate-505 uppercase">Light Trim Color</label>
-                          <div className="flex items-center gap-2">
-                            <input 
-                              type="color" 
-                              value={customColor2Light} 
-                              onChange={(e) => {
-                                setCustomColor2Light(e.target.value);
-                                localStorage.setItem('portal_custom_color2_light', e.target.value);
-                              }}
-                              className="w-8 h-7 rounded border border-slate-200 cursor-pointer bg-transparent"
-                            />
-                            <span className="text-[10px] font-mono text-slate-600 uppercase">{customColor2Light}</span>
-                          </div>
+                          <select
+                            value={getColorPresetValue(customColor2Light)}
+                            onChange={(e) => handlePresetColorChange(e.target.value, setCustomColor2Light, 'portal_custom_color2_light')}
+                            className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-lg p-2 text-xs text-slate-800 dark:text-slate-250 cursor-pointer focus:outline-none"
+                          >
+                            {THEME_PRESET_COLORS.map(c => (
+                              <option key={c.name} value={c.name.toLowerCase()}>{c.name}</option>
+                            ))}
+                            <option value="custom">🎨 Custom Hex Picker</option>
+                          </select>
+                          {getColorPresetValue(customColor2Light) === 'custom' && (
+                            <div className="flex items-center gap-2 mt-1.5">
+                              <input 
+                                type="color" 
+                                value={customColor2Light} 
+                                onChange={(e) => {
+                                  setCustomColor2Light(e.target.value);
+                                  localStorage.setItem('portal_custom_color2_light', e.target.value);
+                                }}
+                                className="w-8 h-7 rounded border border-slate-200 cursor-pointer bg-transparent"
+                              />
+                              <span className="text-[10px] font-mono text-slate-600 uppercase">{customColor2Light}</span>
+                            </div>
+                          )}
                         </div>
                       </div>
 
@@ -7304,33 +7356,57 @@ export default function App() {
                       <div className="grid grid-cols-2 gap-3.5">
                         <div className="flex flex-col text-left gap-1">
                           <label className="text-[9px] font-bold text-slate-400 uppercase">Dark Main Color</label>
-                          <div className="flex items-center gap-2">
-                            <input 
-                              type="color" 
-                              value={customColor1Dark} 
-                              onChange={(e) => {
-                                setCustomColor1Dark(e.target.value);
-                                localStorage.setItem('portal_custom_color1_dark', e.target.value);
-                              }}
-                              className="w-8 h-7 rounded border border-white/10 bg-transparent cursor-pointer"
-                            />
-                            <span className="text-[10px] font-mono text-slate-350 uppercase">{customColor1Dark}</span>
-                          </div>
+                          <select
+                            value={getColorPresetValue(customColor1Dark)}
+                            onChange={(e) => handlePresetColorChange(e.target.value, setCustomColor1Dark, 'portal_custom_color1_dark')}
+                            className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-lg p-2 text-xs text-slate-800 dark:text-slate-250 cursor-pointer focus:outline-none"
+                          >
+                            {THEME_PRESET_COLORS.map(c => (
+                              <option key={c.name} value={c.name.toLowerCase()}>{c.name}</option>
+                            ))}
+                            <option value="custom">🎨 Custom Hex Picker</option>
+                          </select>
+                          {getColorPresetValue(customColor1Dark) === 'custom' && (
+                            <div className="flex items-center gap-2 mt-1.5">
+                              <input 
+                                type="color" 
+                                value={customColor1Dark} 
+                                onChange={(e) => {
+                                  setCustomColor1Dark(e.target.value);
+                                  localStorage.setItem('portal_custom_color1_dark', e.target.value);
+                                }}
+                                className="w-8 h-7 rounded border border-white/10 bg-transparent cursor-pointer"
+                              />
+                              <span className="text-[10px] font-mono text-slate-350 uppercase">{customColor1Dark}</span>
+                            </div>
+                          )}
                         </div>
                         <div className="flex flex-col text-left gap-1">
                           <label className="text-[9px] font-bold text-slate-400 uppercase">Dark Trim Color</label>
-                          <div className="flex items-center gap-2">
-                            <input 
-                              type="color" 
-                              value={customColor2Dark} 
-                              onChange={(e) => {
-                                setCustomColor2Dark(e.target.value);
-                                localStorage.setItem('portal_custom_color2_dark', e.target.value);
-                              }}
-                              className="w-8 h-7 rounded border border-white/10 bg-transparent cursor-pointer"
-                            />
-                            <span className="text-[10px] font-mono text-slate-350 uppercase">{customColor2Dark}</span>
-                          </div>
+                          <select
+                            value={getColorPresetValue(customColor2Dark)}
+                            onChange={(e) => handlePresetColorChange(e.target.value, setCustomColor2Dark, 'portal_custom_color2_dark')}
+                            className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-lg p-2 text-xs text-slate-800 dark:text-slate-250 cursor-pointer focus:outline-none"
+                          >
+                            {THEME_PRESET_COLORS.map(c => (
+                              <option key={c.name} value={c.name.toLowerCase()}>{c.name}</option>
+                            ))}
+                            <option value="custom">🎨 Custom Hex Picker</option>
+                          </select>
+                          {getColorPresetValue(customColor2Dark) === 'custom' && (
+                            <div className="flex items-center gap-2 mt-1.5">
+                              <input 
+                                type="color" 
+                                value={customColor2Dark} 
+                                onChange={(e) => {
+                                  setCustomColor2Dark(e.target.value);
+                                  localStorage.setItem('portal_custom_color2_dark', e.target.value);
+                                }}
+                                className="w-8 h-7 rounded border border-white/10 bg-transparent cursor-pointer"
+                              />
+                              <span className="text-[10px] font-mono text-slate-350 uppercase">{customColor2Dark}</span>
+                            </div>
+                          )}
                         </div>
                       </div>
 
