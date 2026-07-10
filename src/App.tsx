@@ -534,6 +534,47 @@ export default function App() {
   const [signupPin, setSignupPin] = useState('');
   const [authError, setAuthError] = useState('');
 
+  // Customizable Profile states
+  const [userAvatar, setUserAvatar] = useState<string>(() => {
+    return localStorage.getItem('portal_user_avatar') || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=128&auto=format&fit=crop";
+  });
+  const [userStatus, setUserStatus] = useState<'online' | 'idle' | 'dnd' | 'offline'>(() => {
+    return (localStorage.getItem('portal_user_status') as any) || 'online';
+  });
+  const [userStatusMsg, setUserStatusMsg] = useState<string>(() => {
+    return localStorage.getItem('portal_user_status_msg') || 'Exploring the rift...';
+  });
+  const [showProfileDropdown, setShowProfileDropdown] = useState(false);
+  const [showProfileModal, setShowProfileModal] = useState(false);
+
+  // Temporary states for edits inside the modal
+  const [tempDisplayName, setTempDisplayName] = useState(currentUser || '');
+  const [tempAvatar, setTempAvatar] = useState(userAvatar);
+  const [tempStatus, setTempStatus] = useState(userStatus);
+  const [tempStatusMsg, setTempStatusMsg] = useState(userStatusMsg);
+
+  useEffect(() => {
+    if (showProfileModal) {
+      setTempDisplayName(currentUser || '');
+      setTempAvatar(userAvatar);
+      setTempStatus(userStatus);
+      setTempStatusMsg(userStatusMsg);
+    }
+  }, [showProfileModal, currentUser, userAvatar, userStatus, userStatusMsg]);
+
+  const profileMenuRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (profileMenuRef.current && !profileMenuRef.current.contains(event.target as Node)) {
+        setShowProfileDropdown(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+
   // --- Theme Mode (Dark Purple / White) ---
   const [portalDarkMode, setPortalDarkMode] = useState<boolean>(() => localStorage.getItem('portal_dark_mode') === 'true');
   const togglePortalDarkMode = () => {
@@ -3904,22 +3945,85 @@ export default function App() {
           </button>
 
           {/* User profile capsule */}
-          <button 
-            onClick={() => { haptic(5); setActiveTab('settings'); }}
-            className={`flex items-center gap-2 pl-2 border-l transition-all duration-300 hover:scale-105 active:scale-98 cursor-pointer outline-none ${portalDarkMode ? 'border-purple-500/20' : 'border-slate-200'}`}
-            title="Open Settings & Account"
-          >
-            <div className="relative">
-              <img 
-                src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=128&auto=format&fit=crop" 
-                alt="Trey User Avatar" 
-                className={`w-6 h-6 sm:w-7 sm:h-7 rounded-full border object-cover transition-all ${portalDarkMode ? 'border-purple-500/40 ring-1 ring-purple-500/20' : 'border-slate-200'}`}
-              />
-              <div className={`absolute bottom-0 right-0 w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-emerald-500 ring-2 ${portalDarkMode ? 'ring-[#0a021c]' : 'ring-white'}`} />
-            </div>
-            <span className={`text-xs font-semibold hidden lg:inline ${portalDarkMode ? 'text-purple-200' : 'text-slate-700'}`}>{currentUser || 'Traveler'}</span>
-            <ChevronDown className={`w-3.5 h-3.5 hidden lg:block ${portalDarkMode ? 'text-purple-400' : 'text-slate-500'}`} />
-          </button>
+          <div ref={profileMenuRef} className="relative">
+            <button 
+              onClick={() => { haptic(5); setShowProfileDropdown(!showProfileDropdown); }}
+              className={`flex items-center gap-2 pl-2 border-l transition-all duration-300 hover:scale-105 active:scale-98 cursor-pointer outline-none ${portalDarkMode ? 'border-purple-500/20' : 'border-slate-200'}`}
+              title="User Account Menu"
+            >
+              <div className="relative">
+                <img 
+                  src={userAvatar} 
+                  alt="User Avatar" 
+                  className={`w-6 h-6 sm:w-7 sm:h-7 rounded-full border object-cover transition-all ${portalDarkMode ? 'border-purple-500/40 ring-1 ring-purple-500/20' : 'border-slate-200'}`}
+                />
+                <div className={`absolute bottom-0 right-0 w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full ring-2 ${portalDarkMode ? 'ring-[#0a021c]' : 'ring-white'} ${
+                  userStatus === 'online' ? 'bg-emerald-500' :
+                  userStatus === 'idle' ? 'bg-amber-500' :
+                  userStatus === 'dnd' ? 'bg-rose-500' : 'bg-slate-400'
+                }`} />
+              </div>
+              <span className={`text-xs font-semibold hidden lg:inline ${portalDarkMode ? 'text-purple-200' : 'text-slate-700'}`}>{currentUser || 'Traveler'}</span>
+              <ChevronDown className={`w-3.5 h-3.5 hidden lg:block ${portalDarkMode ? 'text-purple-400' : 'text-slate-500'}`} />
+            </button>
+
+            {/* Dropdown Menu */}
+            {showProfileDropdown && (
+              <div 
+                className={`absolute right-0 mt-2 w-52 rounded-xl border shadow-xl p-1.5 z-[100] animate-[fadeIn_0.15s_ease-out] text-left ${
+                  portalDarkMode 
+                    ? 'border-purple-500/20 bg-[#0f0724] text-purple-200' 
+                    : 'border-slate-200 bg-white text-slate-700'
+                }`}
+              >
+                <div className="p-2 border-b border-slate-100 dark:border-white/5 flex items-center gap-2">
+                  <img src={userAvatar} className="w-8 h-8 rounded-full object-cover border border-slate-200/50" />
+                  <div className="flex flex-col min-w-0">
+                    <span className="text-[11px] font-bold truncate">{currentUser || 'Traveler'}</span>
+                    <span className="text-[8px] text-slate-400 truncate flex items-center gap-1">
+                      <span className={`w-1.5 h-1.5 rounded-full ${
+                        userStatus === 'online' ? 'bg-emerald-500' :
+                        userStatus === 'idle' ? 'bg-amber-500' :
+                        userStatus === 'dnd' ? 'bg-rose-500' : 'bg-slate-400'
+                      }`} />
+                      {userStatus.toUpperCase()} - {userStatusMsg}
+                    </span>
+                  </div>
+                </div>
+                <button
+                  onClick={() => {
+                    haptic(10);
+                    setShowProfileDropdown(false);
+                    setShowProfileModal(true);
+                  }}
+                  className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-[10.5px] font-bold hover:bg-purple-500/10 hover:text-purple-400 dark:hover:text-purple-300 transition-all cursor-pointer text-left border-none bg-transparent"
+                >
+                  👤 Edit Profile
+                </button>
+                <button
+                  onClick={() => {
+                    haptic(10);
+                    setShowProfileDropdown(false);
+                    setActiveTab('settings');
+                  }}
+                  className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-[10.5px] font-bold hover:bg-purple-500/10 hover:text-purple-400 dark:hover:text-purple-300 transition-all cursor-pointer text-left border-none bg-transparent"
+                >
+                  ⚙️ Portal Settings
+                </button>
+                <button
+                  onClick={() => {
+                    haptic(10);
+                    setShowProfileDropdown(false);
+                    localStorage.removeItem('portal_current_user');
+                    window.location.reload();
+                  }}
+                  className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-[10.5px] font-bold text-rose-500 hover:bg-rose-500/10 transition-all cursor-pointer text-left border-none bg-transparent"
+                >
+                  🚪 Lock & Log Out
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </header>
 
@@ -8553,6 +8657,164 @@ export default function App() {
                   </button>
                 )}
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* PROFILE CUSTOMIZATION MODAL */}
+      {showProfileModal && (
+        <div 
+          className="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-50 flex items-center justify-center p-4 animate-[fadeIn_0.2s_ease-out]"
+        >
+          <div 
+            className={`w-full max-w-md rounded-2xl border p-6 shadow-2xl flex flex-col gap-5 text-left animate-[scaleIn_0.2s_ease-out] ${
+              portalDarkMode 
+                ? 'border-purple-500/20 bg-[#12082b]/95 text-purple-200' 
+                : 'border-slate-200 bg-white text-slate-700'
+            }`}
+          >
+            <div className="flex justify-between items-center pb-2 border-b border-slate-100 dark:border-white/5">
+              <h3 className="text-sm font-bold tracking-wider uppercase flex items-center gap-1.5">
+                👤 Rift Traveler Profile
+              </h3>
+              <button 
+                onClick={() => { haptic(5); setShowProfileModal(false); }}
+                className="p-1 rounded-full hover:bg-slate-200 dark:hover:bg-white/10 transition cursor-pointer text-slate-400 hover:text-slate-600 dark:hover:text-white"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Profile Picture / Avatar Edit Section */}
+            <div className="flex flex-col items-center gap-3">
+              <div className="relative group">
+                <img 
+                  src={tempAvatar} 
+                  alt="Temp Avatar Preview" 
+                  className={`w-20 h-20 rounded-full border-2 object-cover transition-all duration-300 ${
+                    portalDarkMode ? 'border-purple-500 ring-4 ring-purple-500/20' : 'border-slate-300 ring-4 ring-slate-100'
+                  }`}
+                />
+                <button
+                  onClick={() => document.getElementById('temp-avatar-picker')?.click()}
+                  className="absolute inset-0 bg-black/55 rounded-full opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center text-white text-[9px] font-bold cursor-pointer"
+                >
+                  <Plus className="w-5 h-5 mb-0.5" />
+                  Upload custom
+                </button>
+                <input 
+                  type="file" 
+                  id="temp-avatar-picker" 
+                  className="hidden" 
+                  accept="image/*"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      const reader = new FileReader();
+                      reader.onload = (event) => {
+                        if (event.target?.result) {
+                          setTempAvatar(event.target.result as string);
+                        }
+                      };
+                      reader.readAsDataURL(file);
+                    }
+                  }}
+                />
+              </div>
+              <span className="text-[10px] text-slate-400 dark:text-slate-400 font-medium">Hover avatar to upload, or select a preset below:</span>
+              
+              {/* Preset avatars selection list */}
+              <div className="flex gap-2">
+                {[
+                  { name: 'cyber', url: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=128&auto=format&fit=crop' },
+                  { name: 'tech', url: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=128&auto=format&fit=crop' },
+                  { name: 'synth', url: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=128&auto=format&fit=crop' },
+                  { name: 'nebula', url: 'https://images.unsplash.com/photo-1462331940025-496dfbfc7564?q=80&w=128&auto=format&fit=crop' }
+                ].map((av, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => { haptic(5); setTempAvatar(av.url); }}
+                    className={`w-9 h-9 rounded-full overflow-hidden border-2 cursor-pointer transition-all hover:scale-105 ${
+                      tempAvatar === av.url ? 'border-[#8b5cf6] scale-110 shadow-md' : 'border-transparent opacity-65 hover:opacity-100'
+                    }`}
+                  >
+                    <img src={av.url} className="w-full h-full object-cover" />
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Profile fields */}
+            <div className="space-y-4">
+              <div className="flex flex-col text-left gap-1">
+                <label className="text-[10px] font-bold text-slate-550 dark:text-slate-400 uppercase tracking-wider">Display Name</label>
+                <input 
+                  type="text" 
+                  value={tempDisplayName} 
+                  onChange={(e) => setTempDisplayName(e.target.value)}
+                  placeholder="e.g. trxy6"
+                  className="w-full bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl px-3 py-2 text-xs font-semibold focus:outline-none focus:border-[#8b5cf6] dark:text-white"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3.5">
+                <div className="flex flex-col text-left gap-1">
+                  <label className="text-[10px] font-bold text-slate-550 dark:text-slate-400 uppercase tracking-wider">Status Mode</label>
+                  <select 
+                    value={tempStatus} 
+                    onChange={(e) => setTempStatus(e.target.value as any)}
+                    className="w-full bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl p-2 text-xs font-semibold focus:outline-none focus:border-[#8b5cf6] dark:text-white cursor-pointer"
+                  >
+                    <option value="online">🟢 Online</option>
+                    <option value="idle">🟡 Idle</option>
+                    <option value="dnd">🔴 Do Not Disturb</option>
+                    <option value="offline">🌑 Offline</option>
+                  </select>
+                </div>
+
+                <div className="flex flex-col text-left gap-1">
+                  <label className="text-[10px] font-bold text-slate-550 dark:text-slate-400 uppercase tracking-wider">Status Message</label>
+                  <input 
+                    type="text" 
+                    value={tempStatusMsg} 
+                    onChange={(e) => setTempStatusMsg(e.target.value)}
+                    placeholder="Exploring the rift..."
+                    className="w-full bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl px-3 py-2 text-xs font-semibold focus:outline-none focus:border-[#8b5cf6] dark:text-white"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Modal buttons */}
+            <div className="flex justify-end gap-2 pt-3 border-t border-slate-100 dark:border-white/5">
+              <button 
+                onClick={() => { haptic(5); setShowProfileModal(false); }}
+                className="px-4 py-2 rounded-xl text-xs font-bold text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-white/5 transition cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={() => {
+                  haptic(15);
+                  if (tempDisplayName.trim()) {
+                    setCurrentUser(tempDisplayName.trim());
+                    localStorage.setItem('portal_current_user', tempDisplayName.trim());
+                  }
+                  setUserAvatar(tempAvatar);
+                  localStorage.setItem('portal_user_avatar', tempAvatar);
+                  setUserStatus(tempStatus);
+                  localStorage.setItem('portal_user_status', tempStatus);
+                  setUserStatusMsg(tempStatusMsg);
+                  localStorage.setItem('portal_user_status_msg', tempStatusMsg);
+                  
+                  setShowProfileModal(false);
+                  toast("Rift Traveler profile synchronized!", "success");
+                }}
+                className="px-4 py-2 rounded-xl text-xs font-bold text-white transition-all cursor-pointer hover:shadow-lg active:scale-95 animate-pulse-once"
+                style={{ background: 'var(--theme-btn-gradient)' }}
+              >
+                Save Profile
+              </button>
             </div>
           </div>
         </div>
