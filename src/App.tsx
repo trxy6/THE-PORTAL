@@ -3208,7 +3208,7 @@ export default function App() {
   }
 
   return (
-    <div className={`min-h-screen font-sans flex flex-col relative overflow-hidden selection:bg-indigo-500/20 app-root ${portalDarkMode ? 'portal-dark' : 'bg-[#edf0f8] text-slate-800'}`}>
+    <div className={`h-screen font-sans flex flex-col relative overflow-hidden selection:bg-indigo-500/20 app-root ${portalDarkMode ? 'portal-dark' : 'bg-[#edf0f8] text-slate-800'}`}>
       
       {/* Background Portal Looping Custom Video */}
       {bgVideoUrl && (
