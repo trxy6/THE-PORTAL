@@ -741,5 +741,153 @@ body {
   background-color: rgba(168, 85, 247, 0.12) !important;
 }
 
+/* ==========================================
+   Lumina Music Hub - White Mode (Light) Styling
+   ========================================== */
+.app-root:not(.portal-dark) #music-hub-container {
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 50%, #e2e8f0 100%) !important;
+  color: #1e293b !important;
+}
+
+/* Sidebar override */
+.app-root:not(.portal-dark) #music-hub-container aside,
+.app-root:not(.portal-dark) #music-hub-container .bg-gradient-to-b {
+  background: #f1f5f9 !important;
+  color: #334155 !important;
+  border-right: 1px solid rgba(139, 92, 246, 0.15) !important;
+}
+
+/* Sidebar headers / links section */
+.app-root:not(.portal-dark) #music-hub-container .bg-\[\#0e061c\]\/20 {
+  background-color: rgba(139, 92, 246, 0.05) !important;
+}
+.app-root:not(.portal-dark) #music-hub-container .border-white\/5 {
+  border-color: rgba(139, 92, 246, 0.1) !important;
+}
+
+/* Dashboard root overrides */
+.app-root:not(.portal-dark) #player-dashboard-root {
+  background: #ffffff !important;
+  color: #0f172a !important;
+}
+
+/* Card components in Dashboard */
+.app-root:not(.portal-dark) #player-dashboard-root .bg-\[\#080808\]\/40,
+.app-root:not(.portal-dark) #player-dashboard-root .bg-\[\#080808\]\/60,
+.app-root:not(.portal-dark) #player-dashboard-root .bg-\[\#080808\]\/80,
+.app-root:not(.portal-dark) #player-dashboard-root .bg-\[\#080808\],
+.app-root:not(.portal-dark) #player-dashboard-root .bg-zinc-950,
+.app-root:not(.portal-dark) #player-dashboard-root .bg-zinc-900,
+.app-root:not(.portal-dark) #player-dashboard-root .bg-black\/45,
+.app-root:not(.portal-dark) #player-dashboard-root .bg-black\/40,
+.app-root:not(.portal-dark) #player-dashboard-root .bg-white\/5,
+.app-root:not(.portal-dark) #player-dashboard-root .bg-gradient-to-br {
+  background: #f8fafc !important;
+  border-color: rgba(139, 92, 246, 0.12) !important;
+  color: #1e293b !important;
+}
+
+/* Playlists and Track list hover highlights */
+.app-root:not(.portal-dark) #player-dashboard-root .hover\:bg-white\/5:hover,
+.app-root:not(.portal-dark) #player-dashboard-root .group:hover {
+  background-color: rgba(139, 92, 246, 0.04) !important;
+}
+
+.app-root:not(.portal-dark) #player-dashboard-root .bg-\[\#8b5cf6\]\/10 {
+  background-color: rgba(139, 92, 246, 0.1) !important;
+}
+
+/* Inputs in sidebar & dashboard */
+.app-root:not(.portal-dark) #music-hub-container input {
+  background-color: #ffffff !important;
+  border-color: rgba(139, 92, 246, 0.2) !important;
+  color: #0f172a !important;
+}
+.app-root:not(.portal-dark) #music-hub-container input::placeholder {
+  color: #94a3b8 !important;
+}
+
+/* Dropdown menus */
+.app-root:not(.portal-dark) #music-hub-container .absolute.right-0.bg-\[\#080808\] {
+  background-color: #ffffff !important;
+  border-color: rgba(139, 92, 246, 0.15) !important;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1) !important;
+}
+.app-root:not(.portal-dark) #music-hub-container .absolute.right-0.bg-\[\#080808\] button {
+  color: #334155 !important;
+}
+.app-root:not(.portal-dark) #music-hub-container .absolute.right-0.bg-\[\#080808\] button:hover {
+  background-color: rgba(139, 92, 246, 0.05) !important;
+}
+
+/* Text overrides */
+.app-root:not(.portal-dark) #music-hub-container .text-\[\#e0dcd0\] {
+  color: #1e293b !important;
+}
+.app-root:not(.portal-dark) #music-hub-container .text-zinc-300 {
+  color: #334155 !important;
+}
+.app-root:not(.portal-dark) #music-hub-container .text-zinc-400 {
+  color: #475569 !important;
+}
+.app-root:not(.portal-dark) #music-hub-container .text-zinc-500 {
+  color: #64748b !important;
+}
+
+/* Lyrics & Queue right side panel */
+.app-root:not(.portal-dark) #music-hub-container .bg-black\/30 {
+  background: #f1f5f9 !important;
+  border-left: 1px solid rgba(139, 92, 246, 0.15) !important;
+}
+
+/* ==========================================
+   Bottom Rail / Status Bar - Light Mode Overrides
+   ========================================== */
+.app-root:not(.portal-dark) #bottom-status-rail {
+  background-color: #ffffff !important;
+  border-color: rgba(139, 92, 246, 0.15) !important;
+}
+.app-root:not(.portal-dark) #bottom-status-rail .bg-slate-950 {
+  background-color: #f1f5f9 !important;
+  border-color: rgba(139, 92, 246, 0.1) !important;
+  color: #334155 !important;
+}
+.app-root:not(.portal-dark) #bottom-status-rail .text-white {
+  color: #0f172a !important;
+}
+.app-root:not(.portal-dark) #bottom-status-rail .border-white\/10 {
+  border-color: rgba(139, 92, 246, 0.15) !important;
+}
+
+/* Audio player component inside bottom status rail */
+.app-root:not(.portal-dark) #bottom-status-rail #portal-radio {
+  color: #1e293b !important;
+}
+.app-root:not(.portal-dark) #bottom-status-rail #portal-radio .text-slate-100 {
+  color: #0f172a !important;
+}
+.app-root:not(.portal-dark) #bottom-status-rail #portal-radio .bg-slate-900,
+.app-root:not(.portal-dark) #bottom-status-rail #portal-radio .bg-slate-950 {
+  background-color: #f1f5f9 !important;
+  border-color: rgba(139, 92, 246, 0.15) !important;
+}
+.app-root:not(.portal-dark) #bottom-status-rail #portal-radio .text-slate-450,
+.app-root:not(.portal-dark) #bottom-status-rail #portal-radio .text-slate-400,
+.app-root:not(.portal-dark) #bottom-status-rail #portal-radio .text-slate-500 {
+  color: #475569 !important;
+}
+.app-root:not(.portal-dark) #bottom-status-rail #portal-radio button {
+  color: #334155 !important;
+}
+.app-root:not(.portal-dark) #bottom-status-rail #portal-radio button:hover {
+  color: #7c3aed !important;
+}
+.app-root:not(.portal-dark) #bottom-status-rail #portal-radio .border-slate-800 {
+  border-color: rgba(139, 92, 246, 0.15) !important;
+}
+.app-root:not(.portal-dark) #bottom-status-rail #portal-radio .bg-slate-950\/10 {
+  background-color: rgba(139, 92, 246, 0.05) !important;
+}
+
 
 
