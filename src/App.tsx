@@ -8,7 +8,7 @@ import {
   Download, Sparkle, Server, Shield, Brain, Cpu, Database, 
   Battery, AlertCircle, RefreshCw, Send, CheckCircle2, X, Fingerprint,
   PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen, Dices, Trophy, Trash, CalendarRange,
-  ArrowLeft, ArrowRight, Bot, Lock, Volume2, VolumeX, Link, Copy, Eye, Music
+  ArrowLeft, ArrowRight, Bot, Lock, Volume2, VolumeX, Link, Copy, Eye, Music, ExternalLink
 } from 'lucide-react';
 import { AudioPlayer, TRACKS } from './components/AudioPlayer';
 import { NeonDriftGame } from './components/NeonDriftGame';
@@ -523,8 +523,13 @@ export default function App() {
   // --- Sub-Tab & View Custom Interface States ---
   const [utilityTab, setUtilityTab] = useState<'dice' | 'sheet'>('dice');
   const [browserUrl, setBrowserUrl] = useState('https://treydog-ramirez.github.io/dnd-portal/');
-  const [browserHistory, setBrowserHistory] = useState<string[]>([]);
+  const [browserInput, setBrowserInput] = useState('https://treydog-ramirez.github.io/dnd-portal/');
+  const [browserHistory, setBrowserHistory] = useState<string[]>(['https://treydog-ramirez.github.io/dnd-portal/']);
   const [browserLoading, setBrowserLoading] = useState(false);
+
+  useEffect(() => {
+    setBrowserInput(browserUrl);
+  }, [browserUrl]);
   const [codeSnippet, setCodeSnippet] = useState('// Quantum Mainframe Boot sequence\nfunction boot() {\n  console.log("Calibrating star dust...");\n  return "ONLINE";\n}\nboot();');
   const [codeConsole, setCodeConsole] = useState<string[]>(['>>> Mainframe terminal ready. Input scripts to execute matrix calculations.']);
   const [calendarSelectedDate, setCalendarSelectedDate] = useState<string>(() => new Date().toISOString().split('T')[0]);
@@ -5289,59 +5294,156 @@ export default function App() {
 
           {/* BROWSER VIEW (ENCRYPTED SANDBOX) */}
           {activeTab === 'browser' && (
-            <div className="glass-panel rounded-2xl border border-white/[0.04] p-6 text-left space-y-6 animate-[fadeIn_0.4s_ease-out]">
-              <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
-                <div>
-                  <h2 className="text-sm font-bold text-slate-800 uppercase tracking-widest flex items-center gap-2">
-                    <Globe className="w-4 h-4 text-cyan-400" />
-                    Encrypted Network Web Sandbox
-                  </h2>
-                  <p className="text-[10px] text-slate-500">Secure isolated volume for public research queries</p>
+            <div className="glass-panel rounded-2xl border border-purple-500/15 bg-[#070312]/80 backdrop-blur-xl p-4 flex flex-col h-[calc(100vh-9rem)] text-left relative overflow-hidden group shadow-2xl shadow-purple-950/20 animate-[fadeIn_0.4s_ease-out]">
+              {/* Top Banner and Navigation Bar */}
+              <div className="flex flex-col gap-3 pb-3 border-b border-purple-500/10 shrink-0">
+                <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-2">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-2.5 h-2.5 rounded-full bg-[#8b5cf6] animate-pulse" />
+                    <div>
+                      <h2 className="text-xs font-bold text-purple-200 uppercase tracking-widest flex items-center gap-2 font-mono">
+                        <Globe className="w-4 h-4 text-[#8b5cf6] animate-[spin_10s_linear_infinite]" />
+                        Aether Net Sandboxed Web Browser
+                      </h2>
+                      <p className="text-[9px] text-slate-500">Secure isolated volume for public research queries</p>
+                    </div>
+                  </div>
+                  
+                  {/* Status Indicator */}
+                  <div className="flex items-center gap-1.5 self-start sm:self-auto bg-purple-950/40 px-2.5 py-1 rounded-lg border border-purple-500/20 font-mono text-[9px] text-purple-400">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                    <span>SECURE PROXY ACTIVE</span>
+                  </div>
                 </div>
-                <div className="flex items-center gap-1.5 bg-slate-100 p-1.5 rounded-lg border border-slate-200/50 font-mono text-[9px] text-slate-500">
-                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                  <span>TUNNEL ACTIVE</span>
+
+                {/* Browser Controls */}
+                <div className="flex items-center gap-2 bg-[#0e061c]/60 p-1.5 rounded-xl border border-purple-500/10">
+                  <div className="flex gap-1">
+                    <button 
+                      onClick={() => {
+                        haptic(5);
+                        if (browserHistory.length > 1) {
+                          const nextHistory = [...browserHistory];
+                          nextHistory.pop(); // remove current
+                          const prev = nextHistory[nextHistory.length - 1];
+                          setBrowserHistory(nextHistory);
+                          setBrowserUrl(prev);
+                        } else {
+                          toast('No backward history');
+                        }
+                      }}
+                      disabled={browserHistory.length <= 1}
+                      className="p-2 bg-purple-950/20 hover:bg-purple-900/30 disabled:opacity-40 disabled:hover:bg-purple-950/20 text-purple-300 rounded-lg transition cursor-pointer"
+                      title="Back"
+                    >
+                      <ArrowLeft className="w-3.5 h-3.5" />
+                    </button>
+                    
+                    <button 
+                      onClick={() => {
+                        haptic(5);
+                        setBrowserUrl('https://treydog-ramirez.github.io/dnd-portal/');
+                        setBrowserHistory(prev => [...prev, 'https://treydog-ramirez.github.io/dnd-portal/']);
+                      }}
+                      className="p-2 bg-purple-950/20 hover:bg-purple-900/30 text-purple-300 rounded-lg transition cursor-pointer"
+                      title="Home"
+                    >
+                      <Home className="w-3.5 h-3.5" />
+                    </button>
+
+                    <button 
+                      onClick={() => {
+                        haptic(5);
+                        setBrowserLoading(true);
+                        const current = browserUrl;
+                        setBrowserUrl('');
+                        setTimeout(() => {
+                          setBrowserUrl(current);
+                          setBrowserLoading(false);
+                        }, 300);
+                      }}
+                      className="p-2 bg-purple-950/20 hover:bg-purple-900/30 text-purple-300 rounded-lg transition cursor-pointer"
+                      title="Reload"
+                    >
+                      <RefreshCw className={`w-3.5 h-3.5 ${browserLoading ? 'animate-spin' : ''}`} />
+                    </button>
+                  </div>
+
+                  {/* URL Input Bar */}
+                  <form 
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      haptic(10);
+                      let target = browserInput.trim();
+                      if (!target) return;
+                      
+                      const isUrl = target.includes('.') && !target.includes(' ');
+                      if (!isUrl) {
+                        target = `https://www.google.com/search?q=${encodeURIComponent(target)}&igu=1`;
+                      } else {
+                        if (!/^https?:\/\//i.test(target)) {
+                          target = `https://${target}`;
+                        }
+                      }
+                      setBrowserUrl(target);
+                      setBrowserHistory(prev => [...prev, target]);
+                    }}
+                    className="flex-grow flex items-center gap-2 bg-black/40 border border-purple-500/10 focus-within:border-purple-500/30 rounded-lg px-3 py-1.5 text-xs text-purple-300 font-mono transition duration-300"
+                  >
+                    <Globe className="w-3.5 h-3.5 text-[#8b5cf6]/80 shrink-0" />
+                    <input 
+                      type="text" 
+                      value={browserInput} 
+                      onChange={(e) => setBrowserInput(e.target.value)}
+                      placeholder="Enter URL or search query..."
+                      className="flex-grow bg-transparent border-none outline-none focus:ring-0 p-0 text-xs text-slate-100 font-mono placeholder-zinc-600"
+                    />
+                    <button type="submit" className="text-[10px] text-purple-400 hover:text-purple-300 font-bold uppercase tracking-wider font-sans cursor-pointer transition">
+                      Go
+                    </button>
+                  </form>
+
+                  {/* External Open Button */}
+                  <a 
+                    href={browserUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    onClick={() => haptic(5)}
+                    className="p-2 bg-purple-950/20 hover:bg-purple-900/30 text-purple-300 rounded-lg transition cursor-pointer flex items-center justify-center shrink-0"
+                    title="Open Website in New Tab (Bypasses Frame Blocks)"
+                  >
+                    <ExternalLink className="w-3.5 h-3.5" />
+                  </a>
                 </div>
               </div>
 
-              <div className="flex items-center gap-2.5 p-2 bg-slate-100 border border-slate-200/50 rounded-xl">
-                <div className="flex gap-1.5">
-                  <button onClick={() => { haptic(5); toast('Browser history backward index blank.'); }} className="p-1.5 bg-slate-50 hover:bg-slate-200 text-slate-500 rounded-md transition-colors cursor-pointer"><ArrowLeft className="w-3.5 h-3.5" /></button>
-                  <button onClick={() => { haptic(5); toast('Browser history forward index blank.'); }} className="p-1.5 bg-slate-50 hover:bg-slate-200 text-slate-500 rounded-md transition-colors cursor-pointer"><ArrowRight className="w-3.5 h-3.5" /></button>
-                  <button onClick={() => { haptic(5); setBrowserLoading(true); setTimeout(() => setBrowserLoading(false), 800); }} className="p-1.5 bg-slate-50 hover:bg-slate-200 text-slate-500 rounded-md transition-colors cursor-pointer"><RefreshCw className={`w-3.5 h-3.5 ${browserLoading ? 'animate-spin' : ''}`} /></button>
-                </div>
-                <div className="flex-grow flex items-center gap-2 bg-white border border-slate-200/60 rounded-lg px-3 py-1 text-xs text-slate-700 font-mono">
-                  <Globe className="w-3.5 h-3.5 text-cyan-500/80" />
-                  <input 
-                    type="text" 
-                    value={browserUrl} 
-                    onChange={(e) => setBrowserUrl(e.target.value)}
-                    className="flex-grow bg-transparent border-none outline-none focus:ring-0 p-0 text-xs text-slate-800"
+              {/* Browser Main Frame Area */}
+              <div className="flex-grow w-full rounded-xl bg-black overflow-hidden relative border border-purple-500/5 min-h-0">
+                {browserLoading && (
+                  <div className="absolute inset-0 bg-[#070312]/90 backdrop-blur-sm z-30 flex flex-col items-center justify-center gap-3">
+                    <Globe className="w-8 h-8 text-[#8b5cf6] animate-[spin_3s_linear_infinite]" />
+                    <span className="text-[10px] font-mono text-purple-400 tracking-wider">LOADING SECURE INSTANCE...</span>
+                  </div>
+                )}
+                
+                {browserUrl ? (
+                  <iframe
+                    src={browserUrl}
+                    className="w-full h-full border-none bg-black"
+                    allow="autoplay; clipboard-write; encrypted-media; fullscreen"
+                    onLoad={() => setBrowserLoading(false)}
                   />
-                </div>
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center bg-[#070312]/50 text-zinc-500 text-xs italic">
+                    No page loaded. Enter a URL or search query above.
+                  </div>
+                )}
               </div>
 
-              <div className="bg-slate-100 border border-slate-200/50 rounded-xl p-8 text-center aspect-video flex flex-col justify-center items-center gap-4">
-                <div className="p-4 bg-cyan-500/10 border border-cyan-500/20 rounded-full">
-                  <Globe className="w-8 h-8 text-cyan-400 animate-pulse" />
-                </div>
-                <div className="space-y-1">
-                  <h3 className="text-xs font-bold text-slate-700">Local Cache Sync: {browserUrl}</h3>
-                  <p className="text-[10px] text-slate-500 max-w-sm mx-auto">This browser runs in a sandbox. It simulates standard web responses locally using cached datasets to prevent external tracker leaks.</p>
-                </div>
-                <button 
-                  onClick={() => {
-                    haptic(10);
-                    setBrowserLoading(true);
-                    setTimeout(() => {
-                      setBrowserLoading(false);
-                      toast('Public Google Search simulated successfully.');
-                    }, 1200);
-                  }}
-                  className="px-4 py-2 bg-cyan-600 hover:bg-cyan-500 text-white rounded-lg text-xs font-bold transition-all cursor-pointer"
-                >
-                  Consult Public Nodes
-                </button>
+              {/* Frame Warning Footer */}
+              <div className="pt-2 flex justify-between items-center text-[8px] font-mono text-slate-500 select-none shrink-0">
+                <span>⚠️ Websites with strict frame headers may block embedding. Use the pop-out button on the right to open directly if a page remains blank.</span>
+                <span className="text-purple-400/60 font-bold">PROXY OVERRIDE ACTIVE</span>
               </div>
             </div>
           )}
