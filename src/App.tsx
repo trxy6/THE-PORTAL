@@ -18,6 +18,9 @@ import D20War from './components/D20War';
 import CosmicWords from './components/CosmicWords';
 import TenGamesArena from './components/TenGamesArena';
 import MusicHub from './components/music/MusicHub';
+import PortalWalkthrough from './components/PortalWalkthrough';
+import PecosOnboarding from './components/PecosOnboarding';
+import PecosProfileEditor from './components/PecosProfileEditor';
 
 const SPORTS_LEAGUES = {
   mlb: {
@@ -405,7 +408,7 @@ export default function App() {
   }, []);
 
   // --- Secure Storage & Sub-tab States ---
-  const [settingsSubTab, setSettingsSubTab] = useState<'appearance' | 'spotify' | 'session'>('appearance');
+  const [settingsSubTab, setSettingsSubTab] = useState<'appearance' | 'spotify' | 'session' | 'onboarding'>('appearance');
   const [payloadFiles, setPayloadFiles] = useState<any[]>([]);
   const [previewImage, setPreviewImage] = useState<any | null>(null);
 
@@ -533,6 +536,39 @@ export default function App() {
   const [signupUser, setSignupUser] = useState('');
   const [signupPin, setSignupPin] = useState('');
   const [authError, setAuthError] = useState('');
+
+  // Onboarding and transition states
+  const [isPlayingWarpTransition, setIsPlayingWarpTransition] = useState(false);
+  const [tempUserToLogin, setTempUserToLogin] = useState<string | null>(null);
+  const [isCompletingOnboarding, setIsCompletingOnboarding] = useState(false);
+  const [onboardingCompleted, setOnboardingCompleted] = useState<boolean>(() => {
+    const user = localStorage.getItem('portal_current_user');
+    if (!user) return false;
+    const saved = localStorage.getItem(`portal_profile_${user}`);
+    if (saved) {
+      try {
+        return JSON.parse(saved).onboardingCompleted === true;
+      } catch (e) {
+        return false;
+      }
+    }
+    return false;
+  });
+
+  // Onboarding profile name helper
+  const getTravelerName = useCallback(() => {
+    if (currentUser) {
+      const saved = localStorage.getItem(`portal_profile_${currentUser}`);
+      if (saved) {
+        try {
+          const parsed = JSON.parse(saved);
+          if (parsed.displayName) return parsed.displayName;
+        } catch (e) {}
+      }
+      return currentUser;
+    }
+    return 'Traveler';
+  }, [currentUser]);
 
   // Customizable Profile states
   const [userAvatar, setUserAvatar] = useState<string>(() => {
@@ -980,26 +1016,39 @@ export default function App() {
 
   // Theme styling calculation
   const getThemeCSSVariables = () => {
-    let color1 = '#8b5cf6';
-    let color2 = '#ec4899';
+    let profileAccent = null;
+    if (currentUser) {
+      try {
+        const saved = localStorage.getItem(`portal_profile_${currentUser}`);
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (parsed.themeAccentColor) {
+            profileAccent = parsed.themeAccentColor;
+          }
+        }
+      } catch (e) {}
+    }
+
+    let color1 = profileAccent || '#8b5cf6';
+    let color2 = color1 === '#8b5cf6' ? '#ec4899' : '#8b5cf6';
     let bgStart = '#06000f';
     let bgEnd = '#0d0221';
     let cardBg = 'rgba(10, 2, 28, 0.82)';
-    let cardBorder = 'rgba(139, 92, 246, 0.25)';
+    let cardBorder = `${color1}40`;
 
     if (!portalDarkMode) {
       // Light Mode (White-based)
       bgStart = '#ffffff';
       bgEnd = '#f3e8ff';
       cardBg = 'rgba(255, 255, 255, 0.72)';
-      cardBorder = 'rgba(139, 92, 246, 0.15)';
+      cardBorder = `${color1}26`;
 
       switch (lightThemePreset) {
         case 'purple':
-          color1 = '#8b5cf6';
-          color2 = '#db2777';
+          color1 = profileAccent || '#8b5cf6';
+          color2 = color1 === '#8b5cf6' ? '#db2777' : '#8b5cf6';
           bgEnd = '#f3e8ff'; // White with Purple gradient
-          cardBorder = 'rgba(139, 92, 246, 0.15)';
+          cardBorder = `${color1}26`;
           break;
         case 'blue':
           color1 = '#3b82f6';
@@ -1043,12 +1092,12 @@ export default function App() {
       // Dark Mode variations
       switch (darkThemePreset) {
         case 'purple':
-          color1 = '#8b5cf6';
-          color2 = '#ec4899';
+          color1 = profileAccent || '#8b5cf6';
+          color2 = color1 === '#8b5cf6' ? '#ec4899' : '#8b5cf6';
           bgStart = '#0d0221';
           bgEnd = '#25023a'; // Purple with Pink gradient background
           cardBg = 'rgba(13, 2, 33, 0.82)';
-          cardBorder = 'rgba(139, 92, 246, 0.25)';
+          cardBorder = `${color1}40`;
           break;
         case 'blue':
           color1 = '#3b82f6';
@@ -2257,6 +2306,13 @@ export default function App() {
   };
 
   // --- Auth Handlers ---
+  const handleGuestMode = () => {
+    haptic([10, 20]);
+    setTempUserToLogin('guest');
+    setIsPlayingWarpTransition(true);
+    setAuthError('');
+  };
+
   const handleLoginSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     haptic([20, 30]);
@@ -2270,11 +2326,9 @@ export default function App() {
     const users = rawUsers ? JSON.parse(rawUsers) : [];
     const matched = users.find((u: any) => u.userId === uId);
     if (matched && matched.pin === pinVal) {
-      localStorage.setItem('portal_current_user', matched.userId);
-      setCurrentUser(matched.userId);
+      setTempUserToLogin(matched.userId);
+      setIsPlayingWarpTransition(true);
       setAuthError('');
-      setShowStartScreen(false);
-      window.location.reload();
     } else {
       setAuthError("⚠️ Credentials invalid or PIN mismatch!");
     }
@@ -2304,11 +2358,9 @@ export default function App() {
     const newUser = { userId: uId, pin: pinVal, isCreator };
     users.push(newUser);
     localStorage.setItem('portal_users', JSON.stringify(users));
-    localStorage.setItem('portal_current_user', uId);
-    setCurrentUser(uId);
+    setTempUserToLogin(uId);
+    setIsPlayingWarpTransition(true);
     setAuthError('');
-    setShowStartScreen(false);
-    window.location.reload();
   };
 
   // --- Dimensional Camera & Scanner Helpers ---
@@ -3450,6 +3502,47 @@ export default function App() {
     item.desc.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  if (currentUser && !onboardingCompleted) {
+    let accentColor = '#8b5cf6';
+    try {
+      const saved = localStorage.getItem(`portal_profile_${currentUser}`);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed.themeAccentColor) accentColor = parsed.themeAccentColor;
+      }
+    } catch (e) {}
+
+    return (
+      <>
+        {isPlayingWarpTransition && (
+          <PortalWalkthrough
+            primaryColor={accentColor}
+            secondaryColor={accentColor === '#8b5cf6' ? '#db2777' : '#8b5cf6'}
+            onComplete={() => {
+              setIsPlayingWarpTransition(false);
+              setIsCompletingOnboarding(false);
+              setOnboardingCompleted(true);
+              window.location.reload();
+            }}
+          />
+        )}
+        <PecosOnboarding
+          userId={currentUser}
+          portalDarkMode={portalDarkMode}
+          onBackToLogin={() => {
+            localStorage.removeItem('portal_current_user');
+            setCurrentUser(null);
+            setOnboardingCompleted(false);
+          }}
+          onComplete={(profileData) => {
+            setIsCompletingOnboarding(true);
+            setIsPlayingWarpTransition(true);
+          }}
+        />
+      </>
+    );
+  }
+
   if (!currentUser) {
     const loginThemeStyles = {
       '--theme-accent-color-1': '#8b5cf6',
@@ -3462,11 +3555,58 @@ export default function App() {
     } as React.CSSProperties;
 
     return (
-      <div className="fixed inset-0 w-full h-full font-sans overflow-hidden select-none portal-dark"
-        style={{ 
-          background: 'linear-gradient(135deg, #06000f 0%, #0d0221 100%)',
-          ...loginThemeStyles
-        }}>
+      <>
+        {isPlayingWarpTransition && (
+          <PortalWalkthrough
+            primaryColor="#8b5cf6"
+            secondaryColor="#db2777"
+            onComplete={() => {
+              if (tempUserToLogin) {
+                localStorage.setItem('portal_current_user', tempUserToLogin);
+                setCurrentUser(tempUserToLogin);
+                
+                // Seed onboarding profile if not exist
+                const profileKey = `portal_profile_${tempUserToLogin}`;
+                const saved = localStorage.getItem(profileKey);
+                if (!saved) {
+                  const initialProfile = {
+                    displayName: tempUserToLogin === 'guest' ? 'Guest' : tempUserToLogin,
+                    favoriteColor: 'purple',
+                    themeAccentColor: '#8b5cf6',
+                    birthdayMonth: null,
+                    birthdayDay: null,
+                    birthdayYear: null,
+                    favoriteFoods: [],
+                    wantsMusic: null,
+                    musicProvider: null,
+                    spotifyAccessStatus: 'not_requested',
+                    spotifyConnected: false,
+                    onboardingStep: 1,
+                    onboardingCompleted: false,
+                    onboardingCompletedAt: null
+                  };
+                  localStorage.setItem(profileKey, JSON.stringify(initialProfile));
+                  setOnboardingCompleted(false);
+                } else {
+                  try {
+                    const data = JSON.parse(saved);
+                    setOnboardingCompleted(data.onboardingCompleted === true);
+                  } catch (e) {
+                    setOnboardingCompleted(false);
+                  }
+                }
+              }
+              setIsPlayingWarpTransition(false);
+              setTempUserToLogin(null);
+              setShowStartScreen(false);
+            }}
+          />
+        )}
+        <div className="fixed inset-0 w-full h-full font-sans overflow-hidden select-none portal-dark"
+          style={{ 
+            background: 'linear-gradient(135deg, #06000f 0%, #0d0221 100%)',
+            ...loginThemeStyles
+          }}>
 
         {/* ── ANIMATED COLOUR ORBS ── */}
         <div className="absolute pointer-events-none" style={{
@@ -3705,8 +3845,17 @@ export default function App() {
                       onMouseEnter={e => { (e.target as HTMLButtonElement).style.boxShadow = '0 0 36px rgba(168,85,247,0.65), 0 4px 16px rgba(0,0,0,0.4)'; }}
                       onMouseLeave={e => { (e.target as HTMLButtonElement).style.boxShadow = '0 0 24px rgba(139,92,246,0.45), 0 4px 12px rgba(0,0,0,0.3)'; }}>
                       <Lock className="w-3.5 h-3.5" />
-                      Enter The Portal
+                      Open The Rift
                     </button>
+                    <div className="text-center pt-2.5">
+                      <button
+                        type="button"
+                        onClick={handleGuestMode}
+                        className="text-[10px] font-bold text-purple-400 hover:text-purple-300 hover:underline cursor-pointer tracking-wider"
+                      >
+                        ⚡ Or Enter as Guest Mode (Bypass Auth)
+                      </button>
+                    </div>
                   </form>
                 ) : (
                   <form onSubmit={handleSignUpSubmit} className="space-y-4">
@@ -3753,6 +3902,15 @@ export default function App() {
                       <Plus className="w-3.5 h-3.5" />
                       Open The Rift
                     </button>
+                    <div className="text-center pt-2.5">
+                      <button
+                        type="button"
+                        onClick={handleGuestMode}
+                        className="text-[10px] font-bold text-purple-400 hover:text-purple-300 hover:underline cursor-pointer tracking-wider"
+                      >
+                        ⚡ Or Enter as Guest Mode (Bypass Auth)
+                      </button>
+                    </div>
                   </form>
                 )}
 
@@ -3765,8 +3923,9 @@ export default function App() {
           </div>
         </div>
       </div>
-    );
-  }
+    </>
+  );
+}
 
 
 
@@ -3973,7 +4132,7 @@ export default function App() {
                   userStatus === 'dnd' ? 'bg-rose-500' : 'bg-slate-400'
                 }`} />
               </div>
-              <span className={`text-xs font-semibold hidden lg:inline ${portalDarkMode ? 'text-purple-200' : 'text-slate-700'}`}>{currentUser || 'Traveler'}</span>
+              <span className={`text-xs font-semibold hidden lg:inline ${portalDarkMode ? 'text-purple-200' : 'text-slate-700'}`}>{getTravelerName()}</span>
               <ChevronDown className={`w-3.5 h-3.5 hidden lg:block ${portalDarkMode ? 'text-purple-400' : 'text-slate-500'}`} />
             </button>
 
@@ -3989,7 +4148,7 @@ export default function App() {
                 <div className="p-2 border-b border-slate-100 dark:border-white/5 flex items-center gap-2">
                   <img src={userAvatar} className="w-8 h-8 rounded-full object-cover border border-slate-200/50" />
                   <div className="flex flex-col min-w-0">
-                    <span className="text-[11px] font-bold truncate">{currentUser || 'Traveler'}</span>
+                    <span className="text-[11px] font-bold truncate">{getTravelerName()}</span>
                     <span className="text-[8px] text-slate-400 truncate flex items-center gap-1">
                       <span className={`w-1.5 h-1.5 rounded-full ${
                         userStatus === 'online' ? 'bg-emerald-500' :
@@ -6925,6 +7084,12 @@ export default function App() {
                 >
                   🌌 Rift & Feedback
                 </button>
+                <button 
+                  onClick={() => { haptic(5); setSettingsSubTab('onboarding'); }}
+                  className={`px-4 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${settingsSubTab === 'onboarding' ? 'bg-purple-500/20 border border-purple-500/40 text-purple-500' : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white'}`}
+                >
+                  👤 PECOS Onboarding
+                </button>
               </div>
 
               {settingsSubTab === 'session' && (
@@ -8081,6 +8246,31 @@ export default function App() {
                       <span>•</span>
                       <span>Powered by React & Vite</span>
                     </div>
+                  </div>
+                </div>
+              )}
+
+              {settingsSubTab === 'onboarding' && (
+                <div className="space-y-6 animate-[fadeIn_0.3s_ease-out]">
+                  <div className="glass-panel border border-purple-500/15 bg-purple-500/5 hover:border-purple-500/35 transition-all duration-300 rounded-2xl p-5 space-y-4">
+                    <span className="text-[10px] uppercase font-bold text-purple-600 tracking-wider flex items-center gap-1.5">
+                      <Bot className="w-3.5 h-3.5 animate-bounce" />
+                      PECOS Onboarding Profile Personalization
+                    </span>
+                    <PecosProfileEditor 
+                      userId={currentUser || ''} 
+                      onUpdate={() => {
+                        const savedProfile = localStorage.getItem(`portal_profile_${currentUser}`);
+                        if (savedProfile) {
+                          try {
+                            const parsed = JSON.parse(savedProfile);
+                            if (parsed.displayName) {
+                              localStorage.setItem('portal_current_user_display_name', parsed.displayName);
+                            }
+                          } catch (e) {}
+                        }
+                      }}
+                    />
                   </div>
                 </div>
               )}
