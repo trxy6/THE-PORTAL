@@ -310,41 +310,6 @@ export default function Sidebar({
           </div>
         )}
       </div>
-
-      {/* Spotify Connection Panel (Sidebar Footer) */}
-      <div className="p-4 border-t border-white/5 bg-[#05020a]">
-        {spotifyToken ? (
-          <div className="space-y-3">
-            <div className="flex items-center gap-2 px-1">
-              {spotifyUser?.imageUrl ? (
-                <img src={spotifyUser.imageUrl} alt="" className="w-6 h-6 rounded-full border border-white/10 shrink-0" />
-              ) : (
-                <div className="w-6 h-6 rounded-full bg-white/5 border border-white/10 shrink-0" />
-              )}
-              <div className="min-w-0 flex-1">
-                <p className="text-[10px] font-bold text-white truncate leading-none">{spotifyUser?.display_name}</p>
-                <span className="text-[8px] text-zinc-500 font-mono">Linked Spotify User</span>
-              </div>
-            </div>
-            <button
-              onClick={onDisconnectSpotify}
-              className="w-full py-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 rounded-lg text-[10px] font-bold uppercase tracking-wider transition cursor-pointer"
-            >
-              Disconnect Spotify
-            </button>
-          </div>
-        ) : (
-          <div className="space-y-2.5">
-            <button
-              onClick={onConnectSpotify}
-              className="w-full py-2.5 bg-[#8b5cf6] hover:bg-[#8b5cf6]/90 text-white rounded-lg text-[10px] font-bold uppercase tracking-widest transition shadow-md shadow-[#8b5cf6]/20 cursor-pointer flex items-center justify-center gap-1.5"
-            >
-              <Disc className="w-3.5 h-3.5 animate-spin" style={{ animationDuration: "12s" }} />
-              Connect Spotify
-            </button>
-          </div>
-        )}
-      </div>
     </div>
   );
 

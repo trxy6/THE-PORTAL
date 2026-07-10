@@ -123,6 +123,132 @@ const QUICK_ACCESS = [
 ];
 
 export default function App() {
+  // --- Spotify Connection States ---
+  const [spotifyToken, setSpotifyToken] = useState<string | null>(() => localStorage.getItem("spotify_access_token") || null);
+  const [spotifyRefreshToken, setSpotifyRefreshToken] = useState<string | null>(() => localStorage.getItem("spotify_refresh_token") || null);
+  const [spotifyUser, setSpotifyUser] = useState<{ id: string; display_name: string; imageUrl?: string } | null>(null);
+  const [copied, setCopied] = useState(false);
+  const redirectUri = typeof window !== "undefined" ? `${window.location.origin}/auth/callback` : "";
+
+  const handleCopyRedirectUri = () => {
+    if (redirectUri) {
+      navigator.clipboard.writeText(redirectUri);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
+
+  const fetchSpotifyData = async (token: string) => {
+    try {
+      const userRes = await fetch("https://api.spotify.com/v1/me", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!userRes.ok) {
+        if (userRes.status === 401) {
+          await handleSpotifyTokenRefresh();
+          return;
+        }
+        throw new Error("Failed to fetch Spotify user profile");
+      }
+      const userData = await userRes.json();
+      setSpotifyUser({
+        id: userData.id,
+        display_name: userData.display_name || userData.id,
+        imageUrl: userData.images?.[0]?.url,
+      });
+    } catch (err: any) {
+      console.error("Failed to load Spotify details:", err);
+    }
+  };
+
+  const handleSpotifyTokenRefresh = async () => {
+    const refresh = localStorage.getItem("spotify_refresh_token");
+    if (!refresh) return;
+    try {
+      const res = await fetch("/api/auth/spotify/refresh", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ refreshToken: refresh }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setSpotifyToken(data.accessToken);
+        localStorage.setItem("spotify_access_token", data.accessToken);
+        fetchSpotifyData(data.accessToken);
+      } else {
+        handleDisconnectSpotify();
+      }
+    } catch (e) {
+      console.error("Failed to refresh Spotify token:", e);
+    }
+  };
+
+  const handleDisconnectSpotify = () => {
+    setSpotifyToken(null);
+    setSpotifyRefreshToken(null);
+    setSpotifyUser(null);
+    localStorage.removeItem("spotify_access_token");
+    localStorage.removeItem("spotify_refresh_token");
+  };
+
+  const handleConnectSpotify = async () => {
+    try {
+      const origin = window.location.origin;
+      const res = await fetch(`/api/auth/spotify/url?origin=${encodeURIComponent(origin)}`);
+      const data = await res.json();
+      if (!res.ok) {
+        if (data.unconfigured) {
+          alert("Spotify API credentials are not configured on the server yet.\n\nPlease define SPOTIFY_CLIENT_ID and SPOTIFY_CLIENT_SECRET in the Secrets panel inside your AI Studio Settings menu.");
+          return;
+        }
+        throw new Error(data.error || "Failed to generate auth url");
+      }
+      const width = 500;
+      const height = 650;
+      const left = window.screen.width / 2 - width / 2;
+      const top = window.screen.height / 2 - height / 2;
+      const authWindow = window.open(
+        data.url,
+        "spotify_auth_popup",
+        `width=${width},height=${height},left=${left},top=${top},menubar=no,toolbar=no,location=no`
+      );
+      if (!authWindow) {
+        alert("Please enable popups to connect to Spotify.");
+      }
+    } catch (err: any) {
+      console.error("Spotify Auth initiation failed:", err);
+      alert(`Connection failed: ${err.message}`);
+    }
+  };
+
+  useEffect(() => {
+    // Initial fetch if token is present
+    const savedToken = localStorage.getItem("spotify_access_token");
+    if (savedToken && savedToken !== "null" && savedToken !== "undefined") {
+      fetchSpotifyData(savedToken);
+    }
+
+    const handleMessage = (event: MessageEvent) => {
+      const origin = event.origin;
+      if (!origin.endsWith(".run.app") && !origin.includes("localhost") && !origin.includes("127.0.0.1")) {
+        return;
+      }
+      if (event.data?.type === "SPOTIFY_AUTH_SUCCESS") {
+        const { accessToken, refreshToken } = event.data.tokens;
+        setSpotifyToken(accessToken);
+        setSpotifyRefreshToken(refreshToken);
+        localStorage.setItem("spotify_access_token", accessToken);
+        localStorage.setItem("spotify_refresh_token", refreshToken);
+        fetchSpotifyData(accessToken);
+        toast("Spotify connected successfully!", "success");
+      } else if (event.data?.type === "SPOTIFY_AUTH_FAILURE") {
+        toast(`Spotify connection failed: ${event.data.error || "Unknown Error"}`, "error");
+      }
+    };
+    window.addEventListener("message", handleMessage);
+    return () => window.removeEventListener("message", handleMessage);
+  }, []);
+
   // --- User Authentication & Local Storage Scoped States ---
   const [currentUser, setCurrentUser] = useState<string | null>(() => localStorage.getItem('portal_current_user') || null);
   const [showStartScreen, setShowStartScreen] = useState(() => !localStorage.getItem('portal_current_user'));
@@ -5632,6 +5758,89 @@ export default function App() {
                     >
                       Channel Idea to trxy6
                     </button>
+                  </div>
+                )}
+              </div>
+
+              {/* SPOTIFY INTEGRATION SETTINGS MATRIX */}
+              <div className="glass-panel border border-emerald-500/15 bg-emerald-500/5 hover:border-emerald-500/35 transition-all duration-300 rounded-2xl p-5 space-y-4 group">
+                <div className="flex justify-between items-center pb-2 border-b border-emerald-500/10">
+                  <span className="text-[10px] uppercase font-bold text-emerald-600 tracking-wider flex items-center gap-1.5 font-sans">
+                    <Music className="w-3.5 h-3.5" />
+                    Spotify Integration Settings
+                  </span>
+                </div>
+
+                {spotifyUser ? (
+                  <div className="flex items-center justify-between bg-emerald-950/20 p-4 rounded-xl border border-emerald-500/20">
+                    <div className="flex items-center gap-3">
+                      {spotifyUser.imageUrl ? (
+                        <img
+                          src={spotifyUser.imageUrl}
+                          alt={spotifyUser.display_name}
+                          className="w-10 h-10 rounded-full border border-emerald-500/30 object-cover"
+                          referrerPolicy="no-referrer"
+                        />
+                      ) : (
+                        <div className="w-10 h-10 rounded-full bg-emerald-500/20 text-emerald-400 font-bold flex items-center justify-center text-sm font-sans">
+                          {spotifyUser.display_name.charAt(0).toUpperCase()}
+                        </div>
+                      )}
+                      <div>
+                        <span className="text-[9px] uppercase font-bold text-emerald-400 tracking-wide block font-mono">Sync Active</span>
+                        <p className="text-xs text-slate-700 font-bold leading-tight font-sans">{spotifyUser.display_name}</p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => {
+                        haptic(15);
+                        handleDisconnectSpotify();
+                        toast("Spotify account disconnected", "success");
+                      }}
+                      className="px-3.5 py-1.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 border border-rose-500/20 hover:border-rose-500/40 rounded-lg text-[9px] font-bold tracking-widest uppercase transition-all cursor-pointer font-sans"
+                    >
+                      Disconnect Account
+                    </button>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    <p className="text-[10px] text-slate-500 leading-relaxed font-sans">
+                      Link your Spotify account to activate library access, sync liked tracks, search the Spotify catalogue, and launch live playback.
+                    </p>
+                    <button
+                      onClick={() => {
+                        haptic(20);
+                        handleConnectSpotify();
+                      }}
+                      className="w-full bg-[#1db954] hover:bg-[#1ed760] text-black font-bold text-xs py-2.5 px-4 rounded-xl flex items-center justify-center gap-2 transition-all shadow-[0_4px_12px_rgba(29,185,84,0.15)] active:scale-95 cursor-pointer font-sans"
+                    >
+                      <svg className="w-4 h-4 fill-current shrink-0" viewBox="0 0 24 24">
+                        <path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm4.586 14.424c-.18.295-.563.387-.857.207-2.377-1.454-5.37-1.783-8.893-.982-.336.075-.668-.135-.744-.47-.077-.337.135-.668.47-.745 3.856-.88 7.15-.5 9.817 1.133.294.18.385.564.207.857zm1.225-2.72c-.227.367-.707.487-1.074.26-2.72-1.672-6.87-2.157-10.076-1.182-.413.125-.848-.107-.973-.52-.125-.413.108-.847.52-.973 3.666-1.114 8.234-.57 11.343 1.344.367.226.488.707.26 1.073zm.107-2.822c-3.26-1.937-8.634-2.115-11.75-1.17-.5.152-1.025-.133-1.177-.633-.153-.5.133-1.026.633-1.178 3.593-1.09 9.513-.883 13.266 1.343.45.267.6.845.333 1.295-.268.453-.846.602-1.295.333z"/>
+                      </svg>
+                      <span>Connect to Spotify</span>
+                    </button>
+
+                    <div className="pt-3 border-t border-slate-200/50 space-y-1.5 text-[10px] font-sans">
+                      <div className="flex items-center justify-between text-slate-500 font-mono">
+                        <span>REDIRECT URI:</span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            haptic(10);
+                            handleCopyRedirectUri();
+                          }}
+                          className="text-emerald-600 hover:text-emerald-500 font-bold uppercase transition cursor-pointer"
+                        >
+                          {copied ? "Copied!" : "Copy"}
+                        </button>
+                      </div>
+                      <div className="bg-slate-100 border border-slate-200 p-2 rounded-lg text-slate-600 font-mono truncate select-all text-[9px]">
+                        {redirectUri}
+                      </div>
+                      <p className="text-[9px] text-[#8b5cf6]/90 leading-relaxed font-serif italic mt-1">
+                        ⚠️ Click <strong>Add</strong> and then <strong>Save</strong> at the very bottom of Spotify's developer settings page, otherwise it won't persist!
+                      </p>
+                    </div>
                   </div>
                 )}
               </div>
