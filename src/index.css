@@ -242,10 +242,10 @@ body {
 
 /* Glassmorphism panel base (Ultra Clean & High-Contrast Light Glass) */
 .glass-panel {
-  background: rgba(255, 255, 255, 0.72);
+  background: var(--theme-card-bg, rgba(255, 255, 255, 0.72));
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.8);
+  border: 1px solid var(--theme-card-border, rgba(255, 255, 255, 0.8));
   box-shadow: 0 4px 18px -2px rgba(148, 163, 184, 0.12), 0 1px 2px rgba(148, 163, 184, 0.04);
 }
 
@@ -317,22 +317,22 @@ body {
 ════════════════════════════════════════════════ */
 
 .portal-dark {
-  --theme-accent: #a78bfa;
-  --theme-accent-dark: #8b5cf6;
-  --theme-bg-main: #06000f;
-  --theme-bg-panel: #0d0221;
+  --theme-accent: var(--theme-accent-color-1, #a78bfa);
+  --theme-accent-dark: var(--theme-accent-color-2, #8b5cf6);
+  --theme-bg-main: var(--theme-bg-gradient-start, #06000f);
+  --theme-bg-panel: var(--theme-bg-gradient-end, #0d0221);
   --theme-text-main: #e2d9f3;
   --theme-text-muted: rgba(167, 139, 250, 0.6);
 
-  --bg-primary: #06000f;
-  --bg-secondary: #0d0221;
+  --bg-primary: var(--theme-bg-gradient-start, #06000f);
+  --bg-secondary: var(--theme-bg-gradient-end, #0d0221);
   --text-main: #e2d9f3;
   --text-muted: rgba(167, 139, 250, 0.6);
 }
 
 /* Root background */
 .portal-dark.app-root {
-  background: linear-gradient(135deg, #06000f 0%, #0d0221 35%, #120330 65%, #0a0118 100%) !important;
+  background: linear-gradient(135deg, var(--theme-bg-gradient-start) 0%, var(--theme-bg-gradient-end) 100%) !important;
   color: #e2d9f3;
 }
 
@@ -351,15 +351,15 @@ body {
 /* Sidebar */
 .portal-dark nav,
 .portal-dark aside {
-  background: rgba(10, 2, 28, 0.88) !important;
-  border-color: rgba(139, 92, 246, 0.15) !important;
+  background: var(--theme-card-bg, rgba(10, 2, 28, 0.88)) !important;
+  border-color: var(--theme-card-border, rgba(139, 92, 246, 0.15)) !important;
   backdrop-filter: blur(24px) !important;
 }
 
 /* All glass panels */
 .portal-dark .glass-panel {
-  background: rgba(10, 2, 28, 0.82) !important;
-  border-color: rgba(139, 92, 246, 0.25) !important;
+  background: var(--theme-card-bg, rgba(10, 2, 28, 0.82)) !important;
+  border-color: var(--theme-card-border, rgba(139, 92, 246, 0.25)) !important;
   box-shadow: 0 32px 80px rgba(0, 0, 0, 0.65), inset 0 1px 0 rgba(255, 255, 255, 0.04) !important;
   backdrop-filter: blur(32px) !important;
 }
@@ -370,14 +370,14 @@ body {
 .portal-dark [class*="bg-slate-100/"],
 .portal-dark [class*="bg-slate-200/"],
 .portal-dark [class*="bg-slate-300/"] {
-  background-color: rgba(18, 3, 48, 0.72) !important;
-  border-color: rgba(139, 92, 246, 0.18) !important;
+  background-color: var(--theme-card-bg, rgba(18, 3, 48, 0.72)) !important;
+  border-color: var(--theme-card-border, rgba(139, 92, 246, 0.18)) !important;
 }
 
 .portal-dark div[class*="bg-white"],
 .portal-dark div[class*="bg-slate-100"] {
-  background-color: rgba(18, 3, 48, 0.72) !important;
-  border-color: rgba(139, 92, 246, 0.18) !important;
+  background-color: var(--theme-card-bg, rgba(18, 3, 48, 0.72)) !important;
+  border-color: var(--theme-card-border, rgba(139, 92, 246, 0.18)) !important;
 }
 
 /* Text colors */
@@ -889,5 +889,20 @@ body {
   background-color: rgba(139, 92, 246, 0.05) !important;
 }
 
+/* Premium Light Mode Dynamic Accent and Background Gradient */
+.app-root:not(.portal-dark) {
+  background: linear-gradient(135deg, var(--theme-bg-gradient-start, #ffffff) 0%, var(--theme-bg-gradient-end, #eedfff) 100%) !important;
+  color: #1e293b;
+  --bg-primary: var(--theme-bg-gradient-start, #ffffff);
+  --bg-secondary: var(--theme-bg-gradient-end, #eedfff);
+  --theme-accent: var(--theme-accent-color-1, #8b5cf6);
+  --theme-accent-dark: var(--theme-accent-color-2, #db2777);
+  --theme-text-main: #1e293b;
+  --theme-text-muted: #64748b;
+}
 
-
+/* Ensure glass panels in Light Mode adapt cleanly to theme accent variables */
+.app-root:not(.portal-dark) .glass-panel {
+  background: var(--theme-card-bg, rgba(255, 255, 255, 0.72)) !important;
+  border-color: var(--theme-card-border, rgba(255, 255, 255, 0.8)) !important;
+}

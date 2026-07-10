@@ -870,6 +870,174 @@ export default function App() {
     return v !== 'false';
   });
 
+  // --- Dynamic Theme Customizer States ---
+  const [darkThemePreset, setDarkThemePreset] = useState<'purple' | 'red' | 'black' | 'pink' | 'green' | 'custom'>(() => {
+    return (localStorage.getItem('portal_dark_theme_preset') as any) || 'purple';
+  });
+  const [themeUseGradient, setThemeUseGradient] = useState<boolean>(() => {
+    const v = localStorage.getItem('portal_theme_use_gradient');
+    return v !== 'false';
+  });
+  const [customColor1Light, setCustomColor1Light] = useState<string>(() => {
+    return localStorage.getItem('portal_custom_color1_light') || '#8b5cf6';
+  });
+  const [customColor2Light, setCustomColor2Light] = useState<string>(() => {
+    return localStorage.getItem('portal_custom_color2_light') || '#a78bfa';
+  });
+  const [customColor1Dark, setCustomColor1Dark] = useState<string>(() => {
+    return localStorage.getItem('portal_custom_color1_dark') || '#8b5cf6';
+  });
+  const [customColor2Dark, setCustomColor2Dark] = useState<string>(() => {
+    return localStorage.getItem('portal_custom_color2_dark') || '#ec4899';
+  });
+  const [customBgStartDark, setCustomBgStartDark] = useState<string>(() => {
+    return localStorage.getItem('portal_custom_bg_start_dark') || '#06000f';
+  });
+  const [customBgEndDark, setCustomBgEndDark] = useState<string>(() => {
+    return localStorage.getItem('portal_custom_bg_end_dark') || '#0d0221';
+  });
+  const [customBgStartLight, setCustomBgStartLight] = useState<string>(() => {
+    return localStorage.getItem('portal_custom_bg_start_light') || '#ffffff';
+  });
+  const [customBgEndLight, setCustomBgEndLight] = useState<string>(() => {
+    return localStorage.getItem('portal_custom_bg_end_light') || '#eedfff';
+  });
+  const [themePresetViceVersa, setThemePresetViceVersa] = useState<boolean>(() => {
+    return localStorage.getItem('portal_theme_preset_vice_versa') === 'true';
+  });
+
+  // Theme styling calculation
+  const getThemeCSSVariables = () => {
+    let color1 = '#8b5cf6';
+    let color2 = '#ec4899';
+    let bgStart = '#06000f';
+    let bgEnd = '#0d0221';
+    let cardBg = 'rgba(10, 2, 28, 0.82)';
+    let cardBorder = 'rgba(139, 92, 246, 0.25)';
+
+    if (!portalDarkMode) {
+      // Light Mode (White-based)
+      bgStart = '#ffffff';
+      bgEnd = '#f3e8ff';
+      cardBg = 'rgba(255, 255, 255, 0.72)';
+      cardBorder = 'rgba(139, 92, 246, 0.15)';
+
+      switch (darkThemePreset) {
+        case 'purple':
+          color1 = '#8b5cf6';
+          color2 = '#db2777';
+          bgEnd = '#f3e8ff'; // White with Purple gradient
+          cardBorder = 'rgba(139, 92, 246, 0.15)';
+          break;
+        case 'red':
+          color1 = '#dc2626';
+          color2 = '#f87171';
+          bgEnd = '#fee2e2'; // White with Red gradient
+          cardBorder = 'rgba(220, 38, 38, 0.15)';
+          break;
+        case 'green':
+          color1 = '#10b981';
+          color2 = '#34d399';
+          bgEnd = '#d1fae5'; // White with Green gradient
+          cardBorder = 'rgba(16, 185, 129, 0.15)';
+          break;
+        case 'black':
+          color1 = '#1f2937';
+          color2 = '#9ca3af';
+          bgEnd = '#f3f4f6'; // White with Grey/Black gradient
+          cardBorder = 'rgba(31, 41, 55, 0.12)';
+          break;
+        case 'pink':
+          color1 = '#db2777';
+          color2 = '#fbcfe8';
+          bgEnd = '#fce7f3'; // White with Pink gradient
+          cardBorder = 'rgba(219, 39, 119, 0.15)';
+          break;
+        case 'custom':
+          color1 = customColor1Light;
+          color2 = customColor2Light;
+          bgStart = customBgStartLight;
+          bgEnd = customBgEndLight;
+          cardBorder = `${customColor1Light}25`;
+          break;
+      }
+    } else {
+      // Dark Mode variations
+      switch (darkThemePreset) {
+        case 'purple':
+          color1 = '#8b5cf6';
+          color2 = '#ec4899';
+          bgStart = '#0d0221';
+          bgEnd = '#25023a'; // Purple with Pink gradient background
+          cardBg = 'rgba(13, 2, 33, 0.82)';
+          cardBorder = 'rgba(139, 92, 246, 0.25)';
+          break;
+        case 'red':
+          color1 = '#dc2626';
+          color2 = '#000000';
+          bgStart = '#1a0505';
+          bgEnd = '#050000'; // Red with Black gradient background
+          cardBg = 'rgba(26, 5, 5, 0.82)';
+          cardBorder = 'rgba(220, 38, 38, 0.25)';
+          break;
+        case 'green':
+          color1 = '#10b981';
+          color2 = '#db2777';
+          bgStart = '#021a0c';
+          bgEnd = '#000000'; // Green with Pink gradient background
+          cardBg = 'rgba(2, 26, 12, 0.82)';
+          cardBorder = 'rgba(16, 185, 129, 0.25)';
+          break;
+        case 'black':
+          color1 = '#ffffff';
+          color2 = '#1f2937';
+          bgStart = '#050505';
+          bgEnd = '#121212';
+          cardBg = 'rgba(10, 10, 10, 0.9)';
+          cardBorder = 'rgba(255, 255, 255, 0.08)';
+          break;
+        case 'pink':
+          color1 = '#db2777';
+          color2 = '#8b5cf6';
+          bgStart = '#260218';
+          bgEnd = '#0d0008'; // Pink with Purple gradient background
+          cardBg = 'rgba(38, 2, 24, 0.82)';
+          cardBorder = 'rgba(219, 39, 119, 0.25)';
+          break;
+        case 'custom':
+          color1 = customColor1Dark;
+          color2 = customColor2Dark;
+          bgStart = customBgStartDark;
+          bgEnd = customBgEndDark;
+          cardBg = 'rgba(15, 10, 25, 0.85)';
+          cardBorder = `${customColor1Dark}35`;
+          break;
+      }
+    }
+
+    if (themePresetViceVersa) {
+      const temp = color1;
+      color1 = color2;
+      color2 = temp;
+    }
+
+    const isGradient = themeUseGradient;
+    const btnGradient = isGradient ? `linear-gradient(135deg, ${color1}, ${color2})` : color1;
+
+    return {
+      '--theme-accent-color-1': color1,
+      '--theme-accent-color-2': color2,
+      '--theme-bg-gradient-start': bgStart,
+      '--theme-bg-gradient-end': bgEnd,
+      '--theme-card-bg': cardBg,
+      '--theme-card-border': cardBorder,
+      '--theme-btn-gradient': btnGradient,
+    } as React.CSSProperties;
+  };
+
+
+  const currentThemeStyles = getThemeCSSVariables();
+
   // Web Audio Refs for Real-time Synthesis
   const audioCtxRef = useRef<AudioContext | null>(null);
   const soundscapeGainNodeRef = useRef<GainNode | null>(null);
@@ -3199,7 +3367,10 @@ export default function App() {
   if (!currentUser) {
     return (
       <div className="fixed inset-0 w-full h-full font-sans overflow-hidden select-none"
-        style={{ background: 'linear-gradient(135deg, #06000f 0%, #0d0221 30%, #120330 60%, #0a0118 100%)' }}>
+        style={{ 
+          background: 'linear-gradient(135deg, var(--theme-bg-gradient-start, #06000f) 0%, var(--theme-bg-gradient-end, #0d0221) 100%)',
+          ...currentThemeStyles
+        }}>
 
         {/* ── ANIMATED COLOUR ORBS ── */}
         <div className="absolute pointer-events-none" style={{
@@ -3432,7 +3603,7 @@ export default function App() {
                     <button type="submit"
                       className="w-full py-3 rounded-xl font-bold text-xs tracking-[0.2em] uppercase text-white cursor-pointer transition-all duration-200 active:scale-95 flex items-center justify-center gap-2"
                       style={{
-                        background: 'linear-gradient(135deg,#7c3aed,#9333ea,#c026d3)',
+                        background: 'var(--theme-btn-gradient)',
                         boxShadow: '0 0 24px rgba(139,92,246,0.45), 0 4px 12px rgba(0,0,0,0.3)',
                       }}
                       onMouseEnter={e => { (e.target as HTMLButtonElement).style.boxShadow = '0 0 36px rgba(168,85,247,0.65), 0 4px 16px rgba(0,0,0,0.4)'; }}
@@ -3478,7 +3649,7 @@ export default function App() {
                     <button type="submit"
                       className="w-full py-3 rounded-xl font-bold text-xs tracking-[0.2em] uppercase text-white cursor-pointer transition-all duration-200 active:scale-95 flex items-center justify-center gap-2"
                       style={{
-                        background: 'linear-gradient(135deg,#7c3aed,#9333ea,#c026d3)',
+                        background: 'var(--theme-btn-gradient)',
                         boxShadow: '0 0 24px rgba(139,92,246,0.45), 0 4px 12px rgba(0,0,0,0.3)',
                       }}
                       onMouseEnter={e => { (e.target as HTMLButtonElement).style.boxShadow = '0 0 36px rgba(168,85,247,0.65), 0 4px 16px rgba(0,0,0,0.4)'; }}
@@ -3501,8 +3672,13 @@ export default function App() {
     );
   }
 
+
+
   return (
-    <div className={`h-screen font-sans flex flex-col relative overflow-hidden selection:bg-indigo-500/20 app-root ${portalDarkMode ? 'portal-dark' : 'bg-[#edf0f8] text-slate-800'}`}>
+    <div 
+      className={`h-screen font-sans flex flex-col relative overflow-hidden selection:bg-indigo-500/20 app-root ${portalDarkMode ? 'portal-dark' : 'text-slate-800'}`}
+      style={currentThemeStyles}
+    >
       
       {/* Background Portal Looping Custom Video */}
       {bgVideoUrl && (
@@ -3754,8 +3930,8 @@ export default function App() {
                         : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/50'
                   } relative overflow-hidden group`}
                   style={isActive ? {
-                    background: 'linear-gradient(135deg, #7c3aed, #9333ea, #c026d3)',
-                    boxShadow: '0 0 16px rgba(139,92,246,0.35)',
+                    background: 'var(--theme-btn-gradient)',
+                    boxShadow: '0 0 16px var(--theme-card-border)',
                   } : undefined}
                 >
                   <div className="flex items-center gap-3 relative z-10">
@@ -4522,10 +4698,10 @@ export default function App() {
                   <button 
                     type="submit"
                     disabled={isAiLoading || !aiInput.trim()}
-                    className="px-4 py-2 text-white rounded-lg text-xs font-bold transition-all disabled:opacity-40 cursor-pointer active:scale-95 hover:shadow-[0_0_20px_rgba(139,92,246,0.5)]"
+                    className="px-4 py-2 text-white rounded-lg text-xs font-bold transition-all disabled:opacity-40 cursor-pointer active:scale-95 hover:shadow-[0_0_20px_var(--theme-card-border)]"
                     style={{
-                      background: 'linear-gradient(135deg, #7c3aed, #9333ea, #c026d3)',
-                      boxShadow: '0 0 12px rgba(139,92,246,0.3)',
+                      background: 'var(--theme-btn-gradient)',
+                      boxShadow: '0 0 12px var(--theme-card-border)',
                     }}
                   >
                     <Send className="w-4 h-4" />
@@ -4534,7 +4710,7 @@ export default function App() {
               </div>
             </div>
           )}
-
+ 
           {/* GAMES INTERACTIVE VIEW */}
           {activeTab === 'games' && (
             <div className="space-y-6 text-left">
@@ -4553,15 +4729,15 @@ export default function App() {
                   Return to Dashboard
                 </button>
               </div>
-
+ 
               {/* Game selection toggle */}
               <div className="flex bg-slate-950 p-1.5 rounded-xl border border-white/5 max-w-xs select-none">
                 <button 
                   onClick={() => { haptic(10); setSelectedGameSuite('arcade'); }}
                   className={`flex-1 py-1.5 rounded-lg text-[10px] font-bold transition-all duration-200 cursor-pointer text-center uppercase tracking-wider ${selectedGameSuite === 'arcade' ? 'text-white' : 'text-slate-400 hover:text-slate-200'}`}
                   style={selectedGameSuite === 'arcade' ? {
-                    background: 'linear-gradient(135deg, #7c3aed, #9333ea, #c026d3)',
-                    boxShadow: '0 0 10px rgba(139,92,246,0.3)',
+                    background: 'var(--theme-btn-gradient)',
+                    boxShadow: '0 0 10px var(--theme-card-border)',
                   } : undefined}
                 >
                   🕹️ Cabin Arcade
@@ -4570,8 +4746,8 @@ export default function App() {
                   onClick={() => { haptic(10); setSelectedGameSuite('drift'); }}
                   className={`flex-1 py-1.5 rounded-lg text-[10px] font-bold transition-all duration-200 cursor-pointer text-center uppercase tracking-wider ${selectedGameSuite === 'drift' ? 'text-white' : 'text-slate-400 hover:text-slate-200'}`}
                   style={selectedGameSuite === 'drift' ? {
-                    background: 'linear-gradient(135deg, #7c3aed, #9333ea, #c026d3)',
-                    boxShadow: '0 0 10px rgba(139,92,246,0.3)',
+                    background: 'var(--theme-btn-gradient)',
+                    boxShadow: '0 0 10px var(--theme-card-border)',
                   } : undefined}
                 >
                   🏎️ Neon Drift
@@ -4598,6 +4774,17 @@ export default function App() {
                   Secure Distributed Payload Storage
                 </h2>
                 <p className="text-[10px] text-slate-500">Decentralized backup nodes on secure local IndexedDB sandbox</p>
+              </div>
+
+              {/* On-Device Security Notice */}
+              <div className="bg-emerald-500/10 border border-emerald-500/20 text-emerald-800 dark:text-emerald-350 rounded-xl p-3.5 text-[10.5px] flex items-start gap-2.5 leading-relaxed">
+                <span className="text-sm shrink-0">🛡️</span>
+                <div>
+                  <strong className="font-bold">On-Device Local Sandbox Active</strong>
+                  <p className="text-[9.5px] opacity-85 mt-0.5">
+                    All file uploads are stored client-side in the browser's local sandbox (IndexedDB database). Absolutely zero data is sent to external servers, ensuring complete privacy and offline security.
+                  </p>
+                </div>
               </div>
 
               {/* Upload area */}
@@ -4698,6 +4885,17 @@ export default function App() {
                 />
               </div>
 
+              {/* On-Device Security Notice */}
+              <div className="bg-emerald-500/10 border border-emerald-500/20 text-emerald-800 dark:text-emerald-350 rounded-xl p-3.5 text-[10.5px] flex items-start gap-2.5 leading-relaxed">
+                <span className="text-sm shrink-0">🛡️</span>
+                <div>
+                  <strong className="font-bold">On-Device Local Sandbox Active</strong>
+                  <p className="text-[9.5px] opacity-85 mt-0.5">
+                    All images and assets uploaded here are stored client-side in the browser's local sandbox (IndexedDB database). Absolutely zero data is sent to external servers, ensuring your media remains completely private.
+                  </p>
+                </div>
+              </div>
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {/* Generation form */}
                 <div className="space-y-4">
@@ -4710,10 +4908,10 @@ export default function App() {
                   </div>
                   <button 
                     onClick={() => alert("Image prompt pipeline starting. Live Generation sandbox expects configured API Key.")}
-                    className="w-full py-2 text-white rounded-lg text-xs font-bold transition-all cursor-pointer active:scale-95 hover:shadow-[0_0_24px_rgba(139,92,246,0.55)]"
+                    className="w-full py-2 text-white rounded-lg text-xs font-bold transition-all cursor-pointer active:scale-95 hover:shadow-[0_0_24px_var(--theme-card-border)]"
                     style={{
-                      background: 'linear-gradient(135deg, #7c3aed, #9333ea, #c026d3)',
-                      boxShadow: '0 0 16px rgba(139,92,246,0.35)',
+                      background: 'var(--theme-btn-gradient)',
+                      boxShadow: '0 0 16px var(--theme-card-border)',
                     }}
                   >
                     Synthesize Media Render
@@ -4832,10 +5030,10 @@ export default function App() {
                         </div>
                         <button 
                           onClick={handleEndTurn}
-                          className="px-3 py-1.5 text-white text-[10px] font-bold rounded-lg transition-all cursor-pointer active:scale-95 hover:shadow-[0_0_15px_rgba(139,92,246,0.4)]"
+                          className="px-3 py-1.5 text-white text-[10px] font-bold rounded-lg transition-all cursor-pointer active:scale-95 hover:shadow-[0_0_15px_var(--theme-card-border)]"
                           style={{
-                            background: 'linear-gradient(135deg, #7c3aed, #9333ea, #c026d3)',
-                            boxShadow: '0 0 10px rgba(139,92,246,0.25)',
+                            background: 'var(--theme-btn-gradient)',
+                            boxShadow: '0 0 10px var(--theme-card-border)',
                           }}
                         >
                           Next Turn &gt;
@@ -4879,10 +5077,10 @@ export default function App() {
                         <button 
                           onClick={handleOracleConsult}
                           disabled={oracleLoading}
-                          className="px-3 text-white rounded-lg text-xs font-bold transition-all disabled:opacity-40 cursor-pointer active:scale-95 hover:shadow-[0_0_15px_rgba(139,92,246,0.4)]"
+                          className="px-3 text-white rounded-lg text-xs font-bold transition-all disabled:opacity-40 cursor-pointer active:scale-95 hover:shadow-[0_0_15px_var(--theme-card-border)]"
                           style={{
-                            background: 'linear-gradient(135deg, #7c3aed, #9333ea, #c026d3)',
-                            boxShadow: '0 0 10px rgba(139,92,246,0.25)',
+                            background: 'var(--theme-btn-gradient)',
+                            boxShadow: '0 0 10px var(--theme-card-border)',
                           }}
                         >
                           {oracleLoading ? '...' : 'Consult'}
@@ -5105,10 +5303,10 @@ export default function App() {
                       <div className="flex justify-end gap-2">
                         <button 
                           onClick={() => alert("Payload compiled and stored to local matrix storage.")}
-                          className="px-4 py-1.5 rounded text-white text-xs font-bold transition-all duration-300 cursor-pointer active:scale-95 hover:shadow-[0_0_20px_rgba(139,92,246,0.5)]"
+                          className="px-4 py-1.5 rounded text-white text-xs font-bold transition-all duration-300 cursor-pointer active:scale-95 hover:shadow-[0_0_20px_var(--theme-card-border)]"
                           style={{
-                            background: 'linear-gradient(135deg, #7c3aed, #9333ea, #c026d3)',
-                            boxShadow: '0 0 12px rgba(139,92,246,0.3)',
+                            background: 'var(--theme-btn-gradient)',
+                            boxShadow: '0 0 12px var(--theme-card-border)',
                           }}
                         >
                           Save Note
@@ -6190,7 +6388,8 @@ export default function App() {
                 <div className="flex items-center gap-2.5">
                   <button 
                     onClick={() => { haptic(10); loadSportsScores(); }}
-                    className="flex items-center gap-1.5 px-3 py-1.5 bg-[#7c3aed] hover:bg-[#6d28d9] text-white rounded-lg text-[10px] font-extrabold uppercase tracking-wider transition cursor-pointer"
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-white rounded-lg text-[10px] font-extrabold uppercase tracking-wider transition cursor-pointer"
+                    style={{ background: 'var(--theme-btn-gradient)' }}
                   >
                     <RefreshCw className="w-3.5 h-3.5" />
                     Fetch Live
@@ -6216,9 +6415,13 @@ export default function App() {
                     key={key}
                     className={`px-3 py-1.5 rounded-lg text-[10px] font-bold tracking-wider uppercase transition-all border cursor-pointer ${
                       activeSportsLeague === key 
-                        ? 'bg-[#7c3aed] border-[#7c3aed] text-white shadow-md' 
+                        ? 'text-white shadow-md' 
                         : 'bg-slate-100 dark:bg-slate-950 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-white/5 hover:bg-slate-200 dark:hover:bg-slate-900'
                     }`}
+                    style={activeSportsLeague === key ? {
+                      background: 'var(--theme-btn-gradient)',
+                      borderColor: 'var(--theme-accent)',
+                    } : undefined}
                     onClick={() => { haptic(8); setActiveSportsLeague(key as SportsLeague); }}
                   >
                     {league.label.split(' ')[0]}
@@ -6237,9 +6440,14 @@ export default function App() {
                 <button 
                   className={`flex-grow py-2 text-center text-[10px] font-bold uppercase tracking-wider transition-all cursor-pointer border-b-2 ${
                     sportsSubTab === 'scores' 
-                      ? 'text-[#7c3aed] border-[#7c3aed] bg-[#7c3aed]/5' 
+                      ? '' 
                       : 'text-slate-500 border-transparent hover:text-slate-800 dark:hover:text-slate-200'
                   }`}
+                  style={sportsSubTab === 'scores' ? {
+                    color: 'var(--theme-accent)',
+                    borderColor: 'var(--theme-accent)',
+                    backgroundColor: 'rgba(139, 92, 246, 0.05)',
+                  } : undefined}
                   onClick={() => { haptic(5); setSportsSubTab('scores'); }}
                 >
                   🔴 Live & Results
@@ -6768,10 +6976,10 @@ export default function App() {
                           toast("Idea saved locally (offline mode).", "success");
                         }
                       }}
-                      className="w-full py-2 text-white rounded-xl text-xs font-bold tracking-widest uppercase transition-all duration-300 cursor-pointer active:scale-95 hover:shadow-[0_0_24px_rgba(139,92,246,0.55)]"
+                      className="w-full py-2 text-white rounded-xl text-xs font-bold tracking-widest uppercase transition-all duration-300 cursor-pointer active:scale-95 hover:shadow-[0_0_24px_var(--theme-card-border)]"
                       style={{
-                        background: 'linear-gradient(135deg, #7c3aed, #9333ea, #c026d3)',
-                        boxShadow: '0 0 16px rgba(139,92,246,0.35)',
+                        background: 'var(--theme-btn-gradient)',
+                        boxShadow: '0 0 16px var(--theme-card-border)',
                       }}
                     >
                       Channel Idea to trxy6
@@ -6878,30 +7086,273 @@ export default function App() {
                   Appearance & Background Portal
                 </span>
 
-                {/* Theme options */}
-                <div className="flex justify-between items-center py-2 border-b border-slate-100">
+                {/* Theme Preset Selection */}
+                <div className="space-y-3 py-2 border-b border-slate-100 dark:border-white/5">
                   <div className="flex flex-col text-left">
-                    <span className="text-xs font-bold text-slate-700">Theme Accent</span>
-                    <span className="text-[9px] text-slate-400">Pick the core energy hue to breathe across system modules.</span>
+                    <span className="text-xs font-bold text-slate-700 dark:text-slate-200">Theme Preset</span>
+                    <span className="text-[9px] text-slate-450 dark:text-slate-400">Select preset cosmic styling values or craft a custom mix.</span>
                   </div>
-                  <div className="flex items-center gap-1 bg-[#ebedfa]/45 border border-slate-200/30 p-1.5 rounded-full shrink-0">
-                    {(['silver', 'purple', 'cyan', 'pink', 'emerald', 'amber'] as const).map(color => (
+                  <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
+                    {[
+                      { id: 'purple', label: '🌌 Purple', desc: 'Purple + Pink' },
+                      { id: 'red', label: '🩸 Red', desc: 'Red + Black' },
+                      { id: 'green', label: '🟢 Green', desc: 'Green + Pink' },
+                      { id: 'black', label: '🌑 Black', desc: 'Monochrome' },
+                      { id: 'pink', label: '🌸 Pink', desc: 'Pink + Purple' },
+                      { id: 'custom', label: '🎨 Custom', desc: 'Design own' },
+                    ].map(preset => (
                       <button 
-                        key={color}
-                        title={`Accent: ${color}`}
-                        onClick={() => setThemeColor(color)}
-                        className={`w-3.5 h-3.5 rounded-full transition-all hover:scale-125 cursor-pointer ${
-                          color === 'silver' ? 'bg-slate-400' :
-                          color === 'purple' ? 'bg-purple-500' :
-                          color === 'cyan' ? 'bg-indigo-500' :
-                          color === 'pink' ? 'bg-fuchsia-500' :
-                          color === 'emerald' ? 'bg-purple-900' :
-                          'bg-purple-300'
-                        } ${themeColor === color ? 'ring-2 ring-slate-400 scale-110 shadow-lg' : 'opacity-45'}`}
-                      />
+                        key={preset.id}
+                        onClick={() => {
+                          haptic(10);
+                          setDarkThemePreset(preset.id as any);
+                          localStorage.setItem('portal_dark_theme_preset', preset.id);
+                          
+                          // Initialize custom picker states to preset values for instant customizability
+                          if (preset.id === 'purple') {
+                            setCustomColor1Light('#8b5cf6'); localStorage.setItem('portal_custom_color1_light', '#8b5cf6');
+                            setCustomColor2Light('#db2777'); localStorage.setItem('portal_custom_color2_light', '#db2777');
+                            setCustomColor1Dark('#8b5cf6'); localStorage.setItem('portal_custom_color1_dark', '#8b5cf6');
+                            setCustomColor2Dark('#ec4899'); localStorage.setItem('portal_custom_color2_dark', '#ec4899');
+                            setCustomBgStartLight('#ffffff'); localStorage.setItem('portal_custom_bg_start_light', '#ffffff');
+                            setCustomBgEndLight('#f3e8ff'); localStorage.setItem('portal_custom_bg_end_light', '#f3e8ff');
+                            setCustomBgStartDark('#0d0221'); localStorage.setItem('portal_custom_bg_start_dark', '#0d0221');
+                            setCustomBgEndDark('#25023a'); localStorage.setItem('portal_custom_bg_end_dark', '#25023a');
+                          } else if (preset.id === 'red') {
+                            setCustomColor1Light('#dc2626'); localStorage.setItem('portal_custom_color1_light', '#dc2626');
+                            setCustomColor2Light('#f87171'); localStorage.setItem('portal_custom_color2_light', '#f87171');
+                            setCustomColor1Dark('#dc2626'); localStorage.setItem('portal_custom_color1_dark', '#dc2626');
+                            setCustomColor2Dark('#000000'); localStorage.setItem('portal_custom_color2_dark', '#000000');
+                            setCustomBgStartLight('#ffffff'); localStorage.setItem('portal_custom_bg_start_light', '#ffffff');
+                            setCustomBgEndLight('#fee2e2'); localStorage.setItem('portal_custom_bg_end_light', '#fee2e2');
+                            setCustomBgStartDark('#1a0505'); localStorage.setItem('portal_custom_bg_start_dark', '#1a0505');
+                            setCustomBgEndDark('#050000'); localStorage.setItem('portal_custom_bg_end_dark', '#050000');
+                          } else if (preset.id === 'green') {
+                            setCustomColor1Light('#10b981'); localStorage.setItem('portal_custom_color1_light', '#10b981');
+                            setCustomColor2Light('#34d399'); localStorage.setItem('portal_custom_color2_light', '#34d399');
+                            setCustomColor1Dark('#10b981'); localStorage.setItem('portal_custom_color1_dark', '#10b981');
+                            setCustomColor2Dark('#db2777'); localStorage.setItem('portal_custom_color2_dark', '#db2777');
+                            setCustomBgStartLight('#ffffff'); localStorage.setItem('portal_custom_bg_start_light', '#ffffff');
+                            setCustomBgEndLight('#d1fae5'); localStorage.setItem('portal_custom_bg_end_light', '#d1fae5');
+                            setCustomBgStartDark('#021a0c'); localStorage.setItem('portal_custom_bg_start_dark', '#021a0c');
+                            setCustomBgEndDark('#000000'); localStorage.setItem('portal_custom_bg_end_dark', '#000000');
+                          } else if (preset.id === 'black') {
+                            setCustomColor1Light('#1f2937'); localStorage.setItem('portal_custom_color1_light', '#1f2937');
+                            setCustomColor2Light('#9ca3af'); localStorage.setItem('portal_custom_color2_light', '#9ca3af');
+                            setCustomColor1Dark('#ffffff'); localStorage.setItem('portal_custom_color1_dark', '#ffffff');
+                            setCustomColor2Dark('#1f2937'); localStorage.setItem('portal_custom_color2_dark', '#1f2937');
+                            setCustomBgStartLight('#ffffff'); localStorage.setItem('portal_custom_bg_start_light', '#ffffff');
+                            setCustomBgEndLight('#f3f4f6'); localStorage.setItem('portal_custom_bg_end_light', '#f3f4f6');
+                            setCustomBgStartDark('#050505'); localStorage.setItem('portal_custom_bg_start_dark', '#050505');
+                            setCustomBgEndDark('#121212'); localStorage.setItem('portal_custom_bg_end_dark', '#121212');
+                          } else if (preset.id === 'pink') {
+                            setCustomColor1Light('#db2777'); localStorage.setItem('portal_custom_color1_light', '#db2777');
+                            setCustomColor2Light('#fbcfe8'); localStorage.setItem('portal_custom_color2_light', '#fbcfe8');
+                            setCustomColor1Dark('#db2777'); localStorage.setItem('portal_custom_color1_dark', '#db2777');
+                            setCustomColor2Dark('#8b5cf6'); localStorage.setItem('portal_custom_color2_dark', '#8b5cf6');
+                            setCustomBgStartLight('#ffffff'); localStorage.setItem('portal_custom_bg_start_light', '#ffffff');
+                            setCustomBgEndLight('#fce7f3'); localStorage.setItem('portal_custom_bg_end_light', '#fce7f3');
+                            setCustomBgStartDark('#260218'); localStorage.setItem('portal_custom_bg_start_dark', '#260218');
+                            setCustomBgEndDark('#0d0008'); localStorage.setItem('portal_custom_bg_end_dark', '#0d0008');
+                          }
+                        }}
+                        className={`p-2 rounded-xl text-[10px] font-bold border transition-all cursor-pointer flex flex-col items-center justify-center text-center gap-0.5 ${
+                          darkThemePreset === preset.id 
+                            ? 'bg-[#8b5cf6]/10 border-[#8b5cf6] text-[#8b5cf6]' 
+                            : 'bg-white/40 dark:bg-white/5 border-slate-200 dark:border-white/10 text-slate-700 dark:text-slate-350 hover:bg-slate-50 dark:hover:bg-white/10'
+                        }`}
+                      >
+                        <span className="font-semibold">{preset.label}</span>
+                        <span className="text-[7.5px] opacity-65 font-medium">{preset.desc}</span>
+                      </button>
                     ))}
                   </div>
                 </div>
+
+                {/* Gradient Accent Toggler */}
+                <div className="flex justify-between items-center py-2 border-b border-slate-100 dark:border-white/5">
+                  <div className="flex flex-col text-left">
+                    <span className="text-xs font-bold text-slate-700 dark:text-slate-200">Gradient Accents Look</span>
+                    <span className="text-[9px] text-slate-450 dark:text-slate-400">Enable modern dual-color gradient styles on system buttons and highlights.</span>
+                  </div>
+                  <button 
+                    onClick={() => {
+                      haptic(10);
+                      const newVal = !themeUseGradient;
+                      setThemeUseGradient(newVal);
+                      localStorage.setItem('portal_theme_use_gradient', String(newVal));
+                    }}
+                    className={`w-8 h-4 rounded-full relative p-0.5 transition-colors cursor-pointer ${themeUseGradient ? 'bg-[#8b5cf6]' : 'bg-slate-200'}`}
+                  >
+                    <div className={`w-3 h-3 rounded-full bg-white transition-transform ${themeUseGradient ? 'translate-x-4' : 'translate-x-0'}`} />
+                  </button>
+                </div>
+
+                {/* Vice Versa Swap Toggler */}
+                <div className="flex justify-between items-center py-2 border-b border-slate-100 dark:border-white/5">
+                  <div className="flex flex-col text-left">
+                    <span className="text-xs font-bold text-slate-700 dark:text-slate-200">Swap Accent & Trim (Vice Versa)</span>
+                    <span className="text-[9px] text-slate-450 dark:text-slate-400">Swap the primary and secondary trim colors (e.g. Red with Black trim becomes Black with Red trim).</span>
+                  </div>
+                  <button 
+                    onClick={() => {
+                      haptic(10);
+                      const newVal = !themePresetViceVersa;
+                      setThemePresetViceVersa(newVal);
+                      localStorage.setItem('portal_theme_preset_vice_versa', String(newVal));
+                    }}
+                    className={`w-8 h-4 rounded-full relative p-0.5 transition-colors cursor-pointer ${themePresetViceVersa ? 'bg-[#8b5cf6]' : 'bg-slate-200'}`}
+                  >
+                    <div className={`w-3 h-3 rounded-full bg-white transition-transform ${themePresetViceVersa ? 'translate-x-4' : 'translate-x-0'}`} />
+                  </button>
+                </div>
+
+                {/* Custom Color Pickers Panel */}
+                {darkThemePreset === 'custom' && (
+                  <div className="p-3 bg-white/60 dark:bg-[#12082b]/30 border border-slate-200/40 dark:border-white/5 rounded-xl space-y-3.5 animate-[fadeIn_0.25s_ease-out]">
+                    <span className="text-[9px] uppercase font-bold tracking-wider text-[#8b5cf6] block">
+                      🎨 Custom Color Mix Matrix
+                    </span>
+                    
+                    {!portalDarkMode ? (
+                      <div className="space-y-3.5">
+                        <div className="grid grid-cols-2 gap-3.5">
+                          <div className="flex flex-col text-left gap-1">
+                            <label className="text-[9px] font-bold text-slate-500 uppercase">Light Mode Color 1</label>
+                            <div className="flex items-center gap-2">
+                              <input 
+                                type="color" 
+                                value={customColor1Light} 
+                                onChange={(e) => {
+                                  setCustomColor1Light(e.target.value);
+                                  localStorage.setItem('portal_custom_color1_light', e.target.value);
+                                }}
+                                className="w-8 h-7 rounded border border-slate-200 cursor-pointer bg-transparent"
+                              />
+                              <span className="text-[10px] font-mono text-slate-600 uppercase">{customColor1Light}</span>
+                            </div>
+                          </div>
+                          <div className="flex flex-col text-left gap-1">
+                            <label className="text-[9px] font-bold text-slate-500 uppercase">Light Mode Color 2</label>
+                            <div className="flex items-center gap-2">
+                              <input 
+                                type="color" 
+                                value={customColor2Light} 
+                                onChange={(e) => {
+                                  setCustomColor2Light(e.target.value);
+                                  localStorage.setItem('portal_custom_color2_light', e.target.value);
+                                }}
+                                className="w-8 h-7 rounded border border-slate-200 cursor-pointer bg-transparent"
+                              />
+                              <span className="text-[10px] font-mono text-slate-600 uppercase">{customColor2Light}</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-3.5 border-t border-slate-200/40 pt-3">
+                          <div className="flex flex-col text-left gap-1">
+                            <label className="text-[9px] font-bold text-slate-500 uppercase">Background Start</label>
+                            <div className="flex items-center gap-2">
+                              <input 
+                                type="color" 
+                                value={customBgStartLight} 
+                                onChange={(e) => {
+                                  setCustomBgStartLight(e.target.value);
+                                  localStorage.setItem('portal_custom_bg_start_light', e.target.value);
+                                }}
+                                className="w-8 h-7 rounded border border-slate-200 cursor-pointer bg-transparent"
+                              />
+                              <span className="text-[10px] font-mono text-slate-600 uppercase">{customBgStartLight}</span>
+                            </div>
+                          </div>
+                          <div className="flex flex-col text-left gap-1">
+                            <label className="text-[9px] font-bold text-slate-500 uppercase">Background End</label>
+                            <div className="flex items-center gap-2">
+                              <input 
+                                type="color" 
+                                value={customBgEndLight} 
+                                onChange={(e) => {
+                                  setCustomBgEndLight(e.target.value);
+                                  localStorage.setItem('portal_custom_bg_end_light', e.target.value);
+                                }}
+                                className="w-8 h-7 rounded border border-slate-200 cursor-pointer bg-transparent"
+                              />
+                              <span className="text-[10px] font-mono text-slate-600 uppercase">{customBgEndLight}</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="space-y-3.5">
+                        <div className="grid grid-cols-2 gap-3.5">
+                          <div className="flex flex-col text-left gap-1">
+                            <label className="text-[9px] font-bold text-slate-400 uppercase">Dark Mode Color 1</label>
+                            <div className="flex items-center gap-2">
+                              <input 
+                                type="color" 
+                                value={customColor1Dark} 
+                                onChange={(e) => {
+                                  setCustomColor1Dark(e.target.value);
+                                  localStorage.setItem('portal_custom_color1_dark', e.target.value);
+                                }}
+                                className="w-8 h-7 rounded border border-white/10 bg-transparent cursor-pointer"
+                              />
+                              <span className="text-[10px] font-mono text-slate-350 uppercase">{customColor1Dark}</span>
+                            </div>
+                          </div>
+                          <div className="flex flex-col text-left gap-1">
+                            <label className="text-[9px] font-bold text-slate-400 uppercase">Dark Mode Color 2</label>
+                            <div className="flex items-center gap-2">
+                              <input 
+                                type="color" 
+                                value={customColor2Dark} 
+                                onChange={(e) => {
+                                  setCustomColor2Dark(e.target.value);
+                                  localStorage.setItem('portal_custom_color2_dark', e.target.value);
+                                }}
+                                className="w-8 h-7 rounded border border-white/10 bg-transparent cursor-pointer"
+                              />
+                              <span className="text-[10px] font-mono text-slate-350 uppercase">{customColor2Dark}</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-3.5 border-t border-slate-200/40 dark:border-white/5 pt-3">
+                          <div className="flex flex-col text-left gap-1">
+                            <label className="text-[9px] font-bold text-slate-400 uppercase">Background Start</label>
+                            <div className="flex items-center gap-2">
+                              <input 
+                                type="color" 
+                                value={customBgStartDark} 
+                                onChange={(e) => {
+                                  setCustomBgStartDark(e.target.value);
+                                  localStorage.setItem('portal_custom_bg_start_dark', e.target.value);
+                                }}
+                                className="w-8 h-7 rounded border border-white/10 bg-transparent cursor-pointer"
+                              />
+                              <span className="text-[10px] font-mono text-slate-350 uppercase">{customBgStartDark}</span>
+                            </div>
+                          </div>
+                          <div className="flex flex-col text-left gap-1">
+                            <label className="text-[9px] font-bold text-slate-400 uppercase">Background End</label>
+                            <div className="flex items-center gap-2">
+                              <input 
+                                type="color" 
+                                value={customBgEndDark} 
+                                onChange={(e) => {
+                                  setCustomBgEndDark(e.target.value);
+                                  localStorage.setItem('portal_custom_bg_end_dark', e.target.value);
+                                }}
+                                className="w-8 h-7 rounded border border-white/10 bg-transparent cursor-pointer"
+                              />
+                              <span className="text-[10px] font-mono text-slate-350 uppercase">{customBgEndDark}</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 {/* Portal Theme Mode */}
                 <div className="flex justify-between items-center py-2 border-b border-slate-100">
@@ -6912,16 +7363,20 @@ export default function App() {
                   <div className="flex items-center gap-1 bg-[#ebedfa]/45 border border-slate-200/30 p-1 rounded-full shrink-0">
                     <button 
                       onClick={() => { haptic(10); if (portalDarkMode) togglePortalDarkMode(); }}
-                      className={`px-3 py-1 rounded-full text-[10px] font-bold transition-all cursor-pointer ${!portalDarkMode ? 'bg-[#7c3aed] text-white shadow-sm' : 'text-slate-400 hover:text-slate-200 opacity-60'}`}
+                      className={`px-3 py-1 rounded-full text-[10px] font-bold transition-all cursor-pointer ${!portalDarkMode ? 'text-white shadow-sm' : 'text-slate-400 dark:text-slate-200 opacity-60'}`}
+                      style={!portalDarkMode ? {
+                        background: 'var(--theme-btn-gradient)',
+                        boxShadow: '0 0 10px var(--theme-card-border)',
+                      } : undefined}
                     >
                       ☀️ Light
                     </button>
                     <button 
                       onClick={() => { haptic(10); if (!portalDarkMode) togglePortalDarkMode(); }}
-                      className={`px-3 py-1 rounded-full text-[10px] font-bold transition-all cursor-pointer ${portalDarkMode ? 'bg-[#7c3aed] text-white shadow-sm' : 'text-slate-400 hover:text-slate-200 opacity-60'}`}
+                      className={`px-3 py-1 rounded-full text-[10px] font-bold transition-all cursor-pointer ${portalDarkMode ? 'text-white shadow-sm' : 'text-slate-400 dark:text-slate-200 opacity-60'}`}
                       style={portalDarkMode ? {
-                        background: 'linear-gradient(135deg, #7c3aed, #9333ea, #c026d3)',
-                        boxShadow: '0 0 10px rgba(139,92,246,0.3)',
+                        background: 'var(--theme-btn-gradient)',
+                        boxShadow: '0 0 10px var(--theme-card-border)',
                       } : undefined}
                     >
                       🌌 Dark
@@ -7151,10 +7606,10 @@ export default function App() {
                       startSoundscape();
                     }
                   }}
-                  className="w-full py-2.5 text-white rounded-xl text-xs font-bold tracking-widest uppercase transition-all duration-300 cursor-pointer active:scale-95 hover:shadow-[0_0_24px_rgba(139,92,246,0.55)] flex items-center justify-center gap-1.5"
+                  className="w-full py-2.5 text-white rounded-xl text-xs font-bold tracking-widest uppercase transition-all duration-300 cursor-pointer active:scale-95 hover:shadow-[0_0_24px_var(--theme-card-border)] flex items-center justify-center gap-1.5"
                   style={{
-                    background: 'linear-gradient(135deg, #7c3aed, #9333ea, #c026d3)',
-                    boxShadow: '0 0 16px rgba(139,92,246,0.35)',
+                    background: 'var(--theme-btn-gradient)',
+                    boxShadow: '0 0 16px var(--theme-card-border)',
                   }}
                 >
                   {soundscapeActive ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
@@ -7240,20 +7695,20 @@ export default function App() {
                       dlAnchorElem.click();
                       toast("Backup downloaded successfully!", "success");
                     }}
-                    className="flex-1 min-w-[110px] py-2 text-white rounded-xl text-[10px] font-bold uppercase cursor-pointer transition-all duration-300 active:scale-95 hover:shadow-[0_0_20px_rgba(139,92,246,0.5)] flex items-center justify-center gap-1"
+                    className="flex-1 min-w-[110px] py-2 text-white rounded-xl text-[10px] font-bold uppercase cursor-pointer transition-all duration-300 active:scale-95 hover:shadow-[0_0_20px_var(--theme-card-border)] flex items-center justify-center gap-1"
                     style={{
-                      background: 'linear-gradient(135deg, #7c3aed, #9333ea, #c026d3)',
-                      boxShadow: '0 0 12px rgba(139,92,246,0.3)',
+                      background: 'var(--theme-btn-gradient)',
+                      boxShadow: '0 0 12px var(--theme-card-border)',
                     }}
                   >
                     <Download className="w-3 h-3" />
                     Export Backup
                   </button>
                   <label 
-                    className="flex-1 min-w-[110px] py-2 text-white rounded-xl text-[10px] font-bold uppercase cursor-pointer transition-all duration-300 active:scale-95 hover:shadow-[0_0_20px_rgba(139,92,246,0.5)] text-center flex items-center justify-center gap-1 relative"
+                    className="flex-1 min-w-[110px] py-2 text-white rounded-xl text-[10px] font-bold uppercase cursor-pointer transition-all duration-300 active:scale-95 hover:shadow-[0_0_20px_var(--theme-card-border)] text-center flex items-center justify-center gap-1 relative"
                     style={{
-                      background: 'linear-gradient(135deg, #7c3aed, #9333ea, #c026d3)',
-                      boxShadow: '0 0 12px rgba(139,92,246,0.3)',
+                      background: 'var(--theme-btn-gradient)',
+                      boxShadow: '0 0 12px var(--theme-card-border)',
                     }}
                   >
                     <input 
@@ -7515,10 +7970,10 @@ export default function App() {
                   setAiHistory([{ role: 'model', content: 'New optimal thread initialized.' }]);
                   setActiveTab('chat');
                 }}
-                className="w-full py-2 text-white rounded-md text-[10px] font-bold transition-all tracking-wider cursor-pointer active:scale-95 hover:shadow-[0_0_20px_rgba(139,92,246,0.5)]"
+                className="w-full py-2 text-white rounded-md text-[10px] font-bold transition-all tracking-wider cursor-pointer active:scale-95 hover:shadow-[0_0_20px_var(--theme-card-border)]"
                 style={{
-                  background: 'linear-gradient(135deg, #7c3aed, #9333ea, #c026d3)',
-                  boxShadow: '0 0 12px rgba(139,92,246,0.3)',
+                  background: 'var(--theme-btn-gradient)',
+                  boxShadow: '0 0 12px var(--theme-card-border)',
                 }}
               >
                 Start New Chat

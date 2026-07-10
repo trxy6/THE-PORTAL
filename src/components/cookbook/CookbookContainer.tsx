@@ -109,9 +109,13 @@ export const CookbookContainer: React.FC = () => {
                                 onClick={() => setActiveTab(tab.name)}
                                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all cursor-pointer whitespace-nowrap ${
                                     isActive 
-                                        ? 'bg-[#8b5cf6] text-white shadow-md' 
+                                        ? 'text-white shadow-md' 
                                         : 'text-slate-400 hover:text-white'
                                 }`}
+                                style={isActive ? {
+                                    background: 'var(--theme-btn-gradient)',
+                                    boxShadow: '0 0 10px var(--theme-card-border)'
+                                } : undefined}
                             >
                                 <Icon className="w-3.5 h-3.5" />
                                 <span>{tab.label}</span>
