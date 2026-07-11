@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { motion } from 'motion/react';
 
 interface PortalWalkthroughProps {
@@ -13,6 +13,12 @@ export default function PortalWalkthrough({
   onComplete,
 }: PortalWalkthroughProps) {
   const [phase, setPhase] = useState<'entering' | 'warping' | 'flash' | 'whiteout'>('entering');
+
+  // Maintain latest callback ref to prevent identity changes from restarting the timeline
+  const onCompleteRef = useRef(onComplete);
+  useEffect(() => {
+    onCompleteRef.current = onComplete;
+  }, [onComplete]);
 
   // Sequential cinematic timeline progression matching original spec
   useEffect(() => {
@@ -33,7 +39,7 @@ export default function PortalWalkthrough({
 
     // 4.0s -> 4.8s: Sequence finished, trigger completion callback
     const completeTimer = setTimeout(() => {
-      onComplete();
+      onCompleteRef.current();
     }, 4800);
 
     return () => {
@@ -42,7 +48,7 @@ export default function PortalWalkthrough({
       clearTimeout(whiteoutTimer);
       clearTimeout(completeTimer);
     };
-  }, [onComplete]);
+  }, []);
 
   // Generate 250 stars shooting and spiraling outwards (extremely high density, swirling path)
   const spaceStars = useMemo(() => {

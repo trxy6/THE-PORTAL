@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
+// @ts-ignore
 import pecosMascot from '../assets/pecos.png';
 import { 
   Sparkles, Music, Calendar, Heart, ArrowLeft, ArrowRight, 

@@ -8,7 +8,7 @@ import {
   Download, Sparkle, Server, Shield, Brain, Cpu, Database, 
   Battery, AlertCircle, RefreshCw, Send, CheckCircle2, X, Fingerprint,
   PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen, Dices, Trophy, Trash, CalendarRange, ChefHat,
-  ArrowLeft, ArrowRight, Bot, Lock, Volume2, VolumeX, Link, Copy, Eye, Music, ExternalLink
+  ArrowLeft, ArrowRight, Bot, Lock, Volume2, VolumeX, Link, Copy, Eye, Music, ExternalLink, Bookmark, Award
 } from 'lucide-react';
 import { AudioPlayer, TRACKS } from './components/AudioPlayer';
 import { NeonDriftGame } from './components/NeonDriftGame';
