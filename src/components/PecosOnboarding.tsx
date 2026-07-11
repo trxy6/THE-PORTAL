@@ -120,8 +120,9 @@ export default function PecosOnboarding({
     }
   }, [userId]);
 
-  // Save progress helper
-  const saveProgress = (nextStep: number) => {
+  // Auto-save progress to localStorage whenever onboarding state changes
+  useEffect(() => {
+    if (!userId) return;
     const profile = {
       displayName,
       favoriteColor,
@@ -136,11 +137,20 @@ export default function PecosOnboarding({
       musicProvider,
       spotifyAccessStatus,
       spotifyConnected,
-      onboardingStep: nextStep,
+      onboardingStep: currentStep,
       onboardingCompleted: false,
       onboardingCompletedAt: null
     };
     localStorage.setItem(`portal_profile_${userId}`, JSON.stringify(profile));
+  }, [
+    userId, currentStep, displayName, favoriteColor, themeAccentColor,
+    birthdayMonth, birthdayDay, birthdayYear, birthdaySkipped,
+    favoriteFoods, favoriteFoodsSkipped, wantsMusic, musicProvider,
+    spotifyAccessStatus, spotifyConnected
+  ]);
+
+  const saveProgress = (nextStep: number) => {
+    // Handled by auto-save useEffect hook
   };
 
   const handleNextStep = (stepNum: number) => {
@@ -523,6 +533,7 @@ export default function PecosOnboarding({
                     onClick={() => {
                       if (spotifyAccessStatus === 'not_requested') {
                         setPecosMessageOverride("Hold on, Traveler! You need VIP permission first. Please click 'Request VIP Access' to register your Spotify address.");
+                        setShowPecosResponse(true);
                       } else {
                         setShowConnectModal(true);
                       }
