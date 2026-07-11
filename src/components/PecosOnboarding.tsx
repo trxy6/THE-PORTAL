@@ -64,7 +64,7 @@ export default function PecosOnboarding({
         audio.play().catch(() => {});
       }
     } else {
-      audio = new Audio('/Orbital Boot Sequence.wav');
+      audio = new Audio('/orbital-boot-sequence.wav');
       audio.loop = true;
       audio.volume = 0.45;
       audio.play().catch(e => {
