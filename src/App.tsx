@@ -542,6 +542,7 @@ export default function App() {
   const [tempUserToLogin, setTempUserToLogin] = useState<string | null>(null);
   const [isCompletingOnboarding, setIsCompletingOnboarding] = useState(false);
   const [onboardingAudio, setOnboardingAudio] = useState<HTMLAudioElement | null>(null);
+  const onboardingAudioRef = useRef<HTMLAudioElement | null>(null);
 
   const startOnboardingAudio = () => {
     try {
@@ -550,6 +551,7 @@ export default function App() {
       audio.volume = 0.45;
       audio.play().catch(e => console.log("Audio play failed on gesture", e));
       setOnboardingAudio(audio);
+      onboardingAudioRef.current = audio;
     } catch (e) {
       console.error("Failed to initialize audio object on gesture", e);
     }
@@ -3555,6 +3557,10 @@ export default function App() {
               onboardingAudio.pause();
               setOnboardingAudio(null);
             }
+            if (onboardingAudioRef.current) {
+              onboardingAudioRef.current.pause();
+              onboardingAudioRef.current = null;
+            }
             localStorage.removeItem('portal_current_user');
             setCurrentUser(null);
             setOnboardingCompleted(false);
@@ -3615,7 +3621,12 @@ export default function App() {
                 } else {
                   try {
                     const data = JSON.parse(saved);
-                    setOnboardingCompleted(data.onboardingCompleted === true);
+                    const completed = data.onboardingCompleted === true;
+                    setOnboardingCompleted(completed);
+                    if (completed && onboardingAudioRef.current) {
+                      onboardingAudioRef.current.pause();
+                      onboardingAudioRef.current = null;
+                    }
                   } catch (e) {
                     setOnboardingCompleted(false);
                   }
