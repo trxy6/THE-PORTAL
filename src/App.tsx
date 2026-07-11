@@ -545,7 +545,7 @@ export default function App() {
 
   const startOnboardingAudio = () => {
     try {
-      const audio = new Audio('/orbital-boot-sequence.wav');
+      const audio = new Audio('/orbital-boot-sequence.mp3');
       audio.loop = true;
       audio.volume = 0.45;
       audio.play().catch(e => console.log("Audio play failed on gesture", e));
