@@ -586,6 +586,31 @@ export default function App() {
     return 'Traveler';
   }, [currentUser]);
 
+  // --- Customizable Widget States ---
+  const [sysMonitorTab, setSysMonitorTab] = useState<'cpu' | 'ram' | 'bat' | 'ai'>('cpu');
+  const [sysWidgetLayout, setSysWidgetLayout] = useState<'radial' | 'linear' | 'sparkline'>('radial');
+  const [sysLoadFluc, setSysLoadFluc] = useState<boolean>(true);
+  const [sysSims, setSysSims] = useState({ cpu: 42, ram: 64, bat: 100, ai: 18 });
+  const [pecosCompanionState, setPecosCompanionState] = useState<'optimal' | 'overclocked' | 'training' | 'sleep'>('optimal');
+
+  useEffect(() => {
+    if (!sysLoadFluc) return;
+    const interval = setInterval(() => {
+      setSysSims(prev => {
+        const cpuVar = Math.max(10, Math.min(95, prev.cpu + (Math.random() > 0.5 ? 4 : -4)));
+        const ramVar = Math.max(50, Math.min(85, prev.ram + (Math.random() > 0.5 ? 1 : -1)));
+        const aiVar = Math.max(5, Math.min(45, prev.ai + (Math.random() > 0.5 ? 3 : -3)));
+        return {
+          cpu: Math.round(cpuVar),
+          ram: Math.round(ramVar),
+          bat: 100,
+          ai: Math.round(aiVar)
+        };
+      });
+    }, 2000);
+    return () => clearInterval(interval);
+  }, [sysLoadFluc]);
+
   // Customizable Profile states
   const [userAvatar, setUserAvatar] = useState<string>(() => {
     return localStorage.getItem('portal_user_avatar') || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=128&auto=format&fit=crop";
@@ -4302,40 +4327,143 @@ export default function App() {
             })}
           </div>
 
-          {/* Lower Sidebar status card matching the exact spec from the image */}
+          {/* Lower Sidebar status card with interactive customizable PECOS Companion */}
           <div className="mt-8 space-y-4">
             <div 
-              className="p-4 rounded-2xl bg-gradient-to-br from-[#120a24] via-[#1d1135] to-[#0d071a] border relative overflow-hidden transition-all duration-1000 shadow-xl text-left"
-              style={{ borderColor: 'var(--theme-card-border)', boxShadow: '0 4px 20px var(--theme-card-border)' }}
+              className="p-4 rounded-2xl bg-gradient-to-br from-[#0c071a] via-[#120a24] to-[#05030b] border relative overflow-hidden transition-all duration-1000 shadow-xl text-left"
+              style={{ 
+                borderColor: 'var(--theme-card-border)', 
+                boxShadow: `0 4px 20px ${getThemeHex()}15` 
+              }}
             >
               {/* Scanline grid details inside card */}
               <div className="absolute inset-0 cyber-grid-dense opacity-10 pointer-events-none" />
-              <div className="absolute -right-10 -bottom-10 w-28 h-28 rounded-full blur-xl pointer-events-none" style={{ backgroundColor: 'var(--theme-accent-color2)', opacity: 0.1 }} />
+              <div 
+                className="absolute -right-10 -bottom-10 w-28 h-28 rounded-full blur-xl pointer-events-none transition-all duration-1000" 
+                style={{ 
+                  backgroundColor: getThemeHex(), 
+                  opacity: pecosCompanionState === 'overclocked' ? 0.25 : pecosCompanionState === 'sleep' ? 0.03 : 0.1 
+                }} 
+              />
 
-              <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center justify-between mb-3 relative z-10">
                 <div className="flex items-center gap-2">
-                  {/* Glowing dynamic robot/brain avatar */}
-                  <div className="p-1.5 rounded-xl flex items-center justify-center" style={{ backgroundColor: 'rgba(255,255,255,0.03)', border: '1px solid var(--theme-card-border)' }}>
-                    {renderSidebarIcon('chat', true)}
+                  {/* PECOS SVG Mascot matches the theme accent color dynamically */}
+                  <div 
+                    className={`p-1.5 rounded-xl flex items-center justify-center transition-all duration-500 ${
+                      pecosCompanionState === 'overclocked' ? 'animate-[pulse_1s_infinite]' : ''
+                    }`} 
+                    style={{ 
+                      backgroundColor: 'rgba(255, 255, 255, 0.03)', 
+                      border: '1px solid var(--theme-card-border)',
+                      boxShadow: pecosCompanionState === 'overclocked' ? `0 0 12px ${getThemeHex()}` : 'none'
+                    }}
+                  >
+                    <svg 
+                      className={`w-5 h-5 transition-all duration-500 rounded-full ${
+                        pecosCompanionState === 'overclocked' ? 'scale-110' :
+                        pecosCompanionState === 'sleep' ? 'opacity-60 scale-95' : 'scale-100'
+                      }`} 
+                      viewBox="0 0 100 100" 
+                      style={{ 
+                        filter: `drop-shadow(0 0 4px ${getThemeHex()})`, 
+                        background: '#040209', 
+                        border: `1px solid ${getThemeHex()}50` 
+                      }}
+                    >
+                      {/* Dynamic theme ears */}
+                      <g opacity={pecosCompanionState === 'sleep' ? '0.5' : '0.85'}>
+                        <path d="M 20,80 Q 5,50 15,25 Q 30,55 45,75 Z" fill={getThemeHex()}></path>
+                        <path d="M 80,80 Q 95,50 85,25 Q 70,55 55,75 Z" fill={getThemeHex()}></path>
+                      </g>
+                      <path d="M 12,38 C 5,28 10,22 28,32 Z" fill="#8a614d" opacity="1"></path>
+                      <path d="M 88,38 C 95,28 90,22 72,32 Z" fill="#8a614d" opacity="1"></path>
+                      {/* Dynamic theme face structure */}
+                      <path d="M 20,78 Q 50,10 80,78 Q 50,55 20,78 Z" fill="#130d22" stroke={getThemeHex()} strokeWidth="1.5"></path>
+                      <path d="M 32,45 C 32,40 68,40 68,45 C 68,68 32,68 32,45 Z" fill="#040209" stroke="transparent" strokeWidth="1"></path>
+                      {/* Visor details */}
+                      <path d="M 34,48 Q 50,54 66,48 L 60,68 Q 50,75 40,68 Z" fill={`${getThemeHex()}35`}></path>
+                      
+                      {/* Visor Lights */}
+                      {pecosCompanionState === 'sleep' ? (
+                        <>
+                          {/* Closed eyes representation */}
+                          <line x1="38" y1="43" x2="46" y2="43" stroke="#475569" strokeWidth="1.5" />
+                          <line x1="54" y1="43" x2="62" y2="43" stroke="#475569" strokeWidth="1.5" />
+                        </>
+                      ) : (
+                        <>
+                          <ellipse cx="42" cy="43" rx="4.5" ry="1.5" fill="#e0f7fa"></ellipse>
+                          <ellipse cx="58" cy="43" rx="4.5" ry="1.5" fill="#e0f7fa"></ellipse>
+                          <line x1="32" y1="43" x2="52" y2="43" stroke="#06b6d4" strokeWidth="1.2"></line>
+                          <line x1="48" y1="43" x2="68" y2="43" stroke="#06b6d4" strokeWidth="1.2"></line>
+                        </>
+                      )}
+                    </svg>
                   </div>
+                  
                   <div className="flex flex-col text-left">
-                    <span className="text-[10px] text-white font-extrabold tracking-wide leading-none">NextGenPortal AI</span>
-                    <span className="text-[8px] font-bold tracking-widest uppercase mt-0.5" style={{ color: 'var(--theme-accent-color2)' }}>Offline • Unlimited</span>
+                    <span className="text-[10px] text-white font-extrabold tracking-wide leading-none">PECOS Diagnostic</span>
+                    <span className="text-[8px] font-bold tracking-widest uppercase mt-0.5" style={{ color: 'var(--theme-accent-color2)' }}>
+                      {pecosCompanionState === 'optimal' ? 'Offline • Unlimited' :
+                       pecosCompanionState === 'overclocked' ? 'Overclock • Peak' :
+                       pecosCompanionState === 'training' ? 'Deep AI Training' :
+                       'Eco Mode • Standby'}
+                    </span>
                   </div>
                 </div>
+
+                {/* Mood Switch Button */}
+                <button 
+                  onClick={() => {
+                    setPecosCompanionState(prev => 
+                      prev === 'optimal' ? 'overclocked' : 
+                      prev === 'overclocked' ? 'training' : 
+                      prev === 'training' ? 'sleep' : 'optimal'
+                    );
+                    haptic(10);
+                  }}
+                  className="p-1 rounded bg-white/5 hover:bg-white/10 border border-white/5 text-[7px] font-mono uppercase text-slate-400 hover:text-white transition-all cursor-pointer select-none active:scale-95 shrink-0"
+                >
+                  Cycle State
+                </button>
               </div>
 
-              {/* Storage progress bar matching the theme */}
-              <div className="space-y-1.5 border-t border-white/5 pt-3">
+              {/* Status information progress bar */}
+              <div className="space-y-1.5 border-t border-white/5 pt-3 relative z-10">
                 <div className="flex items-center justify-between text-[9px] font-bold text-slate-400">
-                  <span>Storage</span>
-                  <span className="text-white">58%</span>
+                  <span>
+                    {pecosCompanionState === 'optimal' ? 'Local Buffer' :
+                     pecosCompanionState === 'overclocked' ? 'Inference Rate' :
+                     pecosCompanionState === 'training' ? 'Knowledge Core' :
+                     'Standby Footprint'}
+                  </span>
+                  <span className="text-white font-mono">
+                    {pecosCompanionState === 'optimal' ? '58%' :
+                     pecosCompanionState === 'overclocked' ? '98%' :
+                     pecosCompanionState === 'training' ? `${50 + Math.round(sysSims.cpu * 0.3)}%` :
+                     '12%'}
+                  </span>
                 </div>
-                <div className="w-full h-1.5 bg-[#1b1429] rounded-full overflow-hidden border border-white/5">
+                <div className="w-full h-1.5 bg-slate-950/60 rounded-full overflow-hidden border border-white/5">
                   <div 
-                    className="h-full rounded-full" 
-                    style={{ width: '58%', background: 'var(--theme-btn-gradient)', boxShadow: '0 0 8px var(--theme-card-border)' }} 
+                    className="h-full rounded-full transition-all duration-1000" 
+                    style={{ 
+                      width: pecosCompanionState === 'optimal' ? '58%' :
+                             pecosCompanionState === 'overclocked' ? '98%' :
+                             pecosCompanionState === 'training' ? `${50 + Math.round(sysSims.cpu * 0.3)}%` :
+                             '12%', 
+                      background: 'var(--theme-btn-gradient)', 
+                      boxShadow: `0 0 8px ${getThemeHex()}` 
+                    }} 
                   />
+                </div>
+                {/* Micro metrics description */}
+                <div className="text-[7.5px] font-mono text-slate-500 pt-0.5">
+                  {pecosCompanionState === 'optimal' ? 'PECOS operates fully offline on local neural parameters.' :
+                   pecosCompanionState === 'overclocked' ? 'Warning: Memory heat threshold approaching 55°C.' :
+                   pecosCompanionState === 'training' ? 'Ingesting recent activity to personalize companion logs.' :
+                   'Processor running at 100MHz. Low battery consumption.'}
                 </div>
               </div>
             </div>
@@ -8498,71 +8626,174 @@ export default function App() {
             </div>
           </div>
 
-          {/* Section: System Status with Glowing Cyan Radial Gauge */}
+          {/* Section: Interactive Customizable Holographic System Core */}
           <div className="space-y-3">
-            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-widest">System Status</span>
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-bold text-slate-500 uppercase tracking-widest">System Core</span>
+              <button 
+                onClick={() => {
+                  setSysWidgetLayout(prev => prev === 'radial' ? 'linear' : prev === 'linear' ? 'sparkline' : 'radial');
+                  haptic(10);
+                }}
+                className="p-1 rounded bg-slate-900 border border-white/5 hover:border-white/10 hover:text-white text-slate-400 text-[10px] font-mono flex items-center gap-1 cursor-pointer transition-all active:scale-95"
+                title="Toggle Telemetry Layout"
+              >
+                <Settings className="w-3 h-3 animate-[spin_10s_linear_infinite]" />
+                <span className="capitalize">{sysWidgetLayout}</span>
+              </button>
+            </div>
 
-            <div className="glass-panel p-4 rounded-xl border border-emerald-500/15 bg-emerald-500/5 hover:bg-emerald-500/10 hover:border-emerald-500/35 transition-all duration-300 space-y-4 group">
-              
-              {/* Radial Circle Optimal ring */}
-              <div className="flex flex-col items-center justify-center py-2 relative">
-                <svg className="w-24 h-24 transform -rotate-90">
-                  {/* Gray background track */}
-                  <circle 
-                    cx="48" cy="48" r="38" 
-                    className="stroke-slate-100 fill-none stroke-[6]"
-                  />
-                  {/* Glowing active purple/theme ring path */}
-                  <circle 
-                    cx="48" cy="48" r="38" 
-                    className="fill-none stroke-[6]"
-                    stroke={getThemeHex()}
-                    strokeDasharray="238"
-                    strokeDashoffset="0"
-                    style={{ filter: `drop-shadow(0 0 6px ${getThemeHex()}50)` }}
-                  />
-                </svg>
+            <div 
+              className="glass-panel p-4 rounded-xl border transition-all duration-500 space-y-4 text-left relative overflow-hidden group"
+              style={{ 
+                borderColor: `${getThemeHex()}22`,
+                background: `linear-gradient(135deg, ${getThemeHex()}05 0%, rgba(13, 7, 30, 0.4) 100%)`,
+                boxShadow: `0 4px 16px ${getThemeHex()}09`
+              }}
+            >
+              {/* Dynamic Grid Overlay */}
+              <div className="absolute inset-0 cyber-grid-dense opacity-5 pointer-events-none" />
 
-                {/* Core ring status text exactly like image */}
-                <div className="absolute flex flex-col items-center">
-                  <span className="text-base font-black font-mono text-slate-800 leading-none">100%</span>
-                  <span className="text-[8px] text-slate-400 font-bold uppercase tracking-wide mt-1">All Systems</span>
-                  <span className="text-[8px] font-bold font-mono" style={{ color: getThemeHex() }}>Optimal</span>
-                </div>
+              {/* Mode Selectors */}
+              <div className="grid grid-cols-4 gap-1 p-1 bg-slate-950/60 border border-white/5 rounded-lg text-[9px] font-mono font-bold text-slate-400">
+                {(['cpu', 'ram', 'bat', 'ai'] as const).map(tab => (
+                  <button
+                    key={tab}
+                    onClick={() => {
+                      setSysMonitorTab(tab);
+                      haptic(5);
+                    }}
+                    className={`py-1 rounded uppercase tracking-wider transition-all cursor-pointer ${
+                      sysMonitorTab === tab 
+                        ? 'text-white' 
+                        : 'hover:text-slate-200'
+                    }`}
+                    style={sysMonitorTab === tab ? {
+                      background: 'var(--theme-btn-gradient)',
+                      boxShadow: `0 0 6px ${getThemeHex()}33`
+                    } : undefined}
+                  >
+                    {tab}
+                  </button>
+                ))}
               </div>
 
-              {/* Status List with dots exactly matching reference color tags */}
-              <div className="space-y-2 border-t border-slate-200/50 pt-3 text-[10px] font-mono text-slate-400 text-left">
-                <div className="flex items-center justify-between">
-                  <span className="text-slate-400 font-semibold">Storage</span>
-                  <span className="text-slate-600 font-bold flex items-center gap-1.5">
-                    512 GB Free
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                  </span>
+              {/* Main Visualizer Panel */}
+              {sysWidgetLayout === 'radial' && (
+                <div className="flex flex-col items-center justify-center py-2 relative">
+                  <svg className="w-24 h-24 transform -rotate-90">
+                    <circle 
+                      cx="48" cy="48" r="38" 
+                      className="stroke-slate-100/10 fill-none stroke-[5]"
+                    />
+                    <circle 
+                      cx="48" cy="48" r="38" 
+                      className="fill-none stroke-[5] transition-all duration-500"
+                      stroke={getThemeHex()}
+                      strokeDasharray="238"
+                      strokeDashoffset={238 - (238 * (
+                        sysMonitorTab === 'cpu' ? sysSims.cpu :
+                        sysMonitorTab === 'ram' ? sysSims.ram :
+                        sysMonitorTab === 'bat' ? sysSims.bat :
+                        sysSims.ai
+                      )) / 100}
+                      style={{ filter: `drop-shadow(0 0 8px ${getThemeHex()})` }}
+                    />
+                  </svg>
+
+                  <div className="absolute flex flex-col items-center">
+                    <span className="text-base font-black font-mono text-white leading-none transition-all duration-300">
+                      {sysMonitorTab === 'cpu' ? `${sysSims.cpu}%` :
+                       sysMonitorTab === 'ram' ? `${sysSims.ram}%` :
+                       sysMonitorTab === 'bat' ? `${sysSims.bat}%` :
+                       `${sysSims.ai}%`}
+                    </span>
+                    <span className="text-[7px] text-slate-500 font-bold uppercase tracking-wider mt-1">
+                      {sysMonitorTab === 'cpu' ? 'Core Load' :
+                       sysMonitorTab === 'ram' ? 'Memory In Use' :
+                       sysMonitorTab === 'bat' ? 'Power State' :
+                       'Neural Load'}
+                    </span>
+                    <span className="text-[8px] font-black font-mono mt-0.5 animate-pulse" style={{ color: getThemeHex() }}>
+                      {sysMonitorTab === 'cpu' ? 'SCALING' :
+                       sysMonitorTab === 'ram' ? 'CACHED' :
+                       sysMonitorTab === 'bat' ? 'CHARGED' :
+                       'OPTIMAL'}
+                    </span>
+                  </div>
                 </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-slate-400 font-semibold">Memory</span>
-                  <span className="text-slate-600 font-bold flex items-center gap-1.5">
-                    8.0 GB
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                  </span>
+              )}
+
+              {sysWidgetLayout === 'linear' && (
+                <div className="py-2 space-y-2">
+                  {(['cpu', 'ram', 'bat', 'ai'] as const).map(stat => {
+                    const val = stat === 'cpu' ? sysSims.cpu :
+                                stat === 'ram' ? sysSims.ram :
+                                stat === 'bat' ? sysSims.bat :
+                                sysSims.ai;
+                    return (
+                      <div key={stat} className="space-y-1">
+                        <div className="flex items-center justify-between text-[9px] font-mono">
+                          <span className="uppercase text-slate-400 font-extrabold">{stat}</span>
+                          <span className="text-white font-bold">{val}%</span>
+                        </div>
+                        <div className="w-full h-1.5 bg-slate-950/60 rounded border border-white/5 overflow-hidden">
+                          <div 
+                            className="h-full rounded-r transition-all duration-500"
+                            style={{ 
+                              width: `${val}%`, 
+                              background: 'var(--theme-btn-gradient)',
+                              boxShadow: `0 0 6px ${getThemeHex()}55`
+                            }}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-slate-400 font-semibold">Battery</span>
-                  <span className="text-slate-600 font-bold flex items-center gap-1.5">
-                    100%
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                  </span>
+              )}
+
+              {sysWidgetLayout === 'sparkline' && (
+                <div className="grid grid-cols-2 gap-2 py-1 text-[10px] font-mono">
+                  <div className="p-2 rounded bg-slate-950/60 border border-white/5 space-y-1">
+                    <div className="text-[8px] text-slate-500 uppercase font-black">CPU Clock</div>
+                    <div className="text-white font-extrabold">{(2.4 + (sysSims.cpu * 0.024)).toFixed(2)} GHz</div>
+                    <div className="text-[7px] text-emerald-400">Temp: {(40 + (sysSims.cpu * 0.25)).toFixed(1)}°C</div>
+                  </div>
+                  <div className="p-2 rounded bg-slate-950/60 border border-white/5 space-y-1">
+                    <div className="text-[8px] text-slate-500 uppercase font-black">RAM Allocation</div>
+                    <div className="text-white font-extrabold">{(8.0 * (sysSims.ram / 100)).toFixed(1)} / 8.0 GB</div>
+                    <div className="text-[7px] text-emerald-400">Available: {(8.0 - (8.0 * (sysSims.ram / 100))).toFixed(1)} GB</div>
+                  </div>
+                  <div className="p-2 rounded bg-slate-950/60 border border-white/5 space-y-1">
+                    <div className="text-[8px] text-slate-500 uppercase font-black">Power Delivery</div>
+                    <div className="text-white font-extrabold">4.2V Cell</div>
+                    <div className="text-[7px] text-emerald-400">Temp: 29.2°C</div>
+                  </div>
+                  <div className="p-2 rounded bg-slate-950/60 border border-white/5 space-y-1">
+                    <div className="text-[8px] text-slate-500 uppercase font-black">Model Latency</div>
+                    <div className="text-white font-extrabold">{42 + Math.round(sysSims.ai * 0.4)} ms</div>
+                    <div className="text-[7px] text-emerald-400">Context: 2K tokens</div>
+                  </div>
                 </div>
+              )}
+
+              {/* Status List Metrics Footer */}
+              <div className="space-y-1.5 border-t border-white/5 pt-3 text-[10px] font-mono text-slate-400">
                 <div className="flex items-center justify-between">
-                  <span className="text-slate-400 font-semibold">Offline AI</span>
-                  <span className="text-slate-600 font-bold flex items-center gap-1.5">
-                    Ready
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                  <span>Resource Status</span>
+                  <span className="text-white font-bold flex items-center gap-1.5">
+                    {sysMonitorTab === 'cpu' ? 'Dynamic Scaling' :
+                     sysMonitorTab === 'ram' ? '512 MB Buffer' :
+                     sysMonitorTab === 'bat' ? 'USB-PD Charging' :
+                     'Llama 3.2 (Offline)'}
+                    <span 
+                      className="w-1.5 h-1.5 rounded-full animate-pulse" 
+                      style={{ backgroundColor: getThemeHex(), boxShadow: `0 0 6px ${getThemeHex()}` }} 
+                    />
                   </span>
                 </div>
               </div>
-
             </div>
           </div>
 
