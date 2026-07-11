@@ -8807,7 +8807,7 @@ export default function App() {
           
           {/* Left Audio controller suite with real synthesized loop */}
           <div className="flex-1 w-full xl:max-w-2xl">
-            <AudioPlayer themeColor={themeColor} />
+            <AudioPlayer themeColor={themeColor} spotifyToken={spotifyToken} />
           </div>
 
           {/* Right statuses info and system time indicators */}
