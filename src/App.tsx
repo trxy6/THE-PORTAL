@@ -1198,7 +1198,7 @@ export default function App() {
     }
 
     const isGradient = themeUseGradient;
-    const btnGradient = isGradient ? `linear-gradient(135deg, ${color1}, ${color2})` : color1;
+    const btnGradient = isGradient ? `linear-gradient(135deg, ${color1} 0%, #06b6d4 30%, #ec4899 65%, ${color2} 100%)` : color1;
 
     return {
       '--theme-accent-color-1': color1,
