@@ -790,13 +790,17 @@ export default function PecosOnboarding({
           {currentStep === 4 && (
             <button
               onClick={() => {
-                const name = displayName.trim();
-                if (!name) {
-                  setPecosMessageOverride("Ah, please don't leave this empty! I need something to call you. What name should I register?");
-                  return;
+                if (!showPecosResponse) {
+                  const name = displayName.trim();
+                  if (!name) {
+                    setPecosMessageOverride("Ah, please don't leave this empty! I need something to call you. What name should I register?");
+                    return;
+                  }
+                  setPecosMessageOverride(`${name}? Nice to officially meet you! I have a feeling we’re going to get along.`);
+                  setShowPecosResponse(true);
+                } else {
+                  handleNextStep(5);
                 }
-                setPecosMessageOverride(`${name}? Nice to officially meet you! I have a feeling we’re going to get along.`);
-                setShowPecosResponse(true);
               }}
               className="px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-[0.15em] text-white cursor-pointer shadow-lg active:scale-95 transition-all flex items-center gap-1.5"
               style={{ background: 'var(--theme-btn-gradient)' }}
