@@ -12,13 +12,15 @@ interface PecosOnboardingProps {
   onComplete: (profileData: any) => void;
   onBackToLogin: () => void;
   portalDarkMode: boolean;
+  onboardingAudio?: HTMLAudioElement | null;
 }
 
 export default function PecosOnboarding({
   userId,
   onComplete,
   onBackToLogin,
-  portalDarkMode
+  portalDarkMode,
+  onboardingAudio
 }: PecosOnboardingProps) {
   // --- Profile Fields ---
   const [currentStep, setCurrentStep] = useState<number>(1);
@@ -54,18 +56,22 @@ export default function PecosOnboarding({
   const [isMuted, setIsMuted] = useState(false);
 
   useEffect(() => {
-    const audio = new Audio('/Orbital Boot Sequence.wav');
-    audio.loop = true;
-    audio.volume = 0.45;
-    audioRef.current = audio;
-
-    const playAudio = () => {
+    let audio: HTMLAudioElement;
+    
+    if (onboardingAudio) {
+      audio = onboardingAudio;
+      if (audio.paused) {
+        audio.play().catch(() => {});
+      }
+    } else {
+      audio = new Audio('/Orbital Boot Sequence.wav');
+      audio.loop = true;
+      audio.volume = 0.45;
       audio.play().catch(e => {
         console.log("Audio autoplay blocked by browser policy. Waiting for user click.");
       });
-    };
-    
-    playAudio();
+    }
+    audioRef.current = audio;
 
     const handleUserInteraction = () => {
       if (audioRef.current && audioRef.current.paused) {
@@ -79,12 +85,14 @@ export default function PecosOnboarding({
     window.addEventListener('keydown', handleUserInteraction);
 
     return () => {
-      audio.pause();
+      if (!onboardingAudio) {
+        audio.pause();
+      }
       audioRef.current = null;
       window.removeEventListener('click', handleUserInteraction);
       window.removeEventListener('keydown', handleUserInteraction);
     };
-  }, []);
+  }, [onboardingAudio]);
 
   // Load saved state on mount
   useEffect(() => {

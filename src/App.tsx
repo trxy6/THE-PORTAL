@@ -541,6 +541,20 @@ export default function App() {
   const [isPlayingWarpTransition, setIsPlayingWarpTransition] = useState(false);
   const [tempUserToLogin, setTempUserToLogin] = useState<string | null>(null);
   const [isCompletingOnboarding, setIsCompletingOnboarding] = useState(false);
+  const [onboardingAudio, setOnboardingAudio] = useState<HTMLAudioElement | null>(null);
+
+  const startOnboardingAudio = () => {
+    try {
+      const audio = new Audio('/Orbital Boot Sequence.wav');
+      audio.loop = true;
+      audio.volume = 0.45;
+      audio.play().catch(e => console.log("Audio play failed on gesture", e));
+      setOnboardingAudio(audio);
+    } catch (e) {
+      console.error("Failed to initialize audio object on gesture", e);
+    }
+  };
+
   const [onboardingCompleted, setOnboardingCompleted] = useState<boolean>(() => {
     const user = localStorage.getItem('portal_current_user');
     if (!user) return false;
@@ -2308,6 +2322,7 @@ export default function App() {
   // --- Auth Handlers ---
   const handleGuestMode = () => {
     haptic([10, 20]);
+    startOnboardingAudio();
     setTempUserToLogin('guest');
     setIsPlayingWarpTransition(true);
     setAuthError('');
@@ -2326,6 +2341,7 @@ export default function App() {
     const users = rawUsers ? JSON.parse(rawUsers) : [];
     const matched = users.find((u: any) => u.userId === uId);
     if (matched && matched.pin === pinVal) {
+      startOnboardingAudio();
       setTempUserToLogin(matched.userId);
       setIsPlayingWarpTransition(true);
       setAuthError('');
@@ -2358,6 +2374,7 @@ export default function App() {
     const newUser = { userId: uId, pin: pinVal, isCreator };
     users.push(newUser);
     localStorage.setItem('portal_users', JSON.stringify(users));
+    startOnboardingAudio();
     setTempUserToLogin(uId);
     setIsPlayingWarpTransition(true);
     setAuthError('');
@@ -3519,6 +3536,9 @@ export default function App() {
             primaryColor={accentColor}
             secondaryColor={accentColor === '#8b5cf6' ? '#db2777' : '#8b5cf6'}
             onComplete={() => {
+              if (onboardingAudio) {
+                onboardingAudio.pause();
+              }
               setIsPlayingWarpTransition(false);
               setIsCompletingOnboarding(false);
               setOnboardingCompleted(true);
@@ -3529,7 +3549,12 @@ export default function App() {
         <PecosOnboarding
           userId={currentUser}
           portalDarkMode={portalDarkMode}
+          onboardingAudio={onboardingAudio}
           onBackToLogin={() => {
+            if (onboardingAudio) {
+              onboardingAudio.pause();
+              setOnboardingAudio(null);
+            }
             localStorage.removeItem('portal_current_user');
             setCurrentUser(null);
             setOnboardingCompleted(false);
