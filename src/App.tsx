@@ -9910,10 +9910,10 @@ export default function App() {
       {/* FOOTER RADIO / MEDIA RAIL AT THE ABSOLUTE BOTTOM */}
       {activeTab === 'home' && (
         <footer id="bottom-status-rail" className="bg-[#02020a] border-t border-white/[0.04] p-2 sm:p-3 relative z-40">
-          <div className="max-w-7xl mx-auto flex flex-row items-center justify-between gap-3">
+          <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4 md:gap-3">
             
             {/* Left Audio controller suite with real synthesized loop */}
-            <div className="hidden md:block flex-1 w-full xl:max-w-2xl">
+            <div className="flex-1 w-full xl:max-w-2xl">
               <AudioPlayer themeColor={themeColor} spotifyToken={spotifyToken} />
             </div>
 

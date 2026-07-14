@@ -118,11 +118,11 @@ export function AudioPlayer({ themeColor, spotifyToken }: AudioPlayerProps) {
   }, [spotifyTrack?.isPlaying, spotifyTrack?.uri]);
 
   // Start sound synthesis (local fallback)
-  const startSynth = () => {
+  const startSynth = (trackIdx = currentTrackIndex) => {
     try {
       stopSynth();
 
-      const track = TRACKS[currentTrackIndex];
+      const track = TRACKS[trackIdx];
       if (!audioRef.current) {
         audioRef.current = new Audio();
       }
@@ -151,12 +151,6 @@ export function AudioPlayer({ themeColor, spotifyToken }: AudioPlayerProps) {
   };
 
   useEffect(() => {
-    if (isPlaying) {
-      startSynth();
-    }
-  }, [currentTrackIndex]);
-
-  useEffect(() => {
     if (audioRef.current) {
       audioRef.current.volume = volume;
     }
@@ -181,7 +175,7 @@ export function AudioPlayer({ themeColor, spotifyToken }: AudioPlayerProps) {
       setIsPlaying(false);
     } else {
       setIsPlaying(true);
-      setTimeout(() => startSynth(), 50);
+      startSynth(currentTrackIndex);
     }
   };
 
@@ -191,7 +185,11 @@ export function AudioPlayer({ themeColor, spotifyToken }: AudioPlayerProps) {
       controlSpotify('next');
       return;
     }
-    setCurrentTrackIndex((prev) => (prev + 1) % TRACKS.length);
+    const nextIdx = (currentTrackIndex + 1) % TRACKS.length;
+    setCurrentTrackIndex(nextIdx);
+    if (isPlaying) {
+      startSynth(nextIdx);
+    }
   };
 
   const handlePrev = () => {
@@ -199,7 +197,11 @@ export function AudioPlayer({ themeColor, spotifyToken }: AudioPlayerProps) {
       controlSpotify('previous');
       return;
     }
-    setCurrentTrackIndex((prev) => (prev - 1 + TRACKS.length) % TRACKS.length);
+    const nextIdx = (currentTrackIndex - 1 + TRACKS.length) % TRACKS.length;
+    setCurrentTrackIndex(nextIdx);
+    if (isPlaying) {
+      startSynth(nextIdx);
+    }
   };
 
   // Spotify Control Endpoint API Calls
@@ -392,7 +394,7 @@ export function AudioPlayer({ themeColor, spotifyToken }: AudioPlayerProps) {
       </div>
 
       {/* Volume Controller (Far Right) */}
-      <div className="flex items-center gap-2 w-full md:w-32">
+      <div className="hidden md:flex items-center gap-2 w-full md:w-32">
         <Volume2 className="w-3.5 h-3.5 text-slate-500" />
         <input 
           id="volume-slider"
