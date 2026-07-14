@@ -8943,7 +8943,7 @@ export default function App() {
       `}</style>
 
       {/* FLOATING CLASSIC HARDWARE HOME BUTTON - 1S HOLD TO ENGAGE LOCAL AI */}
-      <div className={`fixed bottom-2 left-1/2 -translate-x-1/2 z-50 flex flex-col items-center select-none transition-all duration-300 ${
+      <div className={`fixed bottom-24 right-4 z-50 flex flex-col items-center select-none transition-all duration-300 ${
         isScanning ? 'opacity-100' : 'opacity-10 hover:opacity-100 focus-within:opacity-100'
       }`}>
         
