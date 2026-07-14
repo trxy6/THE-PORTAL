@@ -37,6 +37,7 @@ interface SidebarProps {
   onConnectSpotify: () => void;
   onDisconnectSpotify: () => void;
   onFetchLikedSongs: () => void;
+  showLeftSidebar?: boolean;
 }
 
 export default function Sidebar({
@@ -54,6 +55,7 @@ export default function Sidebar({
   onConnectSpotify,
   onDisconnectSpotify,
   onFetchLikedSongs,
+  showLeftSidebar
 }: SidebarProps) {
   const [urlInput, setUrlInput] = useState("");
   const [urlError, setUrlError] = useState(false);
@@ -316,12 +318,14 @@ export default function Sidebar({
   return (
     <>
       {/* Mobile Toggle Button */}
-      <button 
-        onClick={toggleMobileSidebar}
-        className="md:hidden fixed top-4 left-4 z-50 p-2.5 rounded-xl bg-[#0c041a] border border-[#8b5cf6]/20 text-[#8b5cf6] shadow-lg hover:scale-105 active:scale-95 transition"
-      >
-        <Menu className="w-5 h-5" />
-      </button>
+      {!showLeftSidebar && (
+        <button 
+          onClick={toggleMobileSidebar}
+          className="md:hidden fixed top-20 left-4 z-50 p-2.5 rounded-xl bg-[#0c041a] border border-[#8b5cf6]/20 text-[#8b5cf6] shadow-lg hover:scale-105 active:scale-95 transition"
+        >
+          <Menu className="w-5 h-5" />
+        </button>
+      )}
 
       {/* Desktop Sidebar Column */}
       <aside className="w-64 border-r border-[#8b5cf6]/15 hidden md:block shrink-0 h-full overflow-hidden">

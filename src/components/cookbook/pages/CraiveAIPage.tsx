@@ -1,6 +1,10 @@
 
 import React, { useState, useEffect, useRef, FormEvent, useCallback } from 'react';
-import { GoogleGenAI, type Chat, type LiveSession, type LiveServerMessage, Modality, type Blob } from '@google/genai';
+import { GoogleGenAI, type Chat, Modality, type Blob } from '@google/genai';
+import * as localAi from '../../../ai/localAi';
+
+type LiveSession = any;
+type LiveServerMessage = any;
 import { SendIcon, MicIcon, StopIcon } from '../components/Icons';
 import { generatePersonalizedWelcome, generateSpeech } from '../services/geminiService';
 import type { Suggestion, User } from '../types';
@@ -83,6 +87,7 @@ export const CraiveAIPage: React.FC<CraiveAIPageProps> = ({ user, setActiveTab, 
     const [isChatLoading, setIsChatLoading] = useState(false);
     const [chatError, setChatError] = useState<string | null>(null);
     const messagesEndRef = useRef<HTMLDivElement>(null);
+    const chatContainerRef = useRef<HTMLDivElement>(null);
 
     // --- Live Session State ---
     const [isLiveSessionActive, setIsLiveSessionActive] = useState(false);
@@ -239,12 +244,59 @@ export const CraiveAIPage: React.FC<CraiveAIPageProps> = ({ user, setActiveTab, 
     }, [isFirstLogin, user, onWelcomeMessageShown, chat, playTextAsSpeech, isMilaVoiceEnabled]);
 
     useEffect(() => {
-        if (view === 'chat') messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+        if (view === 'chat' && chatContainerRef.current) {
+            const container = chatContainerRef.current;
+            container.scrollTo({
+                top: container.scrollHeight,
+                behavior: 'smooth'
+            });
+        }
     }, [messages, isChatLoading, isLiveSessionActive, view]);
 
     const handleSendMessage = async (e: FormEvent) => {
         e.preventDefault();
-        if (!userInput.trim() || isChatLoading || !chat) return;
+        if (!userInput.trim() || isChatLoading) return;
+
+        const switchTabMatch = userInput.match(/(?:switch to|open|go to|show|view|navigate to)\s+(?:the\s+)?(chat|browser|code|cookbook|recipes|files|documents|games|home|dashboard|images|canvas|maps|gps|music|spotify|settings|secrets|sports|scoreboard|utilities|tools)/i);
+        if (switchTabMatch) {
+            const rawTab = switchTabMatch[1].toLowerCase();
+            const tabMap: Record<string, string> = {
+                chat: 'chat',
+                browser: 'browser',
+                code: 'code',
+                cookbook: 'cookbook',
+                recipes: 'cookbook',
+                files: 'files',
+                documents: 'files',
+                games: 'games',
+                home: 'home',
+                dashboard: 'home',
+                images: 'images',
+                canvas: 'images',
+                maps: 'maps',
+                gps: 'maps',
+                music: 'music',
+                spotify: 'music',
+                settings: 'settings',
+                secrets: 'settings',
+                sports: 'sports',
+                scoreboard: 'sports',
+                utilities: 'utilities',
+                tools: 'utilities'
+            };
+            const targetTab = tabMap[rawTab] || 'home';
+            setUserInput('');
+            setActiveTab(targetTab);
+            return;
+        }
+
+        const localStatus = localStorage.getItem('local_ai_web_llm_status');
+        const localModel = localStorage.getItem('local_ai_selected_model') || 'Qwen2.5-1.5B-Instruct-q4f16_1-MLC';
+
+        if (localStatus !== 'ready' && !chat) {
+            setChatError("I'm having a little trouble connecting right now.");
+            return;
+        }
 
         const userMessage: Message = { role: 'user', content: userInput };
         setMessages(prev => [...prev, userMessage]);
@@ -253,8 +305,51 @@ export const CraiveAIPage: React.FC<CraiveAIPageProps> = ({ user, setActiveTab, 
         setIsChatLoading(true);
         setChatError(null);
 
+        if (localStatus === 'ready') {
+            try {
+                const requestMessages = [
+                    {
+                        role: "system",
+                        content: "You are Mila, a friendly, warm, and creative AI flavor guide. Your personality is encouraging and knowledgeable about all things food. Suggest delicious recipes, meal choices, or flavor options concisely."
+                    },
+                    ...messages.map(m => ({
+                        role: m.role === 'user' ? 'user' : 'assistant',
+                        content: m.content
+                    })),
+                    { role: 'user', content: currentInput }
+                ];
+
+                const stream = await localAi.createChatCompletionStream(
+                    requestMessages,
+                    localModel
+                );
+
+                const modelPlaceholder: Message = { role: 'model', content: '' };
+                setMessages(prev => [...prev, modelPlaceholder]);
+
+                let fullReplyText = "";
+                for await (const chunk of stream) {
+                    const content = chunk.choices?.[0]?.delta?.content || "";
+                    fullReplyText += content;
+                    setMessages(prev => {
+                        const copy = [...prev];
+                        if (copy.length > 0) {
+                            copy[copy.length - 1] = { role: 'model', content: fullReplyText };
+                        }
+                        return copy;
+                    });
+                }
+                
+                if (isMilaVoiceEnabled) playTextAsSpeech(fullReplyText);
+                setIsChatLoading(false);
+                return;
+            } catch (localErr) {
+                console.error("Local WebLLM chat failed inside Mila guide, falling back to online/proxy:", localErr);
+            }
+        }
+
         try {
-            const response = await chat.sendMessage({ message: currentInput });
+            const response = await chat!.sendMessage({ message: currentInput });
             const modelMessage: Message = { 
                 role: 'model', 
                 content: response.text,
@@ -427,7 +522,7 @@ export const CraiveAIPage: React.FC<CraiveAIPageProps> = ({ user, setActiveTab, 
     
     return (
         <div className="h-full flex flex-col">
-            <div className="flex-grow overflow-y-auto p-6 pb-6 space-y-4">
+            <div ref={chatContainerRef} className="flex-grow overflow-y-auto p-6 pb-32 space-y-4">
                 {messages.map((msg, index) => {
                     const isEmpty = msg.content.trim() === '';
                     if (msg.role === 'user' && isEmpty && isLiveSessionActive && index === messages.length - 1) {
@@ -450,9 +545,9 @@ export const CraiveAIPage: React.FC<CraiveAIPageProps> = ({ user, setActiveTab, 
                 <div ref={messagesEndRef} />
             </div>
             
-            <div className="w-full bg-cream border-t border-gold-light/30 shrink-0 mt-auto pb-4">
+            <div className="fixed bottom-20 left-0 right-0 w-full bg-cream">
                 {chatError && <p className="text-center text-red-500 px-6 pb-2 text-sm">{chatError}</p>}
-                <form onSubmit={handleSendMessage} className="p-4 bg-cream/80 backdrop-blur-sm">
+                <form onSubmit={handleSendMessage} className="p-4 bg-cream/80 backdrop-blur-sm border-t border-gold-light/30">
                      <div className="relative max-w-md mx-auto flex items-center gap-2">
                         <div className="relative flex-grow">
                             <input type="text" value={userInput} onChange={(e) => setUserInput(e.target.value)} placeholder={isLiveSessionActive ? "Listening..." : "Ask Mila about a craving..."} className="w-full pl-4 pr-12 py-3 bg-white border-2 border-gold-light rounded-full text-deep-green placeholder-deep-green/60 focus:ring-2 focus:ring-gold focus:outline-none transition-all duration-300 shadow-sm" disabled={isChatLoading || isLiveSessionActive} autoFocus />

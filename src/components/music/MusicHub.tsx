@@ -42,9 +42,18 @@ function formatSecondsToTime(secs: number): string {
 interface MusicHubProps {
   portalDarkMode: boolean;
   themeColor: string;
+  showLyricsPanel?: boolean;
+  setShowLyricsPanel?: (val: boolean) => void;
+  showLeftSidebar?: boolean;
 }
 
-export default function MusicHub({ portalDarkMode, themeColor }: MusicHubProps) {
+export default function MusicHub({ 
+  portalDarkMode, 
+  themeColor,
+  showLyricsPanel: propShowLyricsPanel,
+  setShowLyricsPanel: propSetShowLyricsPanel,
+  showLeftSidebar
+}: MusicHubProps) {
   // Playlists and Library States
   const [curatedPlaylists, setCuratedPlaylists] = useState<Playlist[]>([]);
   const [userPlaylists, setUserPlaylists] = useState<Playlist[]>([]);
@@ -72,7 +81,9 @@ export default function MusicHub({ portalDarkMode, themeColor }: MusicHubProps) 
   const [activeTab, setActiveTab] = useState<"explore" | "curator" | "spotify">("explore");
 
   // Secondary layout toggles
-  const [showLyricsPanel, setShowLyricsPanel] = useState<boolean>(true);
+  const [localShowLyricsPanel, localSetShowLyricsPanel] = useState<boolean>(true);
+  const showLyricsPanel = propShowLyricsPanel !== undefined ? propShowLyricsPanel : localShowLyricsPanel;
+  const setShowLyricsPanel = propSetShowLyricsPanel !== undefined ? propSetShowLyricsPanel : localSetShowLyricsPanel;
   const [rightPanelTab, setRightPanelTab] = useState<"lyrics" | "queue">("lyrics");
   const [queue, setQueue] = useState<Track[]>([]);
   const [isLiked, setIsLiked] = useState<boolean>(false);
@@ -1082,6 +1093,7 @@ export default function MusicHub({ portalDarkMode, themeColor }: MusicHubProps) 
           onConnectSpotify={handleConnectSpotify}
           onDisconnectSpotify={handleDisconnectSpotify}
           onFetchLikedSongs={fetchSpotifyLikedSongs}
+          showLeftSidebar={showLeftSidebar}
         />
 
         {/* Dashboard/Search panel */}

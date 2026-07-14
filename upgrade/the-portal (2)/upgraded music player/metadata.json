@@ -1,0 +1,6 @@
+{
+  "name": "Spotify Lite Player",
+  "description": "An elegant full-stack Spotify player that lets you search tracks, auto-curate playlists via Gemini AI, and synchronize live timed scrolling lyrics, with zero developer setups.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
