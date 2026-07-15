@@ -4635,7 +4635,37 @@ export default function App() {
                       <Lock className="w-3.5 h-3.5" />
                       Open The Rift
                     </button>
-                    <div className="text-center pt-2.5">
+
+                    {/* Divider */}
+                    <div className="flex items-center gap-3">
+                      <div className="flex-1 h-px" style={{ background: 'rgba(139,92,246,0.2)' }} />
+                      <span className="text-[9px] font-bold tracking-widest uppercase" style={{ color: 'rgba(167,139,250,0.4)' }}>or</span>
+                      <div className="flex-1 h-px" style={{ background: 'rgba(139,92,246,0.2)' }} />
+                    </div>
+
+                    {/* Google Sign-in */}
+                    <button type="button"
+                      id="google-signin-btn-login"
+                      onClick={() => { haptic(10); setShowGoogleModal(true); }}
+                      className="w-full py-2.5 rounded-xl font-bold text-xs cursor-pointer transition-all duration-200 active:scale-95 flex items-center justify-center gap-2.5"
+                      style={{
+                        background: 'rgba(255,255,255,0.05)',
+                        border: '1px solid rgba(255,255,255,0.12)',
+                        color: '#e2d9f3',
+                        backdropFilter: 'blur(8px)',
+                      }}
+                      onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(255,255,255,0.1)'; (e.currentTarget as HTMLButtonElement).style.border = '1px solid rgba(255,255,255,0.22)'; }}
+                      onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(255,255,255,0.05)'; (e.currentTarget as HTMLButtonElement).style.border = '1px solid rgba(255,255,255,0.12)'; }}>
+                      <svg width="14" height="14" viewBox="0 0 24 24">
+                        <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                        <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                        <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/>
+                        <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                      </svg>
+                      Continue with Google
+                    </button>
+
+                    <div className="text-center">
                       <button
                         type="button"
                         onClick={handleGuestMode}
@@ -4704,9 +4734,39 @@ export default function App() {
                       onMouseEnter={e => { (e.target as HTMLButtonElement).style.boxShadow = '0 0 36px rgba(168,85,247,0.65), 0 4px 16px rgba(0,0,0,0.4)'; }}
                       onMouseLeave={e => { (e.target as HTMLButtonElement).style.boxShadow = '0 0 24px rgba(139,92,246,0.45), 0 4px 12px rgba(0,0,0,0.3)'; }}>
                       <Plus className="w-3.5 h-3.5" />
-                      Open The Rift
+                      Create Account
                     </button>
-                    <div className="text-center pt-2.5">
+
+                    {/* Divider */}
+                    <div className="flex items-center gap-3">
+                      <div className="flex-1 h-px" style={{ background: 'rgba(139,92,246,0.2)' }} />
+                      <span className="text-[9px] font-bold tracking-widest uppercase" style={{ color: 'rgba(167,139,250,0.4)' }}>or</span>
+                      <div className="flex-1 h-px" style={{ background: 'rgba(139,92,246,0.2)' }} />
+                    </div>
+
+                    {/* Google Sign-up */}
+                    <button type="button"
+                      id="google-signin-btn-signup"
+                      onClick={() => { haptic(10); setShowGoogleModal(true); }}
+                      className="w-full py-2.5 rounded-xl font-bold text-xs cursor-pointer transition-all duration-200 active:scale-95 flex items-center justify-center gap-2.5"
+                      style={{
+                        background: 'rgba(255,255,255,0.05)',
+                        border: '1px solid rgba(255,255,255,0.12)',
+                        color: '#e2d9f3',
+                        backdropFilter: 'blur(8px)',
+                      }}
+                      onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(255,255,255,0.1)'; (e.currentTarget as HTMLButtonElement).style.border = '1px solid rgba(255,255,255,0.22)'; }}
+                      onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(255,255,255,0.05)'; (e.currentTarget as HTMLButtonElement).style.border = '1px solid rgba(255,255,255,0.12)'; }}>
+                      <svg width="14" height="14" viewBox="0 0 24 24">
+                        <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                        <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                        <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/>
+                        <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                      </svg>
+                      Sign up with Google
+                    </button>
+
+                    <div className="text-center">
                       <button
                         type="button"
                         onClick={handleGuestMode}
@@ -4723,6 +4783,94 @@ export default function App() {
                   V2.4.0 • ZERO CLOUD DATA LEAKAGE • ENCRYPTED LOCAL STORAGE
                 </div>
               </div>
+
+              {/* ── GOOGLE SIGN-IN MODAL ── */}
+              {showGoogleModal && (
+                <div
+                  className="fixed inset-0 z-[9999] flex items-center justify-center"
+                  style={{ background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(18px)' }}
+                  onClick={() => setShowGoogleModal(false)}
+                >
+                  <div
+                    className="relative w-full max-w-sm mx-4 rounded-3xl overflow-hidden"
+                    style={{
+                      background: 'rgba(12,4,32,0.95)',
+                      border: '1px solid rgba(139,92,246,0.3)',
+                      boxShadow: '0 40px 100px rgba(0,0,0,0.9), 0 0 0 1px rgba(139,92,246,0.15)',
+                    }}
+                    onClick={e => e.stopPropagation()}
+                  >
+                    {/* Modal shimmer top bar */}
+                    <div className="h-[2px] w-full" style={{ background: 'linear-gradient(90deg,#4285F4,#34A853,#FBBC05,#EA4335,#4285F4)', backgroundSize: '200% 100%', animation: 'shimmer-border 2s linear infinite' }} />
+
+                    <div className="p-8 space-y-5">
+                      {/* Google branding */}
+                      <div className="flex flex-col items-center gap-3">
+                        <svg width="36" height="36" viewBox="0 0 24 24">
+                          <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                          <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                          <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/>
+                          <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                        </svg>
+                        <div className="text-center">
+                          <div className="text-base font-black tracking-wide" style={{ color: '#e2d9f3' }}>Sign in with Google</div>
+                          <div className="text-[10px] mt-1" style={{ color: 'rgba(167,139,250,0.6)' }}>Choose your account to continue to The Portal</div>
+                        </div>
+                      </div>
+
+                      {/* Account options */}
+                      <div className="space-y-2">
+                        {[
+                          { name: 'Trey Ramirez', email: 'treydog@gmail.com', initials: 'TR', color: '#8b5cf6' },
+                          { name: 'Use another account', email: '', initials: '+', color: 'rgba(99,102,241,0.5)' },
+                        ].map((account, i) => (
+                          <button
+                            key={i}
+                            type="button"
+                            id={`google-account-${i}`}
+                            onClick={() => {
+                              if (account.email) {
+                                handleGoogleLoginSuccess(account.email, account.name);
+                              } else {
+                                setAuthError('⚠️ Third-party Google accounts are not yet linked. Use username/password instead.');
+                                setShowGoogleModal(false);
+                              }
+                            }}
+                            className="w-full flex items-center gap-3.5 px-4 py-3 rounded-2xl cursor-pointer transition-all duration-200 active:scale-98"
+                            style={{
+                              background: 'rgba(139,92,246,0.06)',
+                              border: '1px solid rgba(139,92,246,0.15)',
+                            }}
+                            onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(139,92,246,0.15)'; (e.currentTarget as HTMLButtonElement).style.border = '1px solid rgba(139,92,246,0.35)'; }}
+                            onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(139,92,246,0.06)'; (e.currentTarget as HTMLButtonElement).style.border = '1px solid rgba(139,92,246,0.15)'; }}
+                          >
+                            <div className="w-9 h-9 rounded-full flex items-center justify-center text-white font-black text-sm shrink-0" style={{ background: account.color }}>
+                              {account.initials}
+                            </div>
+                            <div className="text-left">
+                              <div className="text-xs font-bold" style={{ color: '#e2d9f3' }}>{account.name}</div>
+                              {account.email && <div className="text-[10px] mt-0.5" style={{ color: 'rgba(167,139,250,0.6)' }}>{account.email}</div>}
+                            </div>
+                            {account.email && (
+                              <div className="ml-auto w-1.5 h-1.5 rounded-full" style={{ background: '#34A853', boxShadow: '0 0 6px #34A853' }} />
+                            )}
+                          </button>
+                        ))}
+                      </div>
+
+                      {/* Footer */}
+                      <div className="text-center">
+                        <button type="button" onClick={() => setShowGoogleModal(false)}
+                          className="text-[9px] font-bold cursor-pointer hover:underline tracking-widest uppercase"
+                          style={{ color: 'rgba(167,139,250,0.4)' }}
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
