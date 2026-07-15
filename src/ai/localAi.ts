@@ -44,6 +44,74 @@ export async function createChatCompletionStream(
   selectedModel: string,
   onProgress?: (progressText: string) => void
 ) {
+  if (selectedModel === 'qwen3.5:4b') {
+    const response = await fetch('http://localhost:11434/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        model: selectedModel,
+        messages,
+        temperature: 0.7,
+        max_tokens: 512,
+        stream: true
+      })
+    });
+
+    if (!response.ok) {
+      const errText = await response.text();
+      throw new Error(`Ollama error: ${errText || response.statusText}`);
+    }
+
+    const reader = response.body?.getReader();
+    if (!reader) {
+      throw new Error('Ollama response body is not readable');
+    }
+
+    return {
+      [Symbol.asyncIterator]: async function* () {
+        const decoder = new TextDecoder('utf-8');
+        let buffer = '';
+        try {
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split('\n');
+            buffer = lines.pop() || '';
+            for (const line of lines) {
+              const trimmed = line.trim();
+              if (!trimmed) continue;
+              if (trimmed === 'data: [DONE]') continue;
+              if (trimmed.startsWith('data: ')) {
+                try {
+                  const json = JSON.parse(trimmed.slice(6));
+                  yield json;
+                } catch (e) {
+                  console.warn('Failed to parse Ollama SSE line:', trimmed, e);
+                }
+              }
+            }
+          }
+          if (buffer) {
+            const trimmed = buffer.trim();
+            if (trimmed && trimmed.startsWith('data: ') && trimmed !== 'data: [DONE]') {
+              try {
+                const json = JSON.parse(trimmed.slice(6));
+                yield json;
+              } catch (e) {
+                console.warn('Failed to parse Ollama SSE line:', trimmed, e);
+              }
+            }
+          }
+        } finally {
+          reader.releaseLock();
+        }
+      }
+    };
+  }
+
   if (!mlcEngine) {
     await loadModel(selectedModel, onProgress || (() => {}));
   }

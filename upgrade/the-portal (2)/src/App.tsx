@@ -1911,6 +1911,23 @@ export default function App() {
 
   // --- Local Offline AI Status Engine & Handlers ---
   const updateLocalAIStatus = useCallback(async () => {
+    if (selectedLocalModel === 'qwen3.5:4b') {
+      try {
+        const res = await fetch('http://localhost:11434/api/tags');
+        if (res.ok) {
+          setLocalAIStatus('ready');
+          setLocalAIEngineError('');
+        } else {
+          setLocalAIStatus('error');
+          setLocalAIEngineError('Ollama responded with an error. Ensure it is running properly.');
+        }
+      } catch (err) {
+        setLocalAIStatus('error');
+        setLocalAIEngineError('Ollama is offline. Run "ollama run qwen3.5:4b" to start the model locally.');
+      }
+      return;
+    }
+
     if (!(navigator as any).gpu) {
       setLocalAIStatus('error');
       setLocalAIEngineError('WebGPU is not supported by your browser. Use a WebGPU-enabled browser like Chrome or Edge.');
@@ -1918,11 +1935,38 @@ export default function App() {
     }
     const savedSimStatus = localStorage.getItem('local_ai_web_llm_status') || 'not_installed';
     setLocalAIStatus(savedSimStatus);
-  }, []);
+  }, [selectedLocalModel]);
 
   const triggerLocalAIAction = useCallback(async (action: 'download' | 'start' | 'stop' | 'delete') => {
     haptic(10);
     
+    if (selectedLocalModel === 'qwen3.5:4b') {
+      if (action === 'download' || action === 'start') {
+        setLocalAIStatus('loading');
+        setLocalAIEngineError('Attempting to connect to local Ollama instance...');
+        try {
+          const res = await fetch('http://localhost:11434/api/tags');
+          if (res.ok) {
+            setLocalAIStatus('ready');
+            setLocalAIEngineError('');
+            toast('✓ Connected to local Ollama (qwen3.5:4b) successfully!', 'success');
+          } else {
+            setLocalAIStatus('error');
+            setLocalAIEngineError('Ollama returned an error status.');
+            toast('❌ Ollama responded with an error.', 'error');
+          }
+        } catch (err) {
+          setLocalAIStatus('error');
+          setLocalAIEngineError('Could not connect to Ollama. Make sure to run "ollama run qwen3.5:4b".');
+          toast('❌ Ollama connection refused. Please start Ollama.', 'error');
+        }
+      } else if (action === 'stop' || action === 'delete') {
+        toast('Offline Ollama model connection disconnected.', 'info');
+        setLocalAIStatus('not_installed');
+      }
+      return;
+    }
+
     if (action === 'download' || action === 'start') {
       if (!(navigator as any).gpu) {
         setLocalAIStatus('error');
@@ -3963,6 +4007,80 @@ export default function App() {
             { role: 'user', content: msgToSend }
           ];
 
+          if (selectedLocalModel === 'qwen3.5:4b') {
+            setAiHistory(prev => [...prev, { role: 'model', content: 'Connecting to Ollama...' }]);
+
+            const response = await fetch('http://localhost:11434/api/chat', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                model: 'qwen3.5:4b',
+                messages: requestMessages,
+                options: {
+                  temperature: 0.2,
+                  num_ctx: 8192
+                },
+                stream: true
+              })
+            });
+
+            if (!response.ok) throw new Error(`Ollama returned status ${response.status}`);
+            
+            const reader = response.body?.getReader();
+            if (!reader) throw new Error('Response body reader is not available');
+
+            let fullReplyText = "";
+            const decoder = new TextDecoder("utf-8");
+            let buffer = "";
+
+            while (true) {
+              const { done, value } = await reader.read();
+              if (done) break;
+
+              buffer += decoder.decode(value, { stream: true });
+              const lines = buffer.split('\n');
+              buffer = lines.pop() || "";
+
+              for (const line of lines) {
+                if (line.trim() === "") continue;
+                try {
+                  const json = JSON.parse(line);
+                  const word = json.message?.content || "";
+                  fullReplyText += word;
+
+                  setAiHistory(prev => {
+                    const copy = [...prev];
+                    if (copy.length > 0) {
+                      copy[copy.length - 1] = { role: 'model', content: fullReplyText };
+                    }
+                    return copy;
+                  });
+                } catch (e) {
+                  console.warn('Failed to parse NDJSON line from Ollama:', e);
+                }
+              }
+            }
+
+            if (buffer.trim() !== "") {
+              try {
+                const json = JSON.parse(buffer);
+                const word = json.message?.content || "";
+                fullReplyText += word;
+                setAiHistory(prev => {
+                  const copy = [...prev];
+                  if (copy.length > 0) {
+                    copy[copy.length - 1] = { role: 'model', content: fullReplyText };
+                  }
+                  return copy;
+                });
+              } catch {}
+            }
+
+            setIsAiLoading(false);
+            speakLocalVoice(fullReplyText);
+            return;
+          }
+
           setAiHistory(prev => [...prev, { role: 'model', content: 'Connecting to browser GPU...' }]);
 
           const stream = await mlcEngine.chat.completions.create({
@@ -5742,7 +5860,7 @@ export default function App() {
                         >
                           <option value="Qwen2.5-1.5B-Instruct-q4f32_1-MLC">Qwen 2.5 1.5B (Fast Desktop)</option>
                           <option value="Qwen2.5-0.5B-Instruct-q4f16_1-MLC">Qwen 2.5 0.5B (Mobile Friendly)</option>
-                          <option value="Qwen3.5-4B-Instruct-q4f16_1-MLC">Qwen 3.5 4B (Recommended - Tools & Reasoning)</option>
+                          <option value="qwen3.5:4b">Qwen 3.5 4B (Recommended - Tools & Reasoning)</option>
                         </select>
                       </div>
 
@@ -9700,7 +9818,7 @@ export default function App() {
                   >
                     <option value="Qwen2.5-1.5B-Instruct-q4f32_1-MLC">Qwen 2.5 1.5B Instruct (Standard - Balanced for Desktop)</option>
                     <option value="Qwen2.5-0.5B-Instruct-q4f16_1-MLC">Qwen 2.5 0.5B Instruct (Ultra-lightweight - Mobile Optimized)</option>
-                    <option value="Qwen3.5-4B-Instruct-q4f16_1-MLC">Qwen 3.5 4B Instruct (Recommended - High Quality Tools & Agent Model)</option>
+                    <option value="qwen3.5:4b">Qwen 3.5 4B Instruct (Recommended - High Quality Tools & Agent Model)</option>
                   </select>
                 </div>
                 
