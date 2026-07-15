@@ -12,9 +12,95 @@ export function detectToolRequest(message: string, calendarSelectedDate: string)
   const fileMatch = message.match(/(?:choose|select|open|pick)\s+(?:file|folder|document)/i);
   const commitMatch = message.match(/(?:commit|push|github|git\s+commit)/i);
 
+  // Google Workspace Matchers
+  const gmailMatch = message.match(/(?:send email|send gmail|email|mail)\s+(?:to\s+)?(\S+@\S+)\s+(?:saying|subject|with|body)\s+(.+)/i);
+  const driveCreateMatch = message.match(/(?:create|add|make)\s+(?:file|folder|document|doc|sheet|spreadsheet|slide|presentation|form)\s+([^\n\r]+?)\s+(?:in|on|to)\s+(?:drive|google drive)/i);
+  const taskCreateMatch = message.match(/(?:add|create|new)\s+(?:google task)\s+(?:to\s+)?([^\n\r]+)/i);
+  const calendarCreateMatch = message.match(/(?:schedule|create|add)\s+(?:google calendar|calendar event)\s+([^\n\r]+?)\s+(?:on|at)\s+([^\n\r]+)/i);
+  const meetCreateMatch = message.match(/(?:schedule|create|generate|make)\s+(?:google meet|meet call|meet link)\s+([^\n\r]+)/i);
+  const sheetsMatch = message.match(/(?:add row|append sheet|write sheet|update sheet)\s+(?:to\s+)?([^\n\r]+)/i);
+  const contactMatch = message.match(/(?:add contact|create contact|new contact)\s+([^\n\r]+?)\s+(?:with email|email)\s+(\S+@\S+)/i);
+  const keepMatch = message.match(/(?:create keep note|add keep note|new keep note)\s+([^\n\r]+)/i);
+
   const switchTabMatch = message.match(/(?:switch to|open|go to|show|view|navigate to)\s+(?:the\s+)?(chat|browser|code|cookbook|recipes|files|documents|games|home|dashboard|images|canvas|maps|gps|music|spotify|settings|secrets|sports|scoreboard|utilities|tools|calendar|schedule)/i);
 
-  if (noteMatch) {
+  if (gmailMatch) {
+    return {
+      id: Math.random().toString(),
+      type: 'workspace_gmail_send',
+      label: 'GMAIL INBOX: Dispatch Email',
+      description: `Send email to ${gmailMatch[1]} saying: "${gmailMatch[2]}"`,
+      payload: { to: gmailMatch[1], subject: 'Portal System Auto Dispatch', body: gmailMatch[2] }
+    };
+  } else if (driveCreateMatch) {
+    const rawName = driveCreateMatch[1].trim();
+    let mimeType = 'text/plain';
+    const lower = message.toLowerCase();
+    if (lower.includes('sheet') || lower.includes('spreadsheet')) {
+      mimeType = 'application/vnd.google-apps.spreadsheet';
+    } else if (lower.includes('doc') || lower.includes('document')) {
+      mimeType = 'application/vnd.google-apps.document';
+    } else if (lower.includes('slide') || lower.includes('presentation')) {
+      mimeType = 'application/vnd.google-apps.presentation';
+    } else if (lower.includes('form')) {
+      mimeType = 'application/vnd.google-apps.form';
+    }
+    return {
+      id: Math.random().toString(),
+      type: 'workspace_drive_create',
+      label: 'GOOGLE DRIVE: Create Workspace Asset',
+      description: `Create Drive item "${rawName}" of type "${mimeType}"`,
+      payload: { name: rawName, mimeType }
+    };
+  } else if (taskCreateMatch) {
+    return {
+      id: Math.random().toString(),
+      type: 'workspace_task_create',
+      label: 'GOOGLE TASKS: Create Task Directive',
+      description: `Create task: "${taskCreateMatch[1]}"`,
+      payload: { title: taskCreateMatch[1] }
+    };
+  } else if (calendarCreateMatch) {
+    return {
+      id: Math.random().toString(),
+      type: 'workspace_calendar_create',
+      label: 'GOOGLE CALENDAR: Schedule Event',
+      description: `Schedule calendar event "${calendarCreateMatch[1]}" on ${calendarCreateMatch[2]}`,
+      payload: { summary: calendarCreateMatch[1], dateStr: calendarCreateMatch[2] }
+    };
+  } else if (meetCreateMatch) {
+    return {
+      id: Math.random().toString(),
+      type: 'workspace_meet_create',
+      label: 'GOOGLE MEET: Schedule Video Session',
+      description: `Schedule Meet call for event: "${meetCreateMatch[1]}"`,
+      payload: { summary: meetCreateMatch[1] }
+    };
+  } else if (sheetsMatch) {
+    return {
+      id: Math.random().toString(),
+      type: 'workspace_sheets_append',
+      label: 'GOOGLE SHEETS: Append Spreadsheet Row',
+      description: `Write data row: "${sheetsMatch[1]}"`,
+      payload: { content: sheetsMatch[1] }
+    };
+  } else if (contactMatch) {
+    return {
+      id: Math.random().toString(),
+      type: 'workspace_contact_create',
+      label: 'GOOGLE CONTACTS: Save Connection Card',
+      description: `Save contact "${contactMatch[1]}" with email "${contactMatch[2]}"`,
+      payload: { name: contactMatch[1], email: contactMatch[2] }
+    };
+  } else if (keepMatch) {
+    return {
+      id: Math.random().toString(),
+      type: 'workspace_keep_create',
+      label: 'GOOGLE KEEP: Save Idea Note',
+      description: `Save keep note: "${keepMatch[1]}"`,
+      payload: { title: keepMatch[1] }
+    };
+  } else if (noteMatch) {
     return {
       id: Math.random().toString(),
       type: 'create_note',
@@ -123,6 +209,91 @@ export async function runTool(action: any, context: {
       return await githubCommit(action.payload.commitMessage);
     case 'switch_tab':
       return { ok: true, tab: action.payload.tab };
+    case 'workspace_gmail_send': {
+      const token = localStorage.getItem('google_access_token_temp');
+      if (!token) throw new Error('Google Workspace sync is not connected. Please connect in Settings/Sync first.');
+      if (token === 'mock-access-token') {
+        return { ok: true, mock: true };
+      }
+      const { sendGmailEmail } = await import('../lib/firebaseWorkspace');
+      const res = await sendGmailEmail(token, action.payload.to, action.payload.subject, action.payload.body);
+      return { ok: true, data: res };
+    }
+    case 'workspace_drive_create': {
+      const token = localStorage.getItem('google_access_token_temp');
+      if (!token) throw new Error('Google Workspace sync is not connected. Please connect in Settings/Sync first.');
+      if (token === 'mock-access-token') {
+        return { ok: true, mock: true };
+      }
+      const { createGoogleDriveFile } = await import('../lib/firebaseWorkspace');
+      const res = await createGoogleDriveFile(token, action.payload.name, action.payload.mimeType);
+      return { ok: true, data: res };
+    }
+    case 'workspace_task_create': {
+      const token = localStorage.getItem('google_access_token_temp');
+      if (!token) throw new Error('Google Workspace sync is not connected. Please connect in Settings/Sync first.');
+      if (token === 'mock-access-token') {
+        return { ok: true, mock: true };
+      }
+      const { createGoogleTask } = await import('../lib/firebaseWorkspace');
+      const res = await createGoogleTask(token, action.payload.title);
+      return { ok: true, data: res };
+    }
+    case 'workspace_calendar_create': {
+      const token = localStorage.getItem('google_access_token_temp');
+      if (!token) throw new Error('Google Workspace sync is not connected. Please connect in Settings/Sync first.');
+      if (token === 'mock-access-token') {
+        return { ok: true, mock: true };
+      }
+      const { createGoogleCalendarEvent } = await import('../lib/firebaseWorkspace');
+      const date = new Date(action.payload.dateStr);
+      const startIso = isNaN(date.getTime()) ? new Date().toISOString() : date.toISOString();
+      const endIso = new Date(new Date(startIso).getTime() + 3600000).toISOString();
+      const res = await createGoogleCalendarEvent(token, action.payload.summary, startIso, endIso, false);
+      return { ok: true, data: res };
+    }
+    case 'workspace_meet_create': {
+      const token = localStorage.getItem('google_access_token_temp');
+      if (!token) throw new Error('Google Workspace sync is not connected. Please connect in Settings/Sync first.');
+      if (token === 'mock-access-token') {
+        return { ok: true, mock: true };
+      }
+      const { createGoogleCalendarEvent } = await import('../lib/firebaseWorkspace');
+      const startIso = new Date().toISOString();
+      const endIso = new Date(Date.now() + 3600000).toISOString();
+      const res = await createGoogleCalendarEvent(token, action.payload.summary, startIso, endIso, true);
+      return { ok: true, data: res };
+    }
+    case 'workspace_sheets_append': {
+      const token = localStorage.getItem('google_access_token_temp');
+      if (!token) throw new Error('Google Workspace sync is not connected. Please connect in Settings/Sync first.');
+      if (token === 'mock-access-token') {
+        return { ok: true, mock: true };
+      }
+      const { appendGoogleSheetRow } = await import('../lib/firebaseWorkspace');
+      const res = await appendGoogleSheetRow(token, 'primary', 'Sheet1!A:B', [[action.payload.content, new Date().toLocaleString()]]);
+      return { ok: true, data: res };
+    }
+    case 'workspace_contact_create': {
+      const token = localStorage.getItem('google_access_token_temp');
+      if (!token) throw new Error('Google Workspace sync is not connected. Please connect in Settings/Sync first.');
+      if (token === 'mock-access-token') {
+        return { ok: true, mock: true };
+      }
+      const { createGoogleContact } = await import('../lib/firebaseWorkspace');
+      const res = await createGoogleContact(token, action.payload.name, action.payload.email);
+      return { ok: true, data: res };
+    }
+    case 'workspace_keep_create': {
+      const token = localStorage.getItem('google_access_token_temp');
+      if (!token) throw new Error('Google Workspace sync is not connected. Please connect in Settings/Sync first.');
+      if (token === 'mock-access-token') {
+        return { ok: true, mock: true };
+      }
+      const { createGoogleDriveFile } = await import('../lib/firebaseWorkspace');
+      const res = await createGoogleDriveFile(token, `Keep Note: ${action.payload.title}`, 'text/plain', 'Saved from Keep');
+      return { ok: true, data: res };
+    }
     default:
       return { ok: false, error: 'Unknown tool type' };
   }

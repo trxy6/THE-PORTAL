@@ -3760,6 +3760,54 @@ export default function App() {
             }]);
             toast(`Switched workspace view to ${targetTab.toUpperCase()}`, 'success');
           }
+        } else if (action.type === 'workspace_gmail_send') {
+          const modeStr = (res as any).mock ? ' (Mock Sync mode)' : '';
+          setAiHistory(prev => [...prev, {
+            role: 'model',
+            content: `✓ Gmail email dispatched successfully${modeStr}: to ${action.payload.to} with subject "${action.payload.subject}"`
+          }]);
+        } else if (action.type === 'workspace_drive_create') {
+          const modeStr = (res as any).mock ? ' (Mock Sync mode)' : '';
+          setAiHistory(prev => [...prev, {
+            role: 'model',
+            content: `✓ Drive file created successfully${modeStr}: "${action.payload.name}" (${action.payload.mimeType})`
+          }]);
+        } else if (action.type === 'workspace_task_create') {
+          const modeStr = (res as any).mock ? ' (Mock Sync mode)' : '';
+          setAiHistory(prev => [...prev, {
+            role: 'model',
+            content: `✓ Google Task directive saved successfully${modeStr}: "${action.payload.title}"`
+          }]);
+        } else if (action.type === 'workspace_calendar_create') {
+          const modeStr = (res as any).mock ? ' (Mock Sync mode)' : '';
+          setAiHistory(prev => [...prev, {
+            role: 'model',
+            content: `✓ Google Calendar event scheduled successfully${modeStr}: "${action.payload.summary}" on ${action.payload.dateStr}`
+          }]);
+        } else if (action.type === 'workspace_meet_create') {
+          const modeStr = (res as any).mock ? ' (Mock Sync mode)' : '';
+          setAiHistory(prev => [...prev, {
+            role: 'model',
+            content: `✓ Google Meet session link created successfully${modeStr}: "${action.payload.summary}"`
+          }]);
+        } else if (action.type === 'workspace_sheets_append') {
+          const modeStr = (res as any).mock ? ' (Mock Sync mode)' : '';
+          setAiHistory(prev => [...prev, {
+            role: 'model',
+            content: `✓ Google Sheets value appended successfully${modeStr}: "${action.payload.content}"`
+          }]);
+        } else if (action.type === 'workspace_contact_create') {
+          const modeStr = (res as any).mock ? ' (Mock Sync mode)' : '';
+          setAiHistory(prev => [...prev, {
+            role: 'model',
+            content: `✓ Google Contacts connection card saved successfully${modeStr}: "${action.payload.name}" (${action.payload.email})`
+          }]);
+        } else if (action.type === 'workspace_keep_create') {
+          const modeStr = (res as any).mock ? ' (Mock Sync mode)' : '';
+          setAiHistory(prev => [...prev, {
+            role: 'model',
+            content: `✓ Google Keep note created successfully${modeStr}: "${action.payload.title}"`
+          }]);
         }
       }
     } catch (e: any) {

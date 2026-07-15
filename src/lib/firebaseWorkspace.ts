@@ -259,3 +259,220 @@ export async function sendGoogleChatMessage(token: string, spaceId: string, text
   }
   return response.json();
 }
+
+/**
+ * Google Drive API: Create a file or folder
+ */
+export async function createGoogleDriveFile(token: string, name: string, mimeType = 'text/plain', content = '') {
+  const metadataUrl = 'https://www.googleapis.com/drive/v3/files';
+  
+  if (mimeType.startsWith('application/vnd.google-apps')) {
+    const response = await fetch(metadataUrl, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ name, mimeType })
+    });
+    if (!response.ok) {
+      throw new Error(`Failed to create Google Drive workspace item: ${response.statusText}`);
+    }
+    return response.json();
+  }
+
+  const uploadUrl = 'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart';
+  const boundary = 'foo_bar_baz';
+  const delimiter = `\r\n--${boundary}\r\n`;
+  const closeDelimiter = `\r\n--${boundary}--`;
+  
+  const metadata = JSON.stringify({ name, mimeType });
+  const multipartBody = 
+    delimiter +
+    'Content-Type: application/json; charset=UTF-8\r\n\r\n' +
+    metadata +
+    delimiter +
+    `Content-Type: ${mimeType}\r\n\r\n` +
+    content +
+    closeDelimiter;
+
+  const response = await fetch(uploadUrl, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': `multipart/related; boundary=${boundary}`
+    },
+    body: multipartBody
+  });
+  
+  if (!response.ok) {
+    throw new Error(`Failed to create file in Google Drive: ${response.statusText}`);
+  }
+  return response.json();
+}
+
+/**
+ * Google Sheets API: Append row values to a spreadsheet
+ */
+export async function appendGoogleSheetRow(token: string, spreadsheetId: string, range: string, values: any[][]) {
+  const url = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${encodeURIComponent(range)}:append?valueInputOption=USER_ENTERED`;
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ values })
+  });
+  if (!response.ok) {
+    throw new Error(`Failed to append Google Sheet rows: ${response.statusText}`);
+  }
+  return response.json();
+}
+
+/**
+ * Gmail API: Send an email
+ */
+export async function sendGmailEmail(token: string, to: string, subject: string, body: string) {
+  const url = 'https://gmail.googleapis.com/gmail/v1/users/me/messages/send';
+  
+  const emailLines = [
+    `To: ${to}`,
+    'Content-Type: text/html; charset=utf-8',
+    'MIME-Version: 1.0',
+    `Subject: ${subject}`,
+    '',
+    body
+  ];
+  
+  const emailContent = emailLines.join('\r\n');
+  const base64Safe = btoa(unescape(encodeURIComponent(emailContent)))
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=+$/, '');
+
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ raw: base64Safe })
+  });
+  if (!response.ok) {
+    throw new Error(`Failed to send Gmail email: ${response.statusText}`);
+  }
+  return response.json();
+}
+
+/**
+ * Google Calendar API: Create event
+ */
+export async function createGoogleCalendarEvent(token: string, summary: string, startIso: string, endIso: string, enableMeet = false) {
+  let url = 'https://www.googleapis.com/calendar/v3/calendars/primary/events';
+  if (enableMeet) {
+    url += '?conferenceDataVersion=1';
+  }
+  
+  const eventBody: any = {
+    summary,
+    start: { dateTime: startIso },
+    end: { dateTime: endIso }
+  };
+
+  if (enableMeet) {
+    eventBody.conferenceData = {
+      createRequest: {
+        requestId: Math.random().toString(36).substring(2),
+        conferenceSolutionKey: { type: 'hangoutsMeet' }
+      }
+    };
+  }
+
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify(eventBody)
+  });
+  if (!response.ok) {
+    throw new Error(`Failed to create Calendar event: ${response.statusText}`);
+  }
+  return response.json();
+}
+
+/**
+ * Google Tasks API: Create a task in the primary task list
+ */
+export async function createGoogleTask(token: string, title: string, notes = '') {
+  const listsUrl = 'https://www.googleapis.com/tasks/v1/users/@me/lists';
+  const listsData = await fetchGoogleAPI(listsUrl, token);
+  const primaryListId = listsData.items?.[0]?.id;
+  if (!primaryListId) {
+    throw new Error('No primary task lists found in Google Tasks.');
+  }
+
+  const url = `https://www.googleapis.com/tasks/v1/lists/${primaryListId}/tasks`;
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ title, notes })
+  });
+  if (!response.ok) {
+    throw new Error(`Failed to create Google task: ${response.statusText}`);
+  }
+  return response.json();
+}
+
+/**
+ * Google Forms API: Create a new form
+ */
+export async function createGoogleForm(token: string, title: string) {
+  const url = 'https://forms.googleapis.com/v1/forms';
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ info: { title } })
+  });
+  if (!response.ok) {
+    throw new Error(`Failed to create Google Form: ${response.statusText}`);
+  }
+  return response.json();
+}
+
+/**
+ * Contacts (People API): Create a new connection
+ */
+export async function createGoogleContact(token: string, givenName: string, email: string, phone = '') {
+  const url = 'https://people.googleapis.com/v1/people:createContact';
+  const contactBody: any = {
+    names: [{ givenName }]
+  };
+  if (email) {
+    contactBody.emailAddresses = [{ value: email }];
+  }
+  if (phone) {
+    contactBody.phoneNumbers = [{ value: phone }];
+  }
+
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify(contactBody)
+  });
+  if (!response.ok) {
+    throw new Error(`Failed to create contact: ${response.statusText}`);
+  }
+  return response.json();
+}
