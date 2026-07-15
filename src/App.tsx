@@ -4832,8 +4832,13 @@ export default function App() {
                               if (account.email) {
                                 handleGoogleLoginSuccess(account.email, account.name);
                               } else {
-                                setAuthError('⚠️ Third-party Google accounts are not yet linked. Use username/password instead.');
-                                setShowGoogleModal(false);
+                                const customEmail = window.prompt("Enter your Google/Gmail address:");
+                                if (customEmail && customEmail.includes('@')) {
+                                  const customName = window.prompt("Enter your Name:") || "Traveler";
+                                  handleGoogleLoginSuccess(customEmail, customName);
+                                } else if (customEmail) {
+                                  alert("Please enter a valid email address.");
+                                }
                               }
                             }}
                             className="w-full flex items-center gap-3.5 px-4 py-3 rounded-2xl cursor-pointer transition-all duration-200 active:scale-98"
