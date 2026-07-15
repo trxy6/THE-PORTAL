@@ -3,8 +3,9 @@ import { FeedPage } from './pages/FeedPage';
 import { CraiveAIPage } from './pages/CraiveAIPage';
 import { CraiveMePage } from './pages/CraiveMePage';
 import { BrowsePage } from './pages/BrowsePage';
+import { RecipesPage } from './pages/RecipesPage';
 import type { User } from './types';
-import { MessageSquare, Library, Award, Newspaper } from 'lucide-react';
+import { MessageSquare, Library, Award, Newspaper, BookOpen } from 'lucide-react';
 
 export const CookbookContainer: React.FC = () => {
     const [activeTab, setActiveTab] = useState('Mila');
@@ -75,6 +76,8 @@ export const CookbookContainer: React.FC = () => {
                         setActiveTab={setActiveTab} 
                     />
                 );
+            case 'Recipes':
+                return <RecipesPage user={user} />;
             default:
                 return null;
         }
@@ -82,9 +85,10 @@ export const CookbookContainer: React.FC = () => {
 
     const tabs = [
         { name: 'Mila', label: 'Chef Mila', icon: MessageSquare },
+        { name: 'Recipes', label: 'Recipes', icon: BookOpen },
         { name: 'Browse', label: 'Flavors & Games', icon: Library },
         { name: 'CraiveMe', label: 'CraiveMe Profile', icon: Award },
-        { name: 'Feed', label: 'Social Feed', icon: Newspaper }
+        { name: 'Feed', label: 'Social Feed', icon: Newspaper },
     ];
 
     return (
