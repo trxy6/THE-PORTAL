@@ -14,6 +14,7 @@ import {
 import { AudioPlayer, TRACKS } from './components/AudioPlayer';
 import { NeonDriftGame } from './components/NeonDriftGame';
 import DiceTrayCanvas from './components/DiceTrayCanvas';
+import LocalDiceBox from './components/LocalDiceBox';
 import { CookbookContainer } from './components/cookbook/CookbookContainer';
 import D20War from './components/D20War';
 import CosmicWords from './components/CosmicWords';
@@ -6307,23 +6308,23 @@ export default function App() {
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-[fadeIn_0.3s_ease-out]">
                   {/* Left Column: Canvas Field */}
                   <div className="lg:col-span-2 space-y-4">
-                    <div className="bg-slate-50 rounded-xl overflow-hidden border border-slate-200/50 relative aspect-video flex flex-col">
+                    <div className="bg-slate-950/60 rounded-xl overflow-hidden border border-white/5 relative aspect-video flex flex-col">
                       <div className="absolute top-3 left-3 bg-[#0d071c]/90 border border-purple-500/25 px-2.5 py-1 rounded-lg z-10 flex items-center gap-1.5 font-mono text-[9px] font-bold text-[#b4aae2] shadow-md">
                         <Dices className="w-3.5 h-3.5 text-purple-400 animate-spin-slow" />
                         <span>Interactive Rolling Field</span>
                       </div>
-                      <DiceTrayCanvas themeColor={themeColor} />
+                      <LocalDiceBox />
                     </div>
                   </div>
 
                   {/* Right Column: Dice Panel controls and roll logs */}
                   <div className="space-y-4">
-                    <div className="p-4 bg-slate-50 border border-slate-200/50 rounded-xl space-y-3">
-                      <span className="text-[10px] uppercase tracking-wider text-slate-500 font-bold">Combat Turn Tracker</span>
-                      <div className="flex justify-between items-center bg-slate-100 border border-slate-200/60 p-2.5 rounded-lg">
+                    <div className="p-4 bg-slate-950/60 border border-white/5 rounded-xl space-y-3">
+                      <span className="text-[10px] uppercase tracking-wider text-slate-400 font-bold">Combat Turn Tracker</span>
+                      <div className="flex justify-between items-center bg-purple-950/10 border border-white/5 p-2.5 rounded-lg">
                         <div className="flex flex-col">
                           <span className="text-[9px] text-purple-400 uppercase font-mono font-bold">Current Round</span>
-                          <span className="text-xl font-black text-slate-700">{combatRound}</span>
+                          <span className="text-xl font-black text-white">{combatRound}</span>
                         </div>
                         <button 
                           onClick={handleEndTurn}
@@ -6341,27 +6342,27 @@ export default function App() {
                         {combatants.map((c, i) => (
                           <div 
                             key={i} 
-                            className={`flex items-center justify-between p-2 rounded-lg border transition-all ${i === activeCombatantIndex ? 'bg-purple-950/30 border-purple-500/40 shadow-[0_0_8px_rgba(168,85,247,0.15)]' : 'bg-transparent border-slate-200/50'}`}
+                            className={`flex items-center justify-between p-2 rounded-lg border transition-all ${i === activeCombatantIndex ? 'bg-purple-950/30 border-purple-500/40 shadow-[0_0_8px_rgba(168,85,247,0.15)]' : 'bg-transparent border-white/5'}`}
                           >
                             <div className="flex items-center gap-2">
                               <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ backgroundColor: c.color }}></span>
                               <div className="flex flex-col">
-                                <span className={`text-[10px] font-bold ${i === activeCombatantIndex ? 'text-slate-900' : 'text-slate-600'}`}>{c.name}</span>
+                                <span className={`text-[10px] font-bold ${i === activeCombatantIndex ? 'text-white' : 'text-slate-300'}`}>{c.name}</span>
                                 <span className="text-[8px] text-slate-500 font-mono">{c.class}</span>
                               </div>
                             </div>
                             <div className="flex items-center gap-1.5">
-                              <button onClick={() => handleHpChange(i, -1)} className="w-5 h-5 bg-slate-100 border border-slate-200/50 hover:bg-rose-100 hover:text-rose-600 text-slate-700 rounded flex items-center justify-center text-[10px] cursor-pointer font-bold">-</button>
-                              <span className="text-xs font-mono font-black text-slate-800 px-1">{c.hp} / {c.maxHp}</span>
-                              <button onClick={() => handleHpChange(i, 1)} className="w-5 h-5 bg-slate-100 border border-slate-200/50 hover:bg-emerald-100 hover:text-emerald-600 text-slate-700 rounded flex items-center justify-center text-[10px] cursor-pointer font-bold">+</button>
+                              <button onClick={() => handleHpChange(i, -1)} className="w-5 h-5 bg-slate-900 border border-white/5 hover:bg-rose-950 hover:text-rose-400 text-white rounded flex items-center justify-center text-[10px] cursor-pointer font-bold">-</button>
+                              <span className="text-xs font-mono font-black text-white px-1">{c.hp} / {c.maxHp}</span>
+                              <button onClick={() => handleHpChange(i, 1)} className="w-5 h-5 bg-slate-900 border border-white/5 hover:bg-emerald-950 hover:text-emerald-400 text-white rounded flex items-center justify-center text-[10px] cursor-pointer font-bold">+</button>
                             </div>
                           </div>
                         ))}
                       </div>
                     </div>
 
-                    <div className="p-4 bg-slate-50 border border-slate-200/50 rounded-xl space-y-3">
-                      <span className="text-[10px] uppercase tracking-wider text-slate-500 font-bold">Consult Alchemical Oracle</span>
+                    <div className="p-4 bg-slate-950/60 border border-white/5 rounded-xl space-y-3">
+                      <span className="text-[10px] uppercase tracking-wider text-slate-400 font-bold">Consult Alchemical Oracle</span>
                       <div className="flex gap-2">
                         <input 
                           type="text" 
@@ -6369,7 +6370,7 @@ export default function App() {
                           value={oracleQuery}
                           onChange={(e) => setOracleQuery(e.target.value)}
                           onKeyDown={(e) => e.key === 'Enter' && handleOracleConsult()}
-                          className="flex-1 bg-slate-100 border border-slate-200/50 rounded-lg px-3 py-1.5 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-purple-500/60"
+                          className="flex-1 bg-slate-900 border border-white/5 rounded-lg px-3 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-purple-500/60"
                         />
                         <button 
                           onClick={handleOracleConsult}
@@ -6384,7 +6385,7 @@ export default function App() {
                         </button>
                       </div>
                       {oracleAnswer && (
-                        <div className="p-2.5 bg-purple-500/5 border border-purple-500/20 text-slate-800 text-[10px] font-semibold font-mono rounded-lg leading-relaxed whitespace-pre-line">
+                        <div className="p-2.5 bg-purple-500/5 border border-purple-500/20 text-slate-300 text-[10px] font-semibold font-mono rounded-lg leading-relaxed whitespace-pre-line">
                           {oracleAnswer}
                         </div>
                       )}
@@ -6847,15 +6848,15 @@ export default function App() {
               {/* Left sidebar info column */}
               <div className="md:w-1/3 space-y-4">
                 <div>
-                  <h2 className="text-sm font-bold text-slate-800 uppercase tracking-widest flex items-center gap-2">
+                  <h2 className="text-sm font-bold text-white uppercase tracking-widest flex items-center gap-2">
                     <Wrench className="w-4 h-4 text-cyan-400 animate-pulse" />
                     TI-84 Plus CE OS
                   </h2>
                   <p className="text-[10px] text-slate-500">Dual algebraic engine with ROM loader</p>
                 </div>
 
-                <div className="p-4 bg-slate-50 border border-slate-200/50 rounded-xl space-y-3 font-mono text-[9px] text-slate-500">
-                  <div className="border-b border-slate-200/50 pb-2 text-[10px] font-bold text-[#3fd9c7] uppercase">Interactive Shortcuts</div>
+                <div className="p-4 bg-slate-950/60 border border-white/5 rounded-xl space-y-3 font-mono text-[9px] text-slate-400">
+                  <div className="border-b border-white/5 pb-2 text-[10px] font-bold text-[#3fd9c7] uppercase">Interactive Shortcuts</div>
                   <div className="flex justify-between">
                     <span>LAUNCH GAME:</span>
                     <span className="text-[#cf4fe6]">PRGM Key</span>

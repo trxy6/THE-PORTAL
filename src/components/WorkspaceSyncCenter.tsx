@@ -60,6 +60,17 @@ export default function WorkspaceSyncCenter({
 
   // Initialize auth listener
   useEffect(() => {
+    if (localStorage.getItem('google_access_token_temp') === 'mock-access-token') {
+      setGoogleUser({
+        uid: 'mock-user-id',
+        displayName: 'Local Developer',
+        email: 'dev@localhost',
+        photoURL: null,
+      } as any);
+      setNeedsAuth(false);
+      return;
+    }
+
     const unsubscribe = initAuth(
       (user, token) => {
         setGoogleUser(user);
@@ -87,7 +98,24 @@ export default function WorkspaceSyncCenter({
       }
     } catch (err: any) {
       console.error(err);
-      toast(`Connection failed: ${err.message}`, 'error');
+      if (err.code === 'auth/unauthorized-domain' || err.message?.includes('unauthorized-domain')) {
+        const useMock = window.confirm('Firebase Auth Domain is unauthorized (default development key). Would you like to enable a local Mock Connection to test the sync interface?');
+        if (useMock) {
+          setGoogleUser({
+            uid: 'mock-user-id',
+            displayName: 'Local Developer',
+            email: 'dev@localhost',
+            photoURL: null,
+          } as any);
+          setNeedsAuth(false);
+          localStorage.setItem('google_access_token_temp', 'mock-access-token');
+          toast('Mock Google Workspace connection established.', 'success');
+          triggerWorkspaceSync('mock-access-token');
+          return;
+        }
+      } else {
+        toast(`Connection failed: ${err.message}`, 'error');
+      }
     } finally {
       setIsLoggingIn(false);
     }
@@ -99,6 +127,13 @@ export default function WorkspaceSyncCenter({
     
     haptic(10);
     try {
+      if (localStorage.getItem('google_access_token_temp') === 'mock-access-token') {
+        localStorage.removeItem('google_access_token_temp');
+        setGoogleUser(null);
+        setNeedsAuth(true);
+        toast('Workspace sync tunnel closed.', 'info');
+        return;
+      }
       await logoutGoogle();
       setGoogleUser(null);
       setNeedsAuth(true);
@@ -118,6 +153,99 @@ export default function WorkspaceSyncCenter({
       if (!token) {
         setNeedsAuth(true);
         throw new Error('No valid Workspace sync credentials found. Please authenticate.');
+      }
+
+      if (token === 'mock-access-token') {
+        // Step 1: Drive sync
+        setSyncStatus('Synchronizing Cloud Files (Google Drive)...');
+        await new Promise(r => setTimeout(r, 400));
+        const files = [
+          { id: 'm-f1', name: 'Strategic Roadmap 2026.pdf', mimeType: 'application/pdf', size: 1048576 * 2.4, webViewLink: '#' },
+          { id: 'm-f2', name: 'UI Components Specs.fig', mimeType: 'image/png', size: 1048576 * 14.2, webViewLink: '#' },
+          { id: 'm-f3', name: 'Workspace Asset Ledger.xlsx', mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', size: 51200, webViewLink: '#' }
+        ];
+        setDriveFiles(files);
+        store.set('g_drive_files', files);
+
+        // Step 2: Calendar sync
+        setSyncStatus('Synchronizing Timeline Schedules (Google Calendar)...');
+        await new Promise(r => setTimeout(r, 400));
+        const events = [
+          { id: 'm-e1', summary: 'Daily Portal Sync Session', start: { dateTime: new Date().toISOString() }, htmlLink: '#' },
+          { id: 'm-e2', summary: 'Offline LLM Architecture Review', start: { dateTime: new Date(Date.now() + 3600000 * 2).toISOString() }, htmlLink: '#' }
+        ];
+        setCalendarEvents(events);
+        store.set('g_calendar_events', events);
+
+        // Step 3: Tasks sync
+        setSyncStatus('Synchronizing Directives (Google Tasks)...');
+        await new Promise(r => setTimeout(r, 400));
+        const taskList = [
+          { id: 'm-t1', title: 'Validate local SQLite database syncing', status: 'needsAction' },
+          { id: 'm-t2', title: 'Verify WebLLM client-side cache integrity', status: 'completed' }
+        ];
+        setTasks(taskList);
+        store.set('g_tasks', taskList);
+
+        // Step 4: Contacts sync
+        setSyncStatus('Synchronizing Address book (Google Contacts)...');
+        await new Promise(r => setTimeout(r, 400));
+        const contactList = [
+          { id: 'm-c1', name: 'Elara Vance', email: 'elara@orionsystems.io', phone: '+1 (555) 234-5678' },
+          { id: 'm-c2', name: 'Kaelen Finch', email: 'kaelen@orionsystems.io', phone: '+1 (555) 876-5432' }
+        ];
+        setContacts(contactList);
+        store.set('g_contacts', contactList);
+
+        // Step 5: Gmail sync
+        setSyncStatus('Synchronizing Core Communications (Gmail inbox)...');
+        await new Promise(r => setTimeout(r, 400));
+        const mailList = [
+          { id: 'm-m1', subject: 'Production Release Approved', snippet: 'The compliance audit of the local companion service is complete. Code signatures are active.', from: 'Elara Vance <elara@orionsystems.io>', date: new Date().toLocaleDateString() },
+          { id: 'm-m2', subject: 'Offline Syncer Status', snippet: 'Reminder to enable cross-origin local resource sharing headers for port 3000.', from: 'Kaelen Finch <kaelen@orionsystems.io>', date: new Date().toLocaleDateString() }
+        ];
+        setGmailMessages(mailList);
+        store.set('g_gmail_messages', mailList);
+
+        // Step 6: Chat sync
+        setSyncStatus('Synchronizing Spaces (Google Chat)...');
+        await new Promise(r => setTimeout(r, 400));
+        const spaceList = [
+          { name: 'spaces/m-s1', displayName: 'Development Outpost' },
+          { name: 'spaces/m-s2', displayName: 'Compliance Control Room' }
+        ];
+        setChatSpaces(spaceList);
+        store.set('g_chat_spaces', spaceList);
+        setSelectedSpaceId('spaces/m-s1');
+
+        // Step 7: Sheets/Docs sync
+        setSyncStatus('Extracting Spreadsheets & Documents Workflows...');
+        await new Promise(r => setTimeout(r, 400));
+        const sheetsList = [
+          { id: 'm-sd1', name: 'Financial Balance Sheet', type: 'sheet', mimeType: 'application/vnd.google-apps.spreadsheet', webViewLink: '#' },
+          { id: 'm-sd2', name: 'Portal Integration Protocols', type: 'doc', mimeType: 'application/vnd.google-apps.document', webViewLink: '#' }
+        ];
+        setSheetsDocs(sheetsList);
+        store.set('g_sheets_docs', sheetsList);
+
+        // Step 8: Slides/Forms sync
+        setSyncStatus('Fetching Presentation Decks & Form Responses...');
+        await new Promise(r => setTimeout(r, 400));
+        const slidesList = [
+          { id: 'm-sf1', name: 'Q3 Product Strategy Deck', type: 'slide', mimeType: 'application/vnd.google-apps.presentation', webViewLink: '#' },
+          { id: 'm-sf2', name: 'Developer Setup Feedback Form', type: 'form', mimeType: 'application/vnd.google-apps.form', webViewLink: '#' }
+        ];
+        setSlidesForms(slidesList);
+        store.set('g_slides_forms', slidesList);
+
+        // Mark completion
+        const syncTime = new Date().toLocaleString();
+        setLastSyncedAt(syncTime);
+        store.set('g_last_synced_at', syncTime);
+        
+        toast('Mock Workspace synchronization complete. Offline indexes updated.', 'success');
+        setSyncStatus('Completed Successfully');
+        return;
       }
 
       // Step 1: Drive sync
@@ -200,6 +328,12 @@ export default function WorkspaceSyncCenter({
     setIsSendingChat(true);
     haptic(10);
     try {
+      if (token === 'mock-access-token') {
+        await new Promise(r => setTimeout(r, 400));
+        toast('Automated message dispatched to Chat Space successfully (Mock Sync mode).', 'success');
+        setChatMsgText('');
+        return;
+      }
       await sendGoogleChatMessage(token, selectedSpaceId, chatMsgText);
       toast('Automated message dispatched to Chat Space successfully.', 'success');
       setChatMsgText('');
