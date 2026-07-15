@@ -2697,12 +2697,15 @@ export default function App() {
 
   const handleGoogleLoginSuccess = (email: string, name: string) => {
     haptic([20, 30, 50]);
-    const uId = email.split('@')[0].toLowerCase();
+    let uId = email.split('@')[0].toLowerCase();
+    if (uId === 'treydog.ramirez' || uId === 'treydog' || uId === 'trxy.y') {
+      uId = 'trxy6';
+    }
     const rawUsers = localStorage.getItem('portal_users');
     const users = rawUsers ? JSON.parse(rawUsers) : [];
     const exists = users.find((u: any) => u.userId === uId);
     if (!exists) {
-      users.push({ userId: uId, password: 'google_linked_sso', isCreator: (uId === 'trxy6' || uId === 'treydog'), email });
+      users.push({ userId: uId, password: 'google_linked_sso', isCreator: (uId === 'trxy6' || uId === 'trxy.y' || uId === 'treydog.ramirez'), email });
       localStorage.setItem('portal_users', JSON.stringify(users));
     }
     const profileKey = `portal_profile_${uId}`;
@@ -4821,7 +4824,7 @@ export default function App() {
                       {/* Account options */}
                       <div className="space-y-2">
                         {[
-                          { name: 'Trey Ramirez', email: 'treydog@gmail.com', initials: 'TR', color: '#8b5cf6' },
+                          { name: 'Trey Ramirez', email: 'treydog.ramirez@gmail.com', initials: 'TR', color: '#8b5cf6' },
                           { name: 'Use another account', email: '', initials: '+', color: 'rgba(99,102,241,0.5)' },
                         ].map((account, i) => (
                           <button
