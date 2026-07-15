@@ -8,7 +8,7 @@ import {
   Download, Sparkle, Server, Shield, Brain, Cpu, Database, 
   Battery, AlertCircle, RefreshCw, Send, CheckCircle2, X, Fingerprint,
   PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen, Dices, Trophy, Trash, CalendarRange, ChefHat,
-  ArrowLeft, ArrowRight, Bot, Lock, Volume2, VolumeX, Link, Copy, Eye, Music, ExternalLink, Bookmark, Award,
+  ArrowLeft, ArrowRight, Bot, Lock, Volume2, VolumeX, Link, Copy, Eye, Music, ExternalLink, Bookmark, Award, Mic,
   Map as MapIcon
 } from 'lucide-react';
 import { AudioPlayer, TRACKS } from './components/AudioPlayer';
@@ -5838,6 +5838,25 @@ export default function App() {
                       onChange={(e) => setAiInput(e.target.value)}
                       className="flex-1 bg-slate-950 border border-white/5 rounded-lg px-4 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-purple-500/60"
                     />
+
+                    {/* Microphone Voice mode activator with a twist */}
+                    <button
+                      type="button"
+                      title="Activate Holographic Voice Matrix"
+                      onClick={() => {
+                        haptic(15);
+                        setIsVoiceActive(true);
+                      }}
+                      className="p-2.5 bg-slate-950 border border-white/5 hover:border-[#8b5cf6]/40 text-[#8b5cf6] hover:text-purple-400 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center justify-center group relative overflow-hidden shrink-0"
+                    >
+                      <div className="absolute inset-0 bg-[#8b5cf6]/5 opacity-0 group-hover:opacity-100 transition-opacity" />
+                      <Mic className="w-4 h-4 group-hover:scale-110 transition-transform" />
+                      <span className="absolute top-1 right-1 flex h-1.5 w-1.5">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#8b5cf6] opacity-75"></span>
+                        <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-[#8b5cf6]"></span>
+                      </span>
+                    </button>
+
                     <button 
                       type="submit"
                       disabled={isAiLoading || !aiInput.trim()}
@@ -5851,6 +5870,65 @@ export default function App() {
                     </button>
                   </form>
                 </div>
+
+                {/* Immersive Holographic Voice HUD Overlay (The "Twist") */}
+                {isVoiceActive && (
+                  <div className="absolute inset-0 bg-slate-950/95 backdrop-blur-md rounded-2xl flex flex-col items-center justify-center p-6 z-50 text-center animate-[fadeIn_0.3s_ease-out]">
+                    {/* Status header telemetry */}
+                    <div className="absolute top-6 left-6 right-6 flex justify-between text-[9px] font-mono text-purple-400/85 uppercase tracking-widest">
+                      <span>Offline Audio Core v3.5</span>
+                      <span className="flex items-center gap-1.5">
+                        <span className={`w-1.5 h-1.5 rounded-full ${voiceState === 'listening' ? 'bg-emerald-500 animate-ping' : 'bg-amber-500'}`} />
+                        {voiceState}
+                      </span>
+                    </div>
+
+                    {/* Central Pulsing Holographic Orb */}
+                    <div className="relative flex items-center justify-center w-48 h-48 mb-6">
+                      <div 
+                        className="absolute inset-0 rounded-full bg-purple-500/10 border border-purple-500/20 transition-transform duration-75 animate-[spin_10s_linear_infinite]"
+                        style={{ transform: `scale(${1 + voiceVolume / 100})` }}
+                      />
+                      <div 
+                        className="absolute inset-4 rounded-full bg-cyan-500/10 border border-cyan-500/30 transition-transform duration-75 animate-[spin_6s_linear_infinite_reverse]"
+                        style={{ transform: `scale(${1 + voiceVolume / 150})` }}
+                      />
+                      <div 
+                        className="absolute inset-8 rounded-full bg-[#8b5cf6]/20 border border-[#8b5cf6]/40 flex items-center justify-center shadow-[0_0_30px_rgba(139,92,246,0.35)] transition-transform duration-75"
+                        style={{ transform: `scale(${1 + voiceVolume / 200})` }}
+                      >
+                        <Mic className={`w-10 h-10 text-white ${voiceState === 'listening' ? 'animate-pulse' : ''}`} />
+                      </div>
+                    </div>
+
+                    {/* Real-time transcription display */}
+                    <div className="max-w-md w-full space-y-2">
+                      <p className="text-sm font-bold text-white tracking-wide">
+                        {voiceState === 'listening' ? 'Speak Now...' :
+                         voiceState === 'thinking' ? 'PECOS Core Thinking...' :
+                         'Synthesizing Response...'}
+                      </p>
+                      <p className="text-xs text-slate-400 bg-slate-900/60 border border-white/5 rounded-xl px-4 py-3 min-h-[50px] flex items-center justify-center italic leading-relaxed font-mono">
+                        "{voiceTranscript}"
+                      </p>
+                    </div>
+
+                    {/* Speech telemetry stats footer */}
+                    <div className="mt-8 flex gap-3 text-[9px] font-mono text-slate-500">
+                      <span className="bg-slate-900 border border-white/5 px-2.5 py-1 rounded">Whisper.cpp: Active</span>
+                      <span className="bg-slate-950 border border-white/5 px-2.5 py-1 rounded">Qwen 3.5: Standby</span>
+                      <span className="bg-slate-900 border border-white/5 px-2.5 py-1 rounded">Chatterbox: MIT</span>
+                    </div>
+
+                    {/* Exit controls */}
+                    <button 
+                      onClick={() => setIsVoiceActive(false)}
+                      className="absolute bottom-8 px-5 py-2 rounded-full border border-rose-500/35 bg-rose-500/10 hover:bg-rose-500 text-rose-400 hover:text-white text-[10px] font-bold uppercase tracking-wider transition-all cursor-pointer shadow-md active:scale-95"
+                    >
+                      Disconnect Voice Core
+                    </button>
+                  </div>
+                )}
               </div>
 
               {/* Right Column: PECOS AI Workspace Integration Hub */}

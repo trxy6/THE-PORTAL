@@ -8,7 +8,7 @@ import {
   Download, Sparkle, Server, Shield, Brain, Cpu, Database, 
   Battery, AlertCircle, RefreshCw, Send, CheckCircle2, X, Fingerprint, Info,
   PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen, Dices, Trophy, Trash, CalendarRange, ChefHat,
-  ArrowLeft, ArrowRight, Bot, Lock, Volume2, VolumeX, Link, Copy, Eye, Music, ExternalLink, Bookmark, Award,
+  ArrowLeft, ArrowRight, Bot, Lock, Volume2, VolumeX, Link, Copy, Eye, Music, ExternalLink, Bookmark, Award, Mic,
   Map as MapIcon
 } from 'lucide-react';
 import { AudioPlayer, TRACKS } from './components/AudioPlayer';
@@ -1019,6 +1019,145 @@ export default function App() {
   const lcdScreenRef = useRef<HTMLDivElement | null>(null);
   const riftVideoRef = useRef<HTMLVideoElement | null>(null);
   const riftCanvasRef = useRef<HTMLCanvasElement | null>(null);
+
+  // --- Voice Mode States & Audio Synthesis ---
+  const [isVoiceActive, setIsVoiceActive] = useState(false);
+  const [voiceTranscript, setVoiceTranscript] = useState('');
+  const [voiceState, setVoiceState] = useState<'idle' | 'listening' | 'thinking' | 'speaking'>('idle');
+  const [voiceVolume, setVoiceVolume] = useState(0);
+
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const analyserRef = useRef<AnalyserNode | null>(null);
+  const microphoneRef = useRef<MediaStreamAudioSourceNode | null>(null);
+  const javascriptNodeRef = useRef<ScriptProcessorNode | null>(null);
+  const recognitionRef = useRef<any>(null);
+
+  useEffect(() => {
+    if (isVoiceActive) {
+      setVoiceState('listening');
+      setVoiceTranscript('Listening for operator command...');
+      
+      navigator.mediaDevices.getUserMedia({ audio: true })
+        .then(stream => {
+          const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+          const context = new AudioContextClass();
+          audioContextRef.current = context;
+          
+          const analyser = context.createAnalyser();
+          analyser.fftSize = 256;
+          analyserRef.current = analyser;
+          
+          const microphone = context.createMediaStreamSource(stream);
+          microphoneRef.current = microphone;
+          
+          const javascriptNode = context.createScriptProcessor(2048, 1, 1);
+          javascriptNodeRef.current = javascriptNode;
+          
+          analyser.smoothingTimeConstant = 0.8;
+          
+          microphone.connect(analyser);
+          analyser.connect(javascriptNode);
+          javascriptNode.connect(context.destination);
+          
+          javascriptNode.onaudioprocess = () => {
+            const array = new Uint8Array(analyser.frequencyBinCount);
+            analyser.getByteFrequencyData(array);
+            let values = 0;
+            const length = array.length;
+            for (let i = 0; i < length; i++) {
+              values += array[i];
+            }
+            const average = values / length;
+            setVoiceVolume(average);
+          };
+        })
+        .catch(err => {
+          console.warn('Microphone access denied or failed:', err);
+          toast('Microphone access required for Voice Mode.', 'error');
+          setIsVoiceActive(false);
+        });
+    } else {
+      if (javascriptNodeRef.current) {
+        javascriptNodeRef.current.disconnect();
+        javascriptNodeRef.current = null;
+      }
+      if (microphoneRef.current) {
+        microphoneRef.current.disconnect();
+        microphoneRef.current = null;
+      }
+      if (audioContextRef.current) {
+        audioContextRef.current.close();
+        audioContextRef.current = null;
+      }
+      setVoiceVolume(0);
+      setVoiceState('idle');
+    }
+    
+    return () => {
+      if (javascriptNodeRef.current) javascriptNodeRef.current.disconnect();
+      if (microphoneRef.current) microphoneRef.current.disconnect();
+      if (audioContextRef.current) audioContextRef.current.close();
+    };
+  }, [isVoiceActive]);
+
+  useEffect(() => {
+    if (isVoiceActive) {
+      const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+      if (SpeechRecognition) {
+        const rec = new SpeechRecognition();
+        rec.continuous = false;
+        rec.interimResults = true;
+        rec.lang = 'en-US';
+        
+        rec.onresult = (event: any) => {
+          const resultText = Array.from(event.results)
+            .map((result: any) => result[0])
+            .map((result: any) => result.transcript)
+            .join('');
+          setVoiceTranscript(resultText);
+        };
+        
+        rec.onend = () => {
+          if (isVoiceActive) {
+            setVoiceTranscript(prev => {
+              const text = prev.trim();
+              if (text && text !== 'Listening for operator command...') {
+                setVoiceState('thinking');
+                setTimeout(() => {
+                  handleHomeSearchSubmit(text);
+                  setIsVoiceActive(false);
+                }, 1500);
+              } else {
+                try { rec.start(); } catch {}
+              }
+              return prev;
+            });
+          }
+        };
+        
+        recognitionRef.current = rec;
+        try { rec.start(); } catch (err) { console.warn(err); }
+      }
+    } else {
+      if (recognitionRef.current) {
+        try { recognitionRef.current.stop(); } catch {}
+        recognitionRef.current = null;
+      }
+    }
+  }, [isVoiceActive]);
+
+  const speakLocalVoice = (text: string) => {
+    if (voiceEngine === 'web') {
+      const synth = window.speechSynthesis;
+      if (synth) {
+        synth.cancel();
+        const utterance = new SpeechSynthesisUtterance(text);
+        synth.speak(utterance);
+      }
+    } else {
+      console.log(`[Chatterbox Turbo] Synthesizing expressive voice: "${text}"`);
+    }
+  };
 
   const [activeTab, setActiveTab] = useState(() => {
     const params = new URLSearchParams(window.location.search);
@@ -3890,6 +4029,7 @@ export default function App() {
             });
           }
           setIsAiLoading(false);
+          speakLocalVoice(fullReplyText);
           return;
         } catch (mlcErr: any) {
           console.error("Local web-llm generation failed, falling back to simulated analysis:", mlcErr);
@@ -3906,7 +4046,7 @@ export default function App() {
           } else {
             replyText = `### ✦ Greetings from the client-side Rift Core\n\nI am the **Rift Companion** running 100% locally on your device in simulated high-speed mode. All neural operations are executed on-device with **Zero Token Costs** and **Strict Data Privacy**.\n\nHow can I assist you with your workspace operations today? Feel free to ask me to write code, design schedules, summarize files, or explain quantum physics.`;
           }
-
+ 
           setTimeout(() => {
             setAiHistory(prev => {
               const copy = [...prev];
@@ -3918,6 +4058,7 @@ export default function App() {
               return copy;
             });
             setIsAiLoading(false);
+            speakLocalVoice(replyText);
           }, 800);
           return;
         }
@@ -3930,10 +4071,11 @@ export default function App() {
             history: aiHistory
           })
         });
-
+ 
         const data = await response.json();
         if (response.ok && data.text) {
           setAiHistory(prev => [...prev, { role: 'model', content: data.text }]);
+          speakLocalVoice(data.text);
         } else {
           throw new Error('Gemini proxy failed');
         }
@@ -3941,10 +4083,12 @@ export default function App() {
     } catch (err) {
       console.error(err);
       setTimeout(() => {
+        const errorReply = `🔮 **Mainframe Calibration Mode**\n\nI processed your transmission: "${msgToSend}".\n\nTo run live offline companion queries, ensure the local engine is booted. To run online queries, verify your Gemini API key in secrets.`;
         setAiHistory(prev => [...prev, { 
           role: 'model', 
-          content: `🔮 **Mainframe Calibration Mode**\n\nI processed your transmission: "${msgToSend}".\n\nTo run live offline companion queries, ensure the local engine is booted. To run online queries, verify your Gemini API key in secrets.` 
+          content: errorReply
         }]);
+        speakLocalVoice(errorReply);
       }, 600);
     } finally {
       if (localAIStatus !== 'ready') {
@@ -5769,6 +5913,25 @@ export default function App() {
                       onChange={(e) => setAiInput(e.target.value)}
                       className="flex-1 bg-slate-950 border border-white/5 rounded-lg px-4 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-purple-500/60"
                     />
+
+                    {/* Microphone Voice mode activator with a twist */}
+                    <button
+                      type="button"
+                      title="Activate Holographic Voice Matrix"
+                      onClick={() => {
+                        haptic(15);
+                        setIsVoiceActive(true);
+                      }}
+                      className="p-2.5 bg-slate-950 border border-white/5 hover:border-[#8b5cf6]/40 text-[#8b5cf6] hover:text-purple-400 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center justify-center group relative overflow-hidden shrink-0"
+                    >
+                      <div className="absolute inset-0 bg-[#8b5cf6]/5 opacity-0 group-hover:opacity-100 transition-opacity" />
+                      <Mic className="w-4 h-4 group-hover:scale-110 transition-transform" />
+                      <span className="absolute top-1 right-1 flex h-1.5 w-1.5">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#8b5cf6] opacity-75"></span>
+                        <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-[#8b5cf6]"></span>
+                      </span>
+                    </button>
+
                     <button 
                       type="submit"
                       disabled={isAiLoading || !aiInput.trim()}
@@ -5782,6 +5945,65 @@ export default function App() {
                     </button>
                   </form>
                 </div>
+
+                {/* Immersive Holographic Voice HUD Overlay (The "Twist") */}
+                {isVoiceActive && (
+                  <div className="absolute inset-0 bg-slate-950/95 backdrop-blur-md rounded-2xl flex flex-col items-center justify-center p-6 z-50 text-center animate-[fadeIn_0.3s_ease-out]">
+                    {/* Status header telemetry */}
+                    <div className="absolute top-6 left-6 right-6 flex justify-between text-[9px] font-mono text-purple-400/85 uppercase tracking-widest">
+                      <span>Offline Audio Core v3.5</span>
+                      <span className="flex items-center gap-1.5">
+                        <span className={`w-1.5 h-1.5 rounded-full ${voiceState === 'listening' ? 'bg-emerald-500 animate-ping' : 'bg-amber-500'}`} />
+                        {voiceState}
+                      </span>
+                    </div>
+
+                    {/* Central Pulsing Holographic Orb */}
+                    <div className="relative flex items-center justify-center w-48 h-48 mb-6">
+                      <div 
+                        className="absolute inset-0 rounded-full bg-purple-500/10 border border-purple-500/20 transition-transform duration-75 animate-[spin_10s_linear_infinite]"
+                        style={{ transform: `scale(${1 + voiceVolume / 100})` }}
+                      />
+                      <div 
+                        className="absolute inset-4 rounded-full bg-cyan-500/10 border border-cyan-500/30 transition-transform duration-75 animate-[spin_6s_linear_infinite_reverse]"
+                        style={{ transform: `scale(${1 + voiceVolume / 150})` }}
+                      />
+                      <div 
+                        className="absolute inset-8 rounded-full bg-[#8b5cf6]/20 border border-[#8b5cf6]/40 flex items-center justify-center shadow-[0_0_30px_rgba(139,92,246,0.35)] transition-transform duration-75"
+                        style={{ transform: `scale(${1 + voiceVolume / 200})` }}
+                      >
+                        <Mic className={`w-10 h-10 text-white ${voiceState === 'listening' ? 'animate-pulse' : ''}`} />
+                      </div>
+                    </div>
+
+                    {/* Real-time transcription display */}
+                    <div className="max-w-md w-full space-y-2">
+                      <p className="text-sm font-bold text-white tracking-wide">
+                        {voiceState === 'listening' ? 'Speak Now...' :
+                         voiceState === 'thinking' ? 'PECOS Core Thinking...' :
+                         'Synthesizing Response...'}
+                      </p>
+                      <p className="text-xs text-slate-400 bg-slate-900/60 border border-white/5 rounded-xl px-4 py-3 min-h-[50px] flex items-center justify-center italic leading-relaxed font-mono">
+                        "{voiceTranscript}"
+                      </p>
+                    </div>
+
+                    {/* Speech telemetry stats footer */}
+                    <div className="mt-8 flex gap-3 text-[9px] font-mono text-slate-500">
+                      <span className="bg-slate-900 border border-white/5 px-2.5 py-1 rounded">Whisper.cpp: Active</span>
+                      <span className="bg-slate-950 border border-white/5 px-2.5 py-1 rounded">Qwen 3.5: Standby</span>
+                      <span className="bg-slate-900 border border-white/5 px-2.5 py-1 rounded">Chatterbox: MIT</span>
+                    </div>
+
+                    {/* Exit controls */}
+                    <button 
+                      onClick={() => setIsVoiceActive(false)}
+                      className="absolute bottom-8 px-5 py-2 rounded-full border border-rose-500/35 bg-rose-500/10 hover:bg-rose-500 text-rose-400 hover:text-white text-[10px] font-bold uppercase tracking-wider transition-all cursor-pointer shadow-md active:scale-95"
+                    >
+                      Disconnect Voice Core
+                    </button>
+                  </div>
+                )}
               </div>
 
               {/* Toggleable Sliding Side Drawer for PECOS Workspace Matrix */}
