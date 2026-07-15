@@ -1031,6 +1031,7 @@ export default function App() {
   }, [activeTab]);
   const [themeColor, setThemeColor] = useState('purple'); // breathing trim theme: silver, purple, cyan, pink, emerald, amber
   const [searchQuery, setSearchQuery] = useState('');
+  const [homeSearchVal, setHomeSearchVal] = useState('');
   const [showSearchPalette, setShowSearchPalette] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date());
 
@@ -3816,6 +3817,17 @@ export default function App() {
     setProposedAction(null);
   };
 
+  const handleHomeSearchSubmit = (customVal?: string) => {
+    const val = customVal || homeSearchVal;
+    if (!val.trim()) return;
+    setHomeSearchVal('');
+    setAiInput(val);
+    setActiveTab('chat');
+    setTimeout(() => {
+      handleSendChatMessage(undefined, val);
+    }, 100);
+  };
+
   // Chat message submission
   const handleSendChatMessage = async (e?: React.FormEvent, customMsg?: string) => {
     if (e) e.preventDefault();
@@ -5067,15 +5079,17 @@ export default function App() {
                         <input 
                           type="text"
                           placeholder="Ask NextGenPortal AI anything..."
+                          value={homeSearchVal}
+                          onChange={(e) => setHomeSearchVal(e.target.value)}
                           onKeyDown={(e: any) => {
                             if (e.key === 'Enter') {
-                              setActiveTab('chat');
+                              handleHomeSearchSubmit();
                             }
                           }}
                           className="w-full pl-10 pr-12 py-2.5 bg-white/80 border border-slate-200/50 rounded-full text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-indigo-400 focus:bg-white focus:ring-4 focus:ring-indigo-100 transition-all font-semibold shadow-sm"
                         />
                         <button 
-                          onClick={() => setActiveTab('chat')}
+                          onClick={() => handleHomeSearchSubmit()}
                           className="absolute right-1.5 top-1.5 w-6 h-6 rounded-full bg-gradient-to-r from-[#3b82f6] to-[#8b5cf6] hover:brightness-110 text-white flex items-center justify-center transition-all cursor-pointer shadow-sm"
                         >
                           <ArrowRight className="w-3.5 h-3.5" />
