@@ -5671,9 +5671,9 @@ export default function App() {
                           className="text-xs bg-white border border-slate-200 text-slate-700 rounded-lg p-1.5 focus:outline-none focus:border-purple-500 cursor-pointer w-full sm:w-auto"
                           disabled={localAIStatus === 'downloading' || localAIStatus === 'loading'}
                         >
-                          <option value="Qwen2.5-1.5B-Instruct-q4f32_1-MLC">Qwen 2.5 1.5B (Recommended)</option>
+                          <option value="Qwen2.5-1.5B-Instruct-q4f32_1-MLC">Qwen 2.5 1.5B (Fast Desktop)</option>
                           <option value="Qwen2.5-0.5B-Instruct-q4f16_1-MLC">Qwen 2.5 0.5B (Mobile Friendly)</option>
-                          <option value="Llama-3.2-1B-Instruct-q4f16_1-MLC">Llama 3.2 1B (High Quality)</option>
+                          <option value="Qwen3.5-4B-Instruct-q4f16_1-MLC">Qwen 3.5 4B (Recommended - Tools & Reasoning)</option>
                         </select>
                       </div>
 
@@ -9247,6 +9247,7 @@ export default function App() {
                       <div>
                         <label className="font-bold block mb-1 text-[11px]">Speech Engine</label>
                         <select value={voiceEngine} onChange={(e) => { haptic(5); setVoiceEngine(e.target.value); }} className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-lg p-2 text-xs">
+                          <option value="chatterbox">🔥 Chatterbox Turbo Offline Agent Engine</option>
                           <option value="kokoro">⚡ Kokoro Local Engine (Ultra-Fast)</option>
                           <option value="web">🌐 Native Web Speech API</option>
                         </select>
@@ -9311,6 +9312,28 @@ export default function App() {
                           <span className="font-mono">{nebulaOpacity}%</span>
                         </div>
                         <input type="range" min="0" max="100" value={nebulaOpacity} onChange={(e) => setNebulaOpacity(Number(e.target.value))} className="w-full h-1 accent-indigo-500 bg-slate-200 dark:bg-slate-800 appearance-none rounded" />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Privacy & Agent Safety Promise */}
+                  <div className="glass-panel border border-[#8b5cf6]/20 bg-[#8b5cf6]/5 rounded-xl p-4 space-y-3">
+                    <span className="text-[10px] uppercase font-bold text-[#8b5cf6] tracking-wider flex items-center gap-1.5">
+                      <Shield className="w-3.5 h-3.5 text-[#8b5cf6]" /> Privacy & Agent Safety Promise
+                    </span>
+                    <p className="text-[10px] text-slate-505 leading-normal">
+                      The Portal guarantees user privacy and agent safety by executing Qwen 3.5 4B entirely on-device. Risk-tiered logic enforces checks and limits over all companion tool operations.
+                    </p>
+                    <div className="space-y-2 font-mono text-[9px] text-slate-400">
+                      <div className="p-2 bg-slate-950/40 rounded border border-white/5 space-y-1">
+                        <p><span className="text-[#8b5cf6] font-bold">● Local Processing:</span> Conversations, notes, and local configurations never leave your device.</p>
+                        <p><span className="text-[#8b5cf6] font-bold">● Strict Tool Allowlist:</span> Direct execution is restricted to safe registered APIs (e.g. <span className="text-purple-300">get_current_time</span>, <span className="text-purple-300">save_note</span>, <span className="text-purple-300">update_note</span>, <span className="text-purple-300">create_calendar_event</span>, <span className="text-purple-300">set_alarm</span>, <span className="text-purple-300">play_music</span>, <span className="text-purple-300">open_app</span>, <span className="text-purple-300">change_setting</span>, <span className="text-purple-300">search_local_files</span>).</p>
+                        <p><span className="text-[#8b5cf6] font-bold">● Tiered Confirmations:</span> Riskier operations (deleting data, external triggers) request explicit user consent before execution.</p>
+                        <p><span className="text-[#8b5cf6] font-bold">● Offline Sandbox Switch:</span> Complete physical logic isolation of offline tool execution loops.</p>
+                        <p><span className="text-[#8b5cf6] font-bold">● Input Verification:</span> Built-in argument parsing prevents prompt injection attacks.</p>
+                      </div>
+                      <div className="p-2 bg-amber-500/5 rounded border border-amber-500/20 text-amber-600 dark:text-amber-400 text-[8.5px] leading-relaxed">
+                        ⚠️ <strong>Honest Limitation:</strong> No software can guarantee absolute security. The Portal uses local processing, restricted permissions, validation, and user confirmation to reduce risk.
                       </div>
                     </div>
                   </div>
@@ -9543,7 +9566,7 @@ export default function App() {
                   >
                     <option value="Qwen2.5-1.5B-Instruct-q4f32_1-MLC">Qwen 2.5 1.5B Instruct (Standard - Balanced for Desktop)</option>
                     <option value="Qwen2.5-0.5B-Instruct-q4f16_1-MLC">Qwen 2.5 0.5B Instruct (Ultra-lightweight - Mobile Optimized)</option>
-                    <option value="Llama-3.2-1B-Instruct-q4f16_1-MLC">Llama 3.2 1B Instruct (High Precision - Versatile Quality)</option>
+                    <option value="Qwen3.5-4B-Instruct-q4f16_1-MLC">Qwen 3.5 4B Instruct (Recommended - High Quality Tools & Agent Model)</option>
                   </select>
                 </div>
                 
