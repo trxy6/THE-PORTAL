@@ -846,7 +846,11 @@ export default function App() {
   const [localAIStatus, setLocalAIStatus] = useState<string>('not_installed');
   const [localAIEngineError, setLocalAIEngineError] = useState<string>('');
   const [selectedLocalModel, setSelectedLocalModel] = useState<string>(() => {
-    return localStorage.getItem('selected_local_model') || 'Qwen2.5-1.5B-Instruct-q4f32_1-MLC';
+    const saved = localStorage.getItem('selected_local_model');
+    if (saved === 'Qwen3.5-4B-Instruct-q4f16_1-MLC') {
+      return 'qwen3.5:4b';
+    }
+    return saved || 'Qwen2.5-1.5B-Instruct-q4f32_1-MLC';
   });
 
   // --- Sub-Tab & View Custom Interface States ---
@@ -1913,7 +1917,7 @@ export default function App() {
   const updateLocalAIStatus = useCallback(async () => {
     if (selectedLocalModel === 'qwen3.5:4b') {
       try {
-        const res = await fetch('http://localhost:11434/api/tags');
+        const res = await fetch('http://127.0.0.1:11434/api/tags');
         if (res.ok) {
           setLocalAIStatus('ready');
           setLocalAIEngineError('');
@@ -1945,7 +1949,7 @@ export default function App() {
         setLocalAIStatus('loading');
         setLocalAIEngineError('Attempting to connect to local Ollama instance...');
         try {
-          const res = await fetch('http://localhost:11434/api/tags');
+          const res = await fetch('http://127.0.0.1:11434/api/tags');
           if (res.ok) {
             setLocalAIStatus('ready');
             setLocalAIEngineError('');
@@ -3979,7 +3983,7 @@ export default function App() {
 
     try {
       if (localAIStatus === 'ready') {
-        if (!mlcEngine) {
+        if (selectedLocalModel !== 'qwen3.5:4b' && !mlcEngine) {
           try {
             const { CreateMLCEngine } = await import('@mlc-ai/web-llm');
             mlcEngine = await CreateMLCEngine(selectedLocalModel, {
@@ -4010,7 +4014,7 @@ export default function App() {
           if (selectedLocalModel === 'qwen3.5:4b') {
             setAiHistory(prev => [...prev, { role: 'model', content: 'Connecting to Ollama...' }]);
 
-            const response = await fetch('http://localhost:11434/api/chat', {
+            const response = await fetch('http://127.0.0.1:11434/api/chat', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({

@@ -45,7 +45,7 @@ export async function createChatCompletionStream(
   onProgress?: (progressText: string) => void
 ) {
   if (selectedModel === 'qwen3.5:4b') {
-    const response = await fetch('http://localhost:11434/v1/chat/completions', {
+    const response = await fetch('http://127.0.0.1:11434/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'

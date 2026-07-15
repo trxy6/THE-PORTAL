@@ -566,10 +566,12 @@ export default function App() {
   const [showStartScreen, setShowStartScreen] = useState(() => !localStorage.getItem('portal_current_user'));
   const [loginTab, setLoginTab] = useState<'login' | 'signup'>('login');
   const [loginUser, setLoginUser] = useState('');
-  const [loginPin, setLoginPin] = useState('');
+  const [loginPassword, setLoginPassword] = useState('');
   const [signupUser, setSignupUser] = useState('');
-  const [signupPin, setSignupPin] = useState('');
+  const [signupPassword, setSignupPassword] = useState('');
+  const [signupConfirmPassword, setSignupConfirmPassword] = useState('');
   const [authError, setAuthError] = useState('');
+  const [showGoogleModal, setShowGoogleModal] = useState(false);
 
   // Onboarding and transition states
   const [isPlayingWarpTransition, setIsPlayingWarpTransition] = useState(false);
@@ -821,8 +823,8 @@ export default function App() {
   const [localAIEngineError, setLocalAIEngineError] = useState<string>('');
   const [selectedLocalModel, setSelectedLocalModel] = useState<string>(() => {
     const saved = localStorage.getItem('selected_local_model');
-    if (saved === 'Qwen3.5-4B-Instruct-q4f16_1-MLC') {
-      return 'qwen3.5:4b';
+    if (saved === 'qwen3.5:4b' || saved === 'Qwen3.5-4B-Instruct-q4f16_1-MLC') {
+      return 'Qwen2.5-1.5B-Instruct-q4f32_1-MLC';
     }
     return saved || 'Qwen2.5-1.5B-Instruct-q4f32_1-MLC';
   });
@@ -2030,7 +2032,7 @@ export default function App() {
   const updateLocalAIStatus = useCallback(async () => {
     if (selectedLocalModel === 'qwen3.5:4b') {
       try {
-        const res = await fetch('http://localhost:11434/api/tags');
+        const res = await fetch('http://127.0.0.1:11434/api/tags');
         if (res.ok) {
           setLocalAIStatus('ready');
           setLocalAIEngineError('');
@@ -2062,7 +2064,7 @@ export default function App() {
         setLocalAIStatus('loading');
         setLocalAIEngineError('Attempting to connect to local Ollama instance...');
         try {
-          const res = await fetch('http://localhost:11434/api/tags');
+          const res = await fetch('http://127.0.0.1:11434/api/tags');
           if (res.ok) {
             setLocalAIStatus('ready');
             setLocalAIEngineError('');
@@ -2640,21 +2642,21 @@ export default function App() {
     e.preventDefault();
     haptic([20, 30]);
     const uId = loginUser.trim().toLowerCase();
-    const pinVal = loginPin.trim();
-    if (!uId || !pinVal) {
+    const passwordVal = loginPassword.trim();
+    if (!uId || !passwordVal) {
       setAuthError("⚠️ Please fill in all credentials!");
       return;
     }
     const rawUsers = localStorage.getItem('portal_users');
     const users = rawUsers ? JSON.parse(rawUsers) : [];
     const matched = users.find((u: any) => u.userId === uId);
-    if (matched && matched.pin === pinVal) {
+    if (matched && (matched.password === passwordVal || matched.pin === passwordVal)) {
       startOnboardingAudio();
       setTempUserToLogin(matched.userId);
       setIsPlayingWarpTransition(true);
       setAuthError('');
     } else {
-      setAuthError("⚠️ Credentials invalid or PIN mismatch!");
+      setAuthError("⚠️ Credentials invalid or password mismatch!");
     }
   };
 
@@ -2662,13 +2664,18 @@ export default function App() {
     e.preventDefault();
     haptic([20, 30, 50]);
     const uId = signupUser.trim().toLowerCase();
-    const pinVal = signupPin.trim();
+    const passwordVal = signupPassword.trim();
+    const confirmPasswordVal = signupConfirmPassword.trim();
     if (uId.length < 3) {
       setAuthError("⚠️ User ID must be at least 3 characters!");
       return;
     }
-    if (pinVal.length !== 4) {
-      setAuthError("⚠️ PIN must be exactly 4 digits!");
+    if (passwordVal.length < 4) {
+      setAuthError("⚠️ Password must be at least 4 characters!");
+      return;
+    }
+    if (passwordVal !== confirmPasswordVal) {
+      setAuthError("⚠️ Passwords do not match!");
       return;
     }
     const rawUsers = localStorage.getItem('portal_users');
@@ -2679,9 +2686,34 @@ export default function App() {
       return;
     }
     const isCreator = (uId === 'trxy6');
-    const newUser = { userId: uId, pin: pinVal, isCreator };
+    const newUser = { userId: uId, password: passwordVal, isCreator };
     users.push(newUser);
     localStorage.setItem('portal_users', JSON.stringify(users));
+    startOnboardingAudio();
+    setTempUserToLogin(uId);
+    setIsPlayingWarpTransition(true);
+    setAuthError('');
+  };
+
+  const handleGoogleLoginSuccess = (email: string, name: string) => {
+    haptic([20, 30, 50]);
+    const uId = email.split('@')[0].toLowerCase();
+    const rawUsers = localStorage.getItem('portal_users');
+    const users = rawUsers ? JSON.parse(rawUsers) : [];
+    const exists = users.find((u: any) => u.userId === uId);
+    if (!exists) {
+      users.push({ userId: uId, password: 'google_linked_sso', isCreator: (uId === 'trxy6' || uId === 'treydog'), email });
+      localStorage.setItem('portal_users', JSON.stringify(users));
+    }
+    const profileKey = `portal_profile_${uId}`;
+    if (!localStorage.getItem(profileKey)) {
+      localStorage.setItem(profileKey, JSON.stringify({
+        displayName: name,
+        themeAccentColor: '#8b5cf6',
+        onboardingCompleted: true
+      }));
+    }
+    setShowGoogleModal(false);
     startOnboardingAudio();
     setTempUserToLogin(uId);
     setIsPlayingWarpTransition(true);
@@ -4056,7 +4088,7 @@ export default function App() {
           if (selectedLocalModel === 'qwen3.5:4b') {
             setAiHistory(prev => [...prev, { role: 'model', content: 'Connecting to Ollama...' }]);
 
-            const response = await fetch('http://localhost:11434/api/chat', {
+            const response = await fetch('http://127.0.0.1:11434/api/chat', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
@@ -4578,11 +4610,11 @@ export default function App() {
                     </div>
                     <div className="space-y-1.5">
                       <label className="text-[9px] uppercase font-bold tracking-widest block"
-                        style={{ color: 'rgba(167,139,250,0.7)' }}>Passcode PIN</label>
-                      <input type="password" value={loginPin}
-                        onChange={e => setLoginPin(e.target.value)}
-                        placeholder="••••" maxLength={4}
-                        className="w-full px-4 py-2.5 rounded-xl text-xs font-mono outline-none transition-all duration-200"
+                        style={{ color: 'rgba(167,139,250,0.7)' }}>Password</label>
+                      <input type="password" value={loginPassword}
+                        onChange={e => setLoginPassword(e.target.value)}
+                        placeholder="Your password"
+                        className="w-full px-4 py-2.5 rounded-xl text-xs outline-none transition-all duration-200"
                         style={{
                           background: 'rgba(139,92,246,0.06)',
                           border: '1px solid rgba(139,92,246,0.25)',
@@ -4633,11 +4665,27 @@ export default function App() {
                     </div>
                     <div className="space-y-1.5">
                       <label className="text-[9px] uppercase font-bold tracking-widest block"
-                        style={{ color: 'rgba(167,139,250,0.7)' }}>Create Passcode PIN</label>
-                      <input type="password" value={signupPin}
-                        onChange={e => setSignupPin(e.target.value)}
-                        placeholder="Exactly 4 digits" maxLength={4}
-                        className="w-full px-4 py-2.5 rounded-xl text-xs font-mono outline-none transition-all duration-200"
+                        style={{ color: 'rgba(167,139,250,0.7)' }}>Create Password</label>
+                      <input type="password" value={signupPassword}
+                        onChange={e => setSignupPassword(e.target.value)}
+                        placeholder="At least 4 characters"
+                        className="w-full px-4 py-2.5 rounded-xl text-xs outline-none transition-all duration-200"
+                        style={{
+                          background: 'rgba(139,92,246,0.06)',
+                          border: '1px solid rgba(139,92,246,0.25)',
+                          color: '#e2d9f3',
+                        }}
+                        onFocus={e => { e.target.style.border = '1px solid rgba(168,85,247,0.7)'; e.target.style.boxShadow = '0 0 0 3px rgba(139,92,246,0.12)'; }}
+                        onBlur={e => { e.target.style.border = '1px solid rgba(139,92,246,0.25)'; e.target.style.boxShadow = 'none'; }}
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-[9px] uppercase font-bold tracking-widest block"
+                        style={{ color: 'rgba(167,139,250,0.7)' }}>Confirm Password</label>
+                      <input type="password" value={signupConfirmPassword}
+                        onChange={e => setSignupConfirmPassword(e.target.value)}
+                        placeholder="Repeat your password"
+                        className="w-full px-4 py-2.5 rounded-xl text-xs outline-none transition-all duration-200"
                         style={{
                           background: 'rgba(139,92,246,0.06)',
                           border: '1px solid rgba(139,92,246,0.25)',
@@ -5939,7 +5987,6 @@ export default function App() {
                         >
                           <option value="Qwen2.5-1.5B-Instruct-q4f32_1-MLC">Qwen 2.5 1.5B (Fast Desktop)</option>
                           <option value="Qwen2.5-0.5B-Instruct-q4f16_1-MLC">Qwen 2.5 0.5B (Mobile Friendly)</option>
-                          <option value="qwen3.5:4b">Qwen 3.5 4B (Recommended - Tools & Reasoning)</option>
                         </select>
                       </div>
 
@@ -9910,7 +9957,6 @@ export default function App() {
                   >
                     <option value="Qwen2.5-1.5B-Instruct-q4f32_1-MLC">Qwen 2.5 1.5B Instruct (Standard - Balanced for Desktop)</option>
                     <option value="Qwen2.5-0.5B-Instruct-q4f16_1-MLC">Qwen 2.5 0.5B Instruct (Ultra-lightweight - Mobile Optimized)</option>
-                    <option value="qwen3.5:4b">Qwen 3.5 4B Instruct (Recommended - High Quality Tools & Agent Model)</option>
                   </select>
                 </div>
                 
