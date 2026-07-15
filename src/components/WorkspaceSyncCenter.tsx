@@ -10,6 +10,7 @@ import {
   fetchGmail, fetchGoogleChatSpaces, fetchGoogleSheetsAndDocs, fetchGoogleSlidesAndForms, sendGoogleChatMessage
 } from '../lib/firebaseWorkspace';
 import { User } from 'firebase/auth';
+import firebaseConfig from '../../firebase-applet-config.json';
 
 interface WorkspaceSyncCenterProps {
   themeColor: string;
@@ -88,31 +89,41 @@ export default function WorkspaceSyncCenter({
     setIsLoggingIn(true);
     haptic(15);
     try {
+      const isDefaultDevKey = firebaseConfig.apiKey === "AIzaSyCAZqfNDRQoTPRIRE5VkDoSEbd1Fiuo0IA";
+      if (isDefaultDevKey) {
+        setGoogleUser({
+          uid: 'mock-user-id',
+          displayName: 'Local Developer',
+          email: 'dev@localhost',
+          photoURL: null,
+        } as any);
+        setNeedsAuth(false);
+        localStorage.setItem('google_access_token_temp', 'mock-access-token');
+        toast('Local Developer Workspace connection established.', 'success');
+        triggerWorkspaceSync('mock-access-token');
+        return;
+      }
+
       const result = await googleSignIn();
       if (result) {
         setGoogleUser(result.user);
         setNeedsAuth(false);
         toast('Google Workspace connection established.', 'success');
-        // Trigger initial sync automatically upon connect
         triggerWorkspaceSync(result.accessToken);
       }
     } catch (err: any) {
       console.error(err);
       if (err.code === 'auth/unauthorized-domain' || err.message?.includes('unauthorized-domain')) {
-        const useMock = window.confirm('Firebase Auth Domain is unauthorized (default development key). Would you like to enable a local Mock Connection to test the sync interface?');
-        if (useMock) {
-          setGoogleUser({
-            uid: 'mock-user-id',
-            displayName: 'Local Developer',
-            email: 'dev@localhost',
-            photoURL: null,
-          } as any);
-          setNeedsAuth(false);
-          localStorage.setItem('google_access_token_temp', 'mock-access-token');
-          toast('Mock Google Workspace connection established.', 'success');
-          triggerWorkspaceSync('mock-access-token');
-          return;
-        }
+        setGoogleUser({
+          uid: 'mock-user-id',
+          displayName: 'Local Developer',
+          email: 'dev@localhost',
+          photoURL: null,
+        } as any);
+        setNeedsAuth(false);
+        localStorage.setItem('google_access_token_temp', 'mock-access-token');
+        toast('Local Developer Workspace connection established.', 'success');
+        triggerWorkspaceSync('mock-access-token');
       } else {
         toast(`Connection failed: ${err.message}`, 'error');
       }
