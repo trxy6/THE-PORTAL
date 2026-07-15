@@ -575,6 +575,72 @@ export default function App() {
   const [googleSubView, setGoogleSubView] = useState<'list' | 'signin'>('list');
   const [googleEmailInput, setGoogleEmailInput] = useState('');
 
+  // Load Google Auth configuration and render standard button when modal opens
+  useEffect(() => {
+    if (!showGoogleModal || googleSubView !== 'list') return;
+
+    let active = true;
+    const initializeGoogle = async () => {
+      try {
+        const response = await fetch("/api/auth/config");
+        const config = await response.json();
+        if (!active) return;
+
+        if (config.googleClientId && (window as any).google) {
+          (window as any).google.accounts.id.initialize({
+            client_id: config.googleClientId,
+            callback: async (googleResponse: any) => {
+              try {
+                const res = await fetch("/api/auth/google", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ credential: googleResponse.credential })
+                });
+                const result = await res.json();
+                if (result.success && result.user) {
+                  // Successfully logged in via backend Google OAuth!
+                  handleGoogleLoginSuccess(result.user.email, result.user.displayName);
+                } else {
+                  alert(result.error || "Google login failed verification.");
+                }
+              } catch (e) {
+                console.error(e);
+                alert("Google verification request failed.");
+              }
+            },
+            auto_select: false,
+            cancel_on_tap_outside: true
+          });
+
+          const buttonTarget = document.getElementById("google-login-button-container");
+          if (buttonTarget) {
+            (window as any).google.accounts.id.renderButton(
+              buttonTarget,
+              {
+                type: "standard",
+                theme: "filled_black",
+                size: "large",
+                shape: "pill",
+                text: "continue_with",
+                width: 320,
+                logo_alignment: "left"
+              }
+            );
+          }
+        }
+      } catch (err) {
+        console.error("Failed to initialize Google GSI:", err);
+      }
+    };
+
+    // Delay slightly to ensure element is rendered
+    const timeout = setTimeout(initializeGoogle, 200);
+    return () => {
+      active = false;
+      clearTimeout(timeout);
+    };
+  }, [showGoogleModal, googleSubView]);
+
   // Onboarding and transition states
   const [isPlayingWarpTransition, setIsPlayingWarpTransition] = useState(false);
   const [tempUserToLogin, setTempUserToLogin] = useState<string | null>(null);
@@ -4824,6 +4890,18 @@ export default function App() {
                             <div className="text-base font-black tracking-wide" style={{ color: '#e2d9f3' }}>Sign in with Google</div>
                             <div className="text-[10px] mt-1" style={{ color: 'rgba(167,139,250,0.6)' }}>Choose your account to continue to The Portal</div>
                           </div>
+                        </div>
+
+                        {/* Official Google Button Container */}
+                        <div className="space-y-2">
+                          <span className="text-[8.5px] uppercase tracking-wider text-slate-500 font-bold block text-center mb-1">Official OAuth Sign-in</span>
+                          <div id="google-login-button-container" className="flex justify-center min-h-[44px]"></div>
+                        </div>
+
+                        <div className="login-divider flex items-center justify-between gap-2.5 text-slate-650 text-[9px] select-none my-2.5 font-bold font-mono">
+                          <span className="h-px bg-slate-800 flex-grow" />
+                          <span>OR PRE-CONFIGURED</span>
+                          <span className="h-px bg-slate-800 flex-grow" />
                         </div>
 
                         {/* Account options */}

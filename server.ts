@@ -7,6 +7,10 @@ import { createServer as createViteServer } from 'vite';
 import { GoogleGenAI } from '@google/genai';
 import { spawn, ChildProcess } from 'child_process';
 import dotenv from 'dotenv';
+import cookieParser from 'cookie-parser';
+import Database from 'better-sqlite3';
+import { OAuth2Client } from 'google-auth-library';
+import crypto from 'crypto';
 const FALLBACK_TRACKS: any[] = [
   { id: 'lumina-chill', title: 'Lumina Chillwave', artist: 'Aether Pilot', spotifyId: 'lumina-chill' },
   { id: 'midnight-drive', title: 'Midnight Drive', artist: 'Synth Runner', spotifyId: 'midnight-drive' },
@@ -81,9 +85,111 @@ function getAiClient(): GoogleGenAI {
 
 async function startServer() {
   const app = express();
+
+  // Load Google Client ID
+  const googleClientId = process.env.GOOGLE_CLIENT_ID || 'YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com';
+  const googleClient = new OAuth2Client(googleClientId);
+
+  // Initialize SQLite accounts database
+  const database = new Database(path.join(process.cwd(), "portal_accounts.db"));
+  database.pragma("journal_mode = WAL");
+  database.pragma("foreign_keys = ON");
+
+  database.exec(`
+    CREATE TABLE IF NOT EXISTS users (
+      id TEXT PRIMARY KEY,
+      google_id TEXT UNIQUE NOT NULL,
+      email TEXT UNIQUE NOT NULL,
+      display_name TEXT NOT NULL,
+      avatar_url TEXT,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS sessions (
+      id TEXT PRIMARY KEY,
+      token_hash TEXT UNIQUE NOT NULL,
+      user_id TEXT NOT NULL,
+      created_at TEXT NOT NULL,
+      expires_at TEXT NOT NULL,
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    );
+
+    CREATE INDEX IF NOT EXISTS sessions_token_hash_index
+    ON sessions(token_hash);
+  `);
+
+  function hashToken(token: string): string {
+    return crypto
+      .createHash("sha256")
+      .update(token)
+      .digest("hex");
+  }
+
+  function createSession(userId: string): {
+    token: string;
+    expiresAt: string;
+  } {
+    const token = crypto.randomBytes(32).toString("base64url");
+    const tokenHash = hashToken(token);
+
+    const createdAt = new Date();
+    const expiresAt = new Date(
+      createdAt.getTime() + 30 * 24 * 60 * 60 * 1000
+    );
+
+    database
+      .prepare(`
+        INSERT INTO sessions (
+          id,
+          token_hash,
+          user_id,
+          created_at,
+          expires_at
+        )
+        VALUES (?, ?, ?, ?, ?)
+      `)
+      .run(
+        crypto.randomUUID(),
+        tokenHash,
+        userId,
+        createdAt.toISOString(),
+        expiresAt.toISOString()
+      );
+
+    return {
+      token,
+      expiresAt: expiresAt.toISOString(),
+    };
+  }
+
+  function setSessionCookie(
+    response: express.Response,
+    token: string
+  ): void {
+    response.cookie("portal_session", token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: 30 * 24 * 60 * 60 * 1000,
+      path: "/",
+    });
+  }
+
+  function clearSessionCookie(
+    response: express.Response
+  ): void {
+    response.clearCookie("portal_session", {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      path: "/",
+    });
+  }
   
   // Parse incoming JSON request bodies with larger limit for base64 camera scans
   app.use(express.json({ limit: '20mb' }));
+  app.use(cookieParser());
 
   const server = createHttpServer(app);
   const wss = new WebSocketServer({ noServer: true });
@@ -976,6 +1082,152 @@ Format the output as a valid JSON object with a single "lyrics" field containing
         ],
       });
     }
+  });
+
+  // Google Auth Endpoint Integrations
+  app.get("/api/auth/config", (_request, response) => {
+    response.json({
+      googleClientId,
+    });
+  });
+
+  app.post("/api/auth/google", async (request, response) => {
+    try {
+      const credential = request.body?.credential;
+      if (typeof credential !== "string" || credential.length < 20) {
+        response.status(400).json({ success: false, error: "A valid Google credential is required." });
+        return;
+      }
+
+      const ticket = await googleClient.verifyIdToken({
+        idToken: credential,
+        audience: googleClientId,
+      });
+
+      const payload = ticket.getPayload();
+      if (!payload?.sub || !payload.email || !payload.email_verified) {
+        response.status(401).json({ success: false, error: "Google could not verify this account." });
+        return;
+      }
+
+      const now = new Date().toISOString();
+      const existingUser = database
+        .prepare(`
+          SELECT id
+          FROM users
+          WHERE google_id = ?
+        `)
+        .get(payload.sub) as { id: string } | undefined;
+
+      let userId: string;
+      if (existingUser) {
+        userId = existingUser.id;
+        database
+          .prepare(`
+            UPDATE users
+            SET
+              email = ?,
+              display_name = ?,
+              avatar_url = ?,
+              updated_at = ?
+            WHERE id = ?
+          `)
+          .run(
+            payload.email,
+            payload.name || payload.email,
+            payload.picture || null,
+            now,
+            userId
+          );
+      } else {
+        userId = crypto.randomUUID();
+        database
+          .prepare(`
+            INSERT INTO users (
+              id,
+              google_id,
+              email,
+              display_name,
+              avatar_url,
+              created_at,
+              updated_at
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+          `)
+          .run(
+            userId,
+            payload.sub,
+            payload.email,
+            payload.name || payload.email,
+            payload.picture || null,
+            now,
+            now
+          );
+      }
+
+      database.prepare(`DELETE FROM sessions WHERE expires_at <= ?`).run(now);
+      const session = createSession(userId);
+      setSessionCookie(response, session.token);
+
+      response.json({
+        success: true,
+        user: {
+          id: userId,
+          email: payload.email,
+          displayName: payload.name || payload.email,
+          avatarUrl: payload.picture || null,
+        },
+      });
+    } catch (error) {
+      console.error("Google login failed:", error);
+      response.status(401).json({ success: false, error: "Google login could not be verified." });
+    }
+  });
+
+  app.get("/api/auth/me", (request, response) => {
+    const token = request.cookies.portal_session;
+    if (!token || typeof token !== "string") {
+      response.status(401).json({ signedIn: false });
+      return;
+    }
+
+    const tokenHash = hashToken(token);
+    const now = new Date().toISOString();
+
+    const user = database
+      .prepare(`
+        SELECT
+          users.id,
+          users.email,
+          users.display_name AS displayName,
+          users.avatar_url AS avatarUrl,
+          sessions.expires_at AS expiresAt
+        FROM sessions
+        JOIN users ON users.id = sessions.user_id
+        WHERE
+          sessions.token_hash = ?
+          AND sessions.expires_at > ?
+      `)
+      .get(tokenHash, now);
+
+    if (!user) {
+      clearSessionCookie(response);
+      response.status(401).json({ signedIn: false });
+      return;
+    }
+
+    response.json({ signedIn: true, user });
+  });
+
+  app.post("/api/auth/logout", (request, response) => {
+    const token = request.cookies.portal_session;
+    if (token && typeof token === "string") {
+      database
+        .prepare(`DELETE FROM sessions WHERE token_hash = ?`)
+        .run(hashToken(token));
+    }
+    clearSessionCookie(response);
+    response.json({ success: true });
   });
 
   // Integrate Vite dev server middleware or static distribution server
