@@ -100,6 +100,16 @@ export default function MusicHub({
   const [spotifyError, setSpotifyError] = useState<string | null>(null);
   const [spotifyDeviceId, setSpotifyDeviceId] = useState<string | null>(null);
   const spotifyPlayerRef = useRef<any>(null);
+  const activePlaylistRef = useRef<Playlist | null>(null);
+  const currentTrackRef = useRef<Track | null>(null);
+  const queueRef = useRef<Track[]>([]);
+  const playTrackRef = useRef<(track: Track) => Promise<void>>(async () => {});
+  const lastSdkPositionRef = useRef(0);
+  const advancingRef = useRef(false);
+
+  useEffect(() => { activePlaylistRef.current = activePlaylist; }, [activePlaylist]);
+  useEffect(() => { currentTrackRef.current = currentTrack; }, [currentTrack]);
+  useEffect(() => { queueRef.current = queue; }, [queue]);
 
   const [likedSongsStatus, setLikedSongsStatus] = useState<{ loaded: number; total: number; loading: boolean }>({ loaded: 0, total: 0, loading: false });
 
@@ -230,6 +240,35 @@ export default function MusicHub({
       imageUrl: t.album?.images?.[0]?.url || "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=300",
       duration: durationMinSec,
     };
+  };
+
+  // Spotify paginates playlist tracks. Follow every `next` URL so a selected
+  // playlist contains every playable song, not only the first 50.
+  const fetchAllSpotifyPlaylistTracks = async (playlistId: string, token: string): Promise<Track[]> => {
+    const tracks: Track[] = [];
+    let nextUrl: string | null =
+      `https://api.spotify.com/v1/playlists/${playlistId}/tracks?limit=100`;
+
+    while (nextUrl) {
+      const response = await fetch(nextUrl, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (!response.ok) {
+        throw new Error(`Spotify playlist request failed (${response.status}): ${await response.text()}`);
+      }
+
+      const page = await response.json();
+      tracks.push(
+        ...(page.items || [])
+          .map((item: any) => item?.track)
+          .filter((track: any) => track?.id && track?.uri && !track.is_local)
+          .map(mapSpotifyTrackToTrack)
+      );
+      nextUrl = page.next;
+    }
+
+    return tracks;
   };
 
   // Fetch user profile and playlists from the Spotify Web API
@@ -503,6 +542,31 @@ export default function MusicHub({
         const posSec = Math.floor(state.position / 1000);
         setCurrentTime(posSec);
 
+        // A one-track Spotify request stops at position 0 when it finishes.
+        // Advance through the app's active list (or explicit queue) exactly once.
+        const trackEnded = state.paused && posSec === 0 && lastSdkPositionRef.current > 0;
+        lastSdkPositionRef.current = posSec;
+        if (trackEnded && !advancingRef.current) {
+          advancingRef.current = true;
+          const queued = queueRef.current[0];
+          const playlist = activePlaylistRef.current;
+          const playing = currentTrackRef.current;
+          let nextTrack: Track | undefined = queued;
+
+          if (queued) {
+            setQueue((previous) => previous.slice(1));
+          } else if (playlist && playing) {
+            const index = playlist.tracks.findIndex((track) => track.spotifyId === playing.spotifyId);
+            nextTrack = playlist.tracks[index + 1] || playlist.tracks[0];
+          }
+
+          if (nextTrack) {
+            playTrackRef.current(nextTrack).finally(() => { advancingRef.current = false; });
+          } else {
+            advancingRef.current = false;
+          }
+        }
+
         if (!state.paused && previewModeRef.current && posSec >= 30) {
           player.pause().catch((err: any) => console.debug("Auto-paused due to preview mode:", err));
         }
@@ -685,22 +749,11 @@ export default function MusicHub({
               setActivePlaylistId(id);
               startProgressiveLikedSongsFetch(spotifyToken);
             } else {
-              const tracksRes = await fetch(`https://api.spotify.com/v1/playlists/${id}/tracks?limit=50`, {
-                headers: { Authorization: `Bearer ${spotifyToken}` },
-              });
-              if (tracksRes.ok) {
-                const tracksData = await tracksRes.json();
-                const mappedTracks = tracksData.items
-                  .filter((item: any) => item.track)
-                  .map((item: any) => mapSpotifyTrackToTrack(item.track));
-
-                const updatedPl = { ...pl, tracks: mappedTracks };
-                setSpotifyPlaylists((prev) => prev.map((p) => p.id === id ? updatedPl : p));
-                setActivePlaylist(updatedPl);
-                setActivePlaylistId(id);
-              } else if (tracksRes.status === 401) {
-                await handleSpotifyTokenRefresh();
-              }
+              const mappedTracks = await fetchAllSpotifyPlaylistTracks(id, spotifyToken);
+              const updatedPl = { ...pl, tracks: mappedTracks };
+              setSpotifyPlaylists((prev) => prev.map((p) => p.id === id ? updatedPl : p));
+              setActivePlaylist(updatedPl);
+              setActivePlaylistId(id);
             }
           } catch (e) {
             console.error("Failed to fetch Spotify playlist tracks:", e);
@@ -982,6 +1035,7 @@ export default function MusicHub({
       console.error("Unable to play track:", error);
     }
   };
+  playTrackRef.current = handlePlayTrack;
 
   // Append track to a custom user playlist
   const handleAddToPlaylist = (track: Track, playlistId: string) => {
