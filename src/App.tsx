@@ -2626,6 +2626,15 @@ export default function App() {
     loadSportsScores(sportsDateOffset);
   }, [activeSportsLeague, sportsDateOffset, loadSportsScores]);
 
+  // Auto-refresh live scores every 60 seconds when on today's date
+  useEffect(() => {
+    if (sportsDateOffset !== 0) return; // only auto-refresh for today
+    const interval = setInterval(() => {
+      loadSportsScores(0);
+    }, 60000);
+    return () => clearInterval(interval);
+  }, [sportsDateOffset, loadSportsScores]);
+
   useEffect(() => {
     if (sportsGames.length > 0) {
       evaluateParlays(sportsGames, activeSportsLeague);
@@ -8855,8 +8864,14 @@ export default function App() {
                         const competition = event.competitions?.[0];
                         const state = competition?.status?.type?.state || event.status?.type?.state || '';
                         if (sportsSubTab === 'schedule') {
+                          // Future dates: only show upcoming (pre-game) events
                           return state === 'pre';
                         } else {
+                          // Today (offset 0): show ALL games — pre-game, live, and completed
+                          // Past dates (offset < 0): show finished and live games
+                          if (sportsDateOffset === 0) {
+                            return true; // show every game for today regardless of state
+                          }
                           return state !== 'pre';
                         }
                       });
