@@ -1,6 +1,0 @@
-{
-  "name": "Portal Transition",
-  "description": "A beautiful interactive portal walkthrough experience utilizing motion transitions.",
-  "requestFramePermissions": [],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
-}

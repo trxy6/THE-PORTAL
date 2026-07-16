@@ -1,9 +1,0 @@
-{
-  "name": "Craive",
-  "description": "Craive is a modern, warm, and premium AI-powered food discovery app. Meet Mila, your personal AI flavor guide, and get creative, delicious food suggestions tailored to your cravings in seconds.",
-  "requestFramePermissions": [
-    "geolocation",
-    "microphone"
-  ],
-  "majorCapabilities": []
-}
