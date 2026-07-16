@@ -40,7 +40,7 @@ export default function SovereignMapWorkspace({
   toast,
   haptic
 }: SovereignMapWorkspaceProps) {
-  const [mapMode, setMapMode] = useState<'offline' | 'online'>('offline');
+  const [mapMode, setMapMode] = useState<'offline' | 'online' | 'gps'>('offline');
 
   // --- Online Map Settings ---
   const [onlineQuery, setOnlineQuery] = useState('San Francisco');
@@ -80,6 +80,16 @@ export default function SovereignMapWorkspace({
       isNavigating: navigation.isNavigating
     }, '*');
   }, [navigation.position, navigation.route, navigation.followLocation, navigation.isTracking, navigation.isNavigating]);
+
+  // Automatically start GPS tracking when GPS mode is selected
+  useEffect(() => {
+    if (mapMode === 'gps') {
+      if (!navigation.isTracking) {
+        navigation.startTracking();
+        toast("GPS tracking enabled.", "success");
+      }
+    }
+  }, [mapMode, navigation.isTracking]);
 
   // --- Offline Sovereign Grid State ---
   const [offlineNodes, setOfflineNodes] = useState<OfflineNode[]>(() => {
@@ -374,6 +384,13 @@ export default function SovereignMapWorkspace({
             <Radio className="w-3.5 h-3.5 animate-pulse" />
             🌐 Online Satellite Map (Free)
           </button>
+          <button 
+            onClick={() => { setMapMode('gps'); haptic(10); }}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${mapMode === 'gps' ? 'bg-purple-500 text-white shadow-lg shadow-purple-500/20' : 'text-slate-400 hover:text-slate-200'}`}
+          >
+            <Navigation className="w-3.5 h-3.5" />
+            🛰️ GPS
+          </button>
         </div>
       </div>
 
@@ -408,7 +425,7 @@ export default function SovereignMapWorkspace({
                 }}
                 className="w-full bg-slate-900/60 hover:bg-slate-900/80 focus:bg-slate-900 text-xs text-white placeholder-slate-400 rounded-lg pl-9 pr-4 py-2 border border-white/5 focus:border-purple-500/40 focus:outline-none transition-all"
               />
-              {mapMode === 'online' && onlineSearchText.trim() && (
+              {(mapMode === 'online' || mapMode === 'gps') && onlineSearchText.trim() && (
                 <button 
                   onClick={() => {
                     handleOnlineSearch(onlineSearchText);
