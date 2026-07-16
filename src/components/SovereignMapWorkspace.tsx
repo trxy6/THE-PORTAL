@@ -41,6 +41,14 @@ export default function SovereignMapWorkspace({
   haptic
 }: SovereignMapWorkspaceProps) {
   const [mapMode, setMapMode] = useState<'offline' | 'online'>('offline');
+
+  // --- Online Map Settings ---
+  const [onlineQuery, setOnlineQuery] = useState('San Francisco');
+  const [activePoi, setActivePoi] = useState<{ lat: number, lng: number; title: string; description: string } | null>(null);
+  const [onlineSearchText, setOnlineSearchText] = useState('');
+  const [mapCenter, setMapCenter] = useState({ lat: 37.7749, lng: -122.4194 }); // default San Francisco
+  const [mapZoom, setMapZoom] = useState(12);
+
   const accentColor = getThemeHex();
 
   const mapIframeRef = useRef<HTMLIFrameElement | null>(null);
@@ -123,12 +131,7 @@ export default function SovereignMapWorkspace({
   const isDraggingRef = useRef(false);
   const dragStartRef = useRef({ x: 0, y: 0 });
 
-  // --- Online Map Settings ---
-  const [onlineQuery, setOnlineQuery] = useState('San Francisco');
-  const [activePoi, setActivePoi] = useState<{ lat: number, lng: number; title: string; description: string } | null>(null);
-  const [onlineSearchText, setOnlineSearchText] = useState('');
-  const [mapCenter, setMapCenter] = useState({ lat: 37.7749, lng: -122.4194 }); // default San Francisco
-  const [mapZoom, setMapZoom] = useState(12);
+
 
   const handleOnlineSearch = async (query: string) => {
     if (!query.trim()) return;

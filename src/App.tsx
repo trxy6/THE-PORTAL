@@ -576,6 +576,7 @@ export default function App() {
   const [showPrivacyPolicy, setShowPrivacyPolicy] = useState(false);
   const [googleSubView, setGoogleSubView] = useState<'list' | 'signin'>('list');
   const [googleEmailInput, setGoogleEmailInput] = useState('');
+  const [googleClientIdPlaceholder, setGoogleClientIdPlaceholder] = useState(false);
 
   // Sync Privacy Policy state with URL path (/privacy or /privacy-policy)
   useEffect(() => {
@@ -620,7 +621,12 @@ export default function App() {
         const config = await response.json();
         if (!active) return;
 
-        if (config.googleClientId && (window as any).google) {
+        const isPlaceholder = !config.googleClientId || 
+                              config.googleClientId.startsWith("YOUR_GOOGLE_CLIENT_ID") || 
+                              config.googleClientId === "placeholder";
+        setGoogleClientIdPlaceholder(isPlaceholder);
+
+        if (config.googleClientId && (window as any).google && !isPlaceholder) {
           (window as any).google.accounts.id.initialize({
             client_id: config.googleClientId,
             callback: async (googleResponse: any) => {
@@ -5064,7 +5070,13 @@ export default function App() {
                         {/* Official Google Button Container */}
                         <div className="space-y-2">
                           <span className="text-[8.5px] uppercase tracking-wider text-slate-500 font-bold block text-center mb-1">Official OAuth Sign-in</span>
-                          <div id="google-login-button-container" className="flex justify-center min-h-[44px]"></div>
+                          {googleClientIdPlaceholder ? (
+                            <div className="p-3.5 rounded-2xl border border-amber-500/20 bg-amber-500/5 text-amber-300 text-[10px] leading-relaxed text-center font-medium">
+                              ⚠️ Placeholder Client ID detected. The official Google button will fail. Please use the pre-configured accounts below or configure a real <code>GOOGLE_CLIENT_ID</code> in <code>.env.local</code>.
+                            </div>
+                          ) : (
+                            <div id="google-login-button-container" className="flex justify-center min-h-[44px]"></div>
+                          )}
                         </div>
 
                         <div className="login-divider flex items-center justify-between gap-2.5 text-slate-650 text-[9px] select-none my-2.5 font-bold font-mono">
@@ -5525,7 +5537,7 @@ export default function App() {
       </header>
 
       {/* CORE WORKSPACE GRID */}
-      <div className="flex-1 flex overflow-hidden relative">
+      <div className="flex-1 flex min-h-0 overflow-hidden relative">
         
         {/* Left Sidebar Mobile Backdrop */}
         {showLeftSidebar && (
@@ -5787,7 +5799,7 @@ export default function App() {
 
           {/* MAIN HOME VIEW MODULE */}
           {activeTab === 'home' && (
-            <div className="space-y-6 animate-[fadeIn_0.5s_ease-out]">
+            <div className="space-y-6 pb-28 animate-[fadeIn_0.5s_ease-out]">
               
               {/* Premium Segmented Control Navigation to completely eliminate vertical scrolling */}
               <div className="border border-slate-200/40 p-1 bg-white/75 backdrop-blur-md rounded-2xl flex items-center justify-between shadow-sm max-w-xl mx-auto w-full">
