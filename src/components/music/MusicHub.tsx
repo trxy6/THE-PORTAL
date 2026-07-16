@@ -530,7 +530,18 @@ export default function MusicHub({
         setSpotifyDeviceId(null);
       });
 
-      player.connect();
+      player.addListener("autoplay_failed", () => {
+        setIsPlaying(false);
+        console.error(
+          "Mobile browser blocked Spotify audio. Tap the Play button again."
+        );
+      });
+
+      player.connect().then((connected: boolean) => {
+        if (!connected) {
+          console.error("Spotify Web Playback SDK failed to connect");
+        }
+      });
     };
 
     if ((window as any).Spotify && !spotifyPlayerRef.current) {
@@ -912,31 +923,63 @@ export default function MusicHub({
     }
   };
 
-  // Trigger track playing
-  const handlePlayTrack = (track: Track) => {
-    setCurrentTrack(track);
-    setEmbedType("track");
-    setEmbedId(track.spotifyId);
-    setIsPlaying(true);
-    setCurrentTime(0);
-    setDuration(parseDurationToSeconds(track.duration));
-    setIsLiked(false);
-    setShowLyricsPanel(true);
+  const activateSpotifyAudio = async () => {
+    const player = spotifyPlayerRef.current;
 
-    if (spotifyToken) {
-      const playUrl = spotifyDeviceId
-        ? `https://api.spotify.com/v1/me/player/play?device_id=${spotifyDeviceId}`
-        : "https://api.spotify.com/v1/me/player/play";
-      fetch(playUrl, {
-        method: "PUT",
-        headers: {
-          Authorization: `Bearer ${spotifyToken}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          uris: [track.spotifyUri || `spotify:track:${track.spotifyId}`],
-        }),
-      }).catch((err) => console.debug("Spotify remote play attempt:", err));
+    if (!player) {
+      throw new Error("Spotify player is not ready");
+    }
+
+    await player.activateElement();
+  };
+
+  // Trigger track playing
+  const handlePlayTrack = async (track: Track) => {
+    try {
+      // Keep this first: mobile requires activation during the tap.
+      await activateSpotifyAudio();
+
+      if (!spotifyToken) {
+        throw new Error("Spotify is not connected");
+      }
+
+      if (!spotifyDeviceId) {
+        throw new Error("Spotify browser player is not ready");
+      }
+
+      const uri =
+        track.spotifyUri?.startsWith("spotify:track:")
+          ? track.spotifyUri
+          : `spotify:track:${track.spotifyId}`;
+
+      const response = await fetch(
+        `https://api.spotify.com/v1/me/player/play?device_id=${spotifyDeviceId}`,
+        {
+          method: "PUT",
+          headers: {
+            Authorization: `Bearer ${spotifyToken}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ uris: [uri] }),
+        }
+      );
+
+      if (!response.ok) {
+        const message = await response.text();
+        throw new Error(`Spotify error ${response.status}: ${message}`);
+      }
+
+      setCurrentTrack(track);
+      setEmbedType("track");
+      setEmbedId(track.spotifyId);
+      setCurrentTime(0);
+      setDuration(parseDurationToSeconds(track.duration));
+      setIsLiked(false);
+      setShowLyricsPanel(true);
+      setIsPlaying(true);
+    } catch (error) {
+      setIsPlaying(false);
+      console.error("Unable to play track:", error);
     }
   };
 
@@ -1018,24 +1061,22 @@ export default function MusicHub({
   };
 
   // Play/pause simulated state toggles
-  const handlePlayToggle = () => {
-    if (currentTrack) {
-      const nextPlayingState = !isPlaying;
-      setIsPlaying(nextPlayingState);
+  const handlePlayToggle = async () => {
+    if (!currentTrack) return;
 
-      if (spotifyToken) {
-        const endpoint = nextPlayingState ? "play" : "pause";
-        const controlUrl = spotifyDeviceId
-          ? `https://api.spotify.com/v1/me/player/${endpoint}?device_id=${spotifyDeviceId}`
-          : `https://api.spotify.com/v1/me/player/${endpoint}`;
-        fetch(controlUrl, {
-          method: "PUT",
-          headers: {
-            Authorization: `Bearer ${spotifyToken}`,
-            "Content-Type": "application/json",
-          },
-        }).catch((err) => console.debug(`Spotify remote ${endpoint} attempt:`, err));
+    try {
+      await activateSpotifyAudio();
+
+      const player = spotifyPlayerRef.current;
+
+      if (isPlaying) {
+        await player.pause();
+      } else {
+        await player.resume();
       }
+    } catch (error) {
+      setIsPlaying(false);
+      console.error("Unable to toggle playback:", error);
     }
   };
 

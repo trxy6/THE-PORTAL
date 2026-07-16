@@ -736,6 +736,7 @@ async function startServer() {
 
     const redirect_uri = `${origin}/auth/callback`;
     const scope = [
+      "streaming",
       "user-read-private",
       "user-read-email",
       "playlist-read-private",
