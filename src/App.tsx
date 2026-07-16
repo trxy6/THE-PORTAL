@@ -2552,15 +2552,12 @@ export default function App() {
   const loadSportsScores = useCallback(async (dateOffset: number = sportsDateOffset) => {
     setSportsStatus("Syncing all league schedule networks...");
 
-    let dateParam = "";
-    if (dateOffset > 0) {
-      const targetDate = new Date();
-      targetDate.setDate(targetDate.getDate() + dateOffset);
-      const yyyy = targetDate.getFullYear();
-      const mm = String(targetDate.getMonth() + 1).padStart(2, '0');
-      const dd = String(targetDate.getDate()).padStart(2, '0');
-      dateParam = `?dates=${yyyy}${mm}${dd}`;
-    }
+    const targetDate = new Date();
+    targetDate.setDate(targetDate.getDate() + dateOffset);
+    const yyyy = targetDate.getFullYear();
+    const mm = String(targetDate.getMonth() + 1).padStart(2, '0');
+    const dd = String(targetDate.getDate()).padStart(2, '0');
+    const dateParam = `?dates=${yyyy}${mm}${dd}`;
 
     const leagues = Object.keys(SPORTS_LEAGUES) as SportsLeague[];
     let anySuccess = false;
@@ -8785,7 +8782,7 @@ export default function App() {
                     borderColor: 'var(--theme-accent)',
                     backgroundColor: 'rgba(139, 92, 246, 0.05)',
                   } : undefined}
-                  onClick={() => { haptic(5); setSportsSubTab('scores'); }}
+                  onClick={() => { haptic(5); setSportsSubTab('scores'); setSportsDateOffset(0); }}
                 >
                   🔴 Live & Results
                 </button>
@@ -8795,10 +8792,57 @@ export default function App() {
                       ? 'text-pink-600 border-pink-600 bg-pink-500/5' 
                       : 'text-slate-500 border-transparent hover:text-slate-800 dark:hover:text-slate-200'
                   }`}
-                  onClick={() => { haptic(5); setSportsSubTab('schedule'); }}
+                  onClick={() => { haptic(5); setSportsSubTab('schedule'); setSportsDateOffset(1); }}
                 >
                   📅 Upcoming Schedule
                 </button>
+              </div>
+
+              {/* Date Navigation Bar */}
+              <div className="flex items-center justify-between bg-slate-50 dark:bg-slate-950/40 px-4 py-2.5 rounded-xl border border-slate-200/50 dark:border-white/5 select-none text-[10px] font-bold">
+                <button
+                  onClick={() => {
+                    haptic(5);
+                    setSportsDateOffset(prev => prev - 1);
+                  }}
+                  className="px-2.5 py-1 rounded bg-slate-100 hover:bg-slate-200 dark:bg-slate-900 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-350 transition-colors border border-slate-200/50 dark:border-white/5 cursor-pointer select-none"
+                >
+                  ◀ Prev Day
+                </button>
+                
+                <span className="font-mono text-slate-850 dark:text-slate-250 tracking-wider">
+                  📅 {(() => {
+                    const d = new Date();
+                    d.setDate(d.getDate() + sportsDateOffset);
+                    return d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+                  })()}
+                  {sportsDateOffset === 0 && <span className="ml-1.5 text-[8.5px] px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400 font-bold uppercase">Today</span>}
+                  {sportsDateOffset === 1 && <span className="ml-1.5 text-[8.5px] px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-400 font-bold uppercase">Tomorrow</span>}
+                  {sportsDateOffset === -1 && <span className="ml-1.5 text-[8.5px] px-1.5 py-0.5 rounded bg-slate-500/20 text-slate-400 font-bold uppercase font-mono">Yesterday</span>}
+                </span>
+
+                <div className="flex gap-1.5">
+                  {sportsDateOffset !== 0 && (
+                    <button
+                      onClick={() => {
+                        haptic(5);
+                        setSportsDateOffset(0);
+                      }}
+                      className="px-2 py-1 rounded bg-slate-150 hover:bg-slate-250 dark:bg-slate-900 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-350 transition-colors border border-slate-200/50 dark:border-white/5 cursor-pointer select-none font-bold"
+                    >
+                      Today
+                    </button>
+                  )}
+                  <button
+                    onClick={() => {
+                      haptic(5);
+                      setSportsDateOffset(prev => prev + 1);
+                    }}
+                    className="px-2.5 py-1 rounded bg-slate-100 hover:bg-slate-200 dark:bg-slate-900 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-350 transition-colors border border-slate-200/50 dark:border-white/5 cursor-pointer select-none"
+                  >
+                    Next Day ▶
+                  </button>
+                </div>
               </div>
 
               {/* Grid Layout: Scores vs Pinned & Parlay */}
