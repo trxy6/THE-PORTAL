@@ -2377,178 +2377,6 @@ export default function App() {
     });
   }, []);
 
-  function generateMockSportsGames(league: SportsLeague): any[] {
-    const today = new Date();
-    const formattedToday = today.toISOString();
-
-    const leagueTeams: Record<SportsLeague, Array<{ abbr: string; name: string; record: string; logo: string }>> = {
-      mlb: [
-        { abbr: 'NYY', name: 'Yankees', record: '54-32', logo: 'https://a.espncdn.com/i/teamlogos/mlb/500/nyy.png' },
-        { abbr: 'BOS', name: 'Red Sox', record: '46-40', logo: 'https://a.espncdn.com/i/teamlogos/mlb/500/bos.png' },
-        { abbr: 'LAD', name: 'Dodgers', record: '56-33', logo: 'https://a.espncdn.com/i/teamlogos/mlb/500/lad.png' },
-        { abbr: 'SF', name: 'Giants', record: '42-45', logo: 'https://a.espncdn.com/i/teamlogos/mlb/500/sf.png' },
-        { abbr: 'CHC', name: 'Cubs', record: '41-46', logo: 'https://a.espncdn.com/i/teamlogos/mlb/500/chc.png' },
-        { abbr: 'STL', name: 'Cardinals', record: '44-42', logo: 'https://a.espncdn.com/i/teamlogos/mlb/500/stl.png' },
-      ],
-      eng1: [
-        { abbr: 'MUN', name: 'Man United', record: '18-6-14', logo: 'https://a.espncdn.com/i/teamlogos/soccer/500/360.png' },
-        { abbr: 'LIV', name: 'Liverpool', record: '24-10-4', logo: 'https://a.espncdn.com/i/teamlogos/soccer/500/364.png' },
-        { abbr: 'ARS', name: 'Arsenal', record: '28-5-5', logo: 'https://a.espncdn.com/i/teamlogos/soccer/500/359.png' },
-        { abbr: 'CHE', name: 'Chelsea', record: '18-9-11', logo: 'https://a.espncdn.com/i/teamlogos/soccer/500/363.png' },
-        { abbr: 'MCI', name: 'Man City', record: '28-7-3', logo: 'https://a.espncdn.com/i/teamlogos/soccer/500/382.png' },
-        { abbr: 'TOT', name: 'Tottenham', record: '20-6-12', logo: 'https://a.espncdn.com/i/teamlogos/soccer/500/367.png' },
-      ],
-      nba: [
-        { abbr: 'LAL', name: 'Lakers', record: '44-38', logo: 'https://a.espncdn.com/i/teamlogos/nba/500/lal.png' },
-        { abbr: 'BOS', name: 'Celtics', record: '57-25', logo: 'https://a.espncdn.com/i/teamlogos/nba/500/bos.png' },
-        { abbr: 'GSW', name: 'Warriors', record: '44-38', logo: 'https://a.espncdn.com/i/teamlogos/nba/500/gsw.png' },
-        { abbr: 'PHX', name: 'Suns', record: '45-37', logo: 'https://a.espncdn.com/i/teamlogos/nba/500/phx.png' },
-        { abbr: 'MIL', name: 'Bucks', record: '58-24', logo: 'https://a.espncdn.com/i/teamlogos/nba/500/mil.png' },
-        { abbr: 'MIA', name: 'Heat', record: '44-38', logo: 'https://a.espncdn.com/i/teamlogos/nba/500/mia.png' },
-      ],
-      nfl: [
-        { abbr: 'KC', name: 'Chiefs', record: '12-3', logo: 'https://a.espncdn.com/i/teamlogos/nfl/500/kc.png' },
-        { abbr: 'LV', name: 'Raiders', record: '6-9', logo: 'https://a.espncdn.com/i/teamlogos/nfl/500/lv.png' },
-        { abbr: 'DAL', name: 'Cowboys', record: '10-5', logo: 'https://a.espncdn.com/i/teamlogos/nfl/500/dal.png' },
-        { abbr: 'PHI', name: 'Eagles', record: '11-4', logo: 'https://a.espncdn.com/i/teamlogos/nfl/500/phi.png' },
-        { abbr: 'SF', name: '49ers', record: '12-3', logo: 'https://a.espncdn.com/i/teamlogos/nfl/500/sf.png' },
-        { abbr: 'SEA', name: 'Seahawks', record: '8-7', logo: 'https://a.espncdn.com/i/teamlogos/nfl/500/sea.png' },
-      ],
-      nhl: [
-        { abbr: 'BOS', name: 'Bruins', record: '47-20-15', logo: 'https://a.espncdn.com/i/teamlogos/nhl/500/bos.png' },
-        { abbr: 'NYR', name: 'Rangers', record: '55-23-4', logo: 'https://a.espncdn.com/i/teamlogos/nhl/500/nyr.png' },
-        { abbr: 'FLA', name: 'Panthers', record: '52-24-6', logo: 'https://a.espncdn.com/i/teamlogos/nhl/500/fla.png' },
-        { abbr: 'EDM', name: 'Oilers', record: '49-27-6', logo: 'https://a.espncdn.com/i/teamlogos/nhl/500/edm.png' },
-        { abbr: 'DAL', name: 'Stars', record: '52-21-9', logo: 'https://a.espncdn.com/i/teamlogos/nhl/500/dal.png' },
-        { abbr: 'VAN', name: 'Canucks', record: '50-23-9', logo: 'https://a.espncdn.com/i/teamlogos/nhl/500/van.png' },
-      ]
-    };
-
-    const teams = leagueTeams[league] || leagueTeams['nfl'];
-
-    let liveDetail = '3rd Quarter';
-    let liveAwayScore = '84';
-    let liveHomeScore = '91';
-    let postDetail = 'Final';
-    let postAwayScore = '108';
-    let postHomeScore = '97';
-    let postAwayWinner = true;
-    let postHomeWinner = false;
-    let preDetail = 'MON 8:30 PM';
-
-    if (league === 'eng1') {
-      liveDetail = "72'";
-      liveAwayScore = '1';
-      liveHomeScore = '2';
-      postDetail = 'FT';
-      postAwayScore = '3';
-      postHomeScore = '1';
-      postAwayWinner = true;
-      postHomeWinner = false;
-      preDetail = 'SUN 11:30 AM';
-    } else if (league === 'mlb') {
-      liveDetail = 'Top 7th';
-      liveAwayScore = '2';
-      liveHomeScore = '4';
-      postDetail = 'Final';
-      postAwayScore = '6';
-      postHomeScore = '3';
-      postAwayWinner = true;
-      postHomeWinner = false;
-      preDetail = 'MON 7:05 PM';
-    }
-
-    return [
-      {
-        id: `mock-${league}-1`,
-        date: formattedToday,
-        competitions: [
-          {
-            id: `comp-${league}-1`,
-            date: formattedToday,
-            status: { type: { state: 'in', detail: liveDetail } },
-            competitors: [
-              {
-                id: `team-${league}-1`,
-                homeAway: 'away',
-                team: { id: `team-${league}-1`, abbreviation: teams[0].abbr, shortDisplayName: teams[0].name, displayName: `${teams[0].abbr} ${teams[0].name}`, logo: teams[0].logo },
-                score: liveAwayScore,
-                winner: false,
-                records: [{ type: 'total', summary: teams[0].record }]
-              },
-              {
-                id: `team-${league}-2`,
-                homeAway: 'home',
-                team: { id: `team-${league}-2`, abbreviation: teams[1].abbr, shortDisplayName: teams[1].name, displayName: `${teams[1].abbr} ${teams[1].name}`, logo: teams[1].logo },
-                score: liveHomeScore,
-                winner: false,
-                records: [{ type: 'total', summary: teams[1].record }]
-              }
-            ]
-          }
-        ]
-      },
-      {
-        id: `mock-${league}-2`,
-        date: formattedToday,
-        competitions: [
-          {
-            id: `comp-${league}-2`,
-            date: formattedToday,
-            status: { type: { state: 'post', detail: postDetail } },
-            competitors: [
-              {
-                id: `team-${league}-3`,
-                homeAway: 'away',
-                team: { id: `team-${league}-3`, abbreviation: teams[2].abbr, shortDisplayName: teams[2].name, displayName: `${teams[2].abbr} ${teams[2].name}`, logo: teams[2].logo },
-                score: postAwayScore,
-                winner: postAwayWinner,
-                records: [{ type: 'total', summary: teams[2].record }]
-              },
-              {
-                id: `team-${league}-4`,
-                homeAway: 'home',
-                team: { id: `team-${league}-4`, abbreviation: teams[3].abbr, shortDisplayName: teams[3].name, displayName: `${teams[3].abbr} ${teams[3].name}`, logo: teams[3].logo },
-                score: postHomeScore,
-                winner: postHomeWinner,
-                records: [{ type: 'total', summary: teams[3].record }]
-              }
-            ]
-          }
-        ]
-      },
-      {
-        id: `mock-${league}-3`,
-        date: formattedToday,
-        competitions: [
-          {
-            id: `comp-${league}-3`,
-            date: formattedToday,
-            status: { type: { state: 'pre', detail: preDetail } },
-            competitors: [
-              {
-                id: `team-${league}-5`,
-                homeAway: 'away',
-                team: { id: `team-${league}-5`, abbreviation: teams[4].abbr, shortDisplayName: teams[4].name, displayName: `${teams[4].abbr} ${teams[4].name}`, logo: teams[4].logo },
-                score: '0',
-                winner: false,
-                records: [{ type: 'total', summary: teams[4].record }]
-              },
-              {
-                id: `team-${league}-6`,
-                homeAway: 'home',
-                team: { id: `team-${league}-6`, abbreviation: teams[5].abbr, shortDisplayName: teams[5].name, displayName: `${teams[5].abbr} ${teams[5].name}`, logo: teams[5].logo },
-                score: '0',
-                winner: false,
-                records: [{ type: 'total', summary: teams[5].record }]
-              }
-            ]
-          }
-        ]
-      }
-    ];
-  }
-
   const loadSportsScores = useCallback(async (dateOffset: number = sportsDateOffset) => {
     setSportsStatus("Syncing all league schedule networks...");
 
@@ -2570,15 +2398,12 @@ export default function App() {
           const res = await fetch(fetchUrl, { cache: 'no-store' });
           if (!res.ok) throw new Error('Offline');
           const data = await res.json();
-          let events = Array.isArray(data?.events) ? data.events : [];
-          if (events.length === 0) {
-            events = generateMockSportsGames(league);
-          } else {
-            anySuccess = true;
-          }
+          const events = Array.isArray(data?.events) ? data.events : [];
+          anySuccess = true;
           return { league, events };
-        } catch {
-          return { league, events: generateMockSportsGames(league) };
+        } catch (e) {
+          console.warn(`Failed to fetch ${league} scores:`, e);
+          return { league, events: [] };
         }
       })
     );
@@ -2591,7 +2416,7 @@ export default function App() {
       return next;
     });
 
-    setSportsStatus(anySuccess ? 'Free Live Network Feed Connected' : 'Free Live Network (Simulated Offline Mode)');
+    setSportsStatus(anySuccess ? 'Live Network Feed Connected' : 'Live Network Offline');
     setSportsUpdated(
       new Date().toLocaleTimeString(undefined, {
         hour: '2-digit',
