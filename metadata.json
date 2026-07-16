@@ -1,9 +1,10 @@
 {
   "name": "The portal",
-  "description": "",
+  "description": "An interactive digital sandbox environment featuring game modules, sports scoring systems, local simulations, audio tools, custom map workspaces, and the CRAIVE Culinary Suite powered by Google Gemini.",
   "requestFramePermissions": [
     "camera",
-    "geolocation"
+    "geolocation",
+    "microphone"
   ],
   "majorCapabilities": [
     "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"

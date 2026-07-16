@@ -25,6 +25,7 @@ import PortalWalkthrough from './components/PortalWalkthrough';
 import PecosOnboarding from './components/PecosOnboarding';
 import PecosProfileEditor from './components/PecosProfileEditor';
 import WorkspaceSyncCenter from './components/WorkspaceSyncCenter';
+import AccessMatrix from './components/AccessMatrix';
 
 const SPORTS_LEAGUES = {
   mlb: {
@@ -383,7 +384,7 @@ export default function App() {
   }, []);
 
   // --- Secure Storage & Sub-tab States ---
-  const [settingsSubTab, setSettingsSubTab] = useState<'appearance' | 'spotify' | 'session' | 'onboarding' | 'system'>('appearance');
+  const [settingsSubTab, setSettingsSubTab] = useState<'appearance' | 'spotify' | 'session' | 'onboarding' | 'system' | 'permissions'>('appearance');
   
   // --- Local & Sync Features state ---
   const [localExecution, setLocalExecution] = useState(() => store.get('sys_local_exec', true));
@@ -572,8 +573,41 @@ export default function App() {
   const [signupConfirmPassword, setSignupConfirmPassword] = useState('');
   const [authError, setAuthError] = useState('');
   const [showGoogleModal, setShowGoogleModal] = useState(false);
+  const [showPrivacyPolicy, setShowPrivacyPolicy] = useState(false);
   const [googleSubView, setGoogleSubView] = useState<'list' | 'signin'>('list');
   const [googleEmailInput, setGoogleEmailInput] = useState('');
+
+  // Sync Privacy Policy state with URL path (/privacy or /privacy-policy)
+  useEffect(() => {
+    const handleLocationChange = () => {
+      const path = window.location.pathname;
+      if (path === '/privacy' || path === '/privacy-policy' || window.location.hash === '#privacy') {
+        setShowPrivacyPolicy(true);
+      } else {
+        setShowPrivacyPolicy(false);
+      }
+    };
+
+    // Check on initial load
+    handleLocationChange();
+
+    window.addEventListener('popstate', handleLocationChange);
+    return () => window.removeEventListener('popstate', handleLocationChange);
+  }, []);
+
+  // Update URL history path when state changes
+  useEffect(() => {
+    const path = window.location.pathname;
+    if (showPrivacyPolicy) {
+      if (path !== '/privacy' && path !== '/privacy-policy') {
+        window.history.pushState({ privacy: true }, '', '/privacy');
+      }
+    } else {
+      if (path === '/privacy' || path === '/privacy-policy') {
+        window.history.pushState({}, '', '/');
+      }
+    }
+  }, [showPrivacyPolicy]);
 
   // Load Google Auth configuration and render standard button when modal opens
   useEffect(() => {
@@ -728,6 +762,7 @@ export default function App() {
   });
   const [showProfileDropdown, setShowProfileDropdown] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
+  const [showPermissionsPrompt, setShowPermissionsPrompt] = useState(false);
 
   // Temporary states for edits inside the modal
   const [tempDisplayName, setTempDisplayName] = useState(currentUser || '');
@@ -4455,6 +4490,7 @@ export default function App() {
                   }
                 }
               }
+              setShowPermissionsPrompt(true);
               setIsPlayingWarpTransition(false);
               setTempUserToLogin(null);
               setShowStartScreen(false);
@@ -4566,11 +4602,17 @@ export default function App() {
               animation: 'orbit-slow 20s linear infinite',
             }} />
 
+             {/* Ambient intense backdrop glow to guarantee logo visibility and create excitement */}
+            <div className="absolute pointer-events-none w-80 h-80 rounded-full bg-[radial-gradient(circle,rgba(168,85,247,0.35)_0%,rgba(99,102,241,0.2)_45%,transparent_70%)] blur-[50px] z-0 animate-pulse" />
+
             {/* The glowing portal logo */}
             <img
               src={portalLogo}
               alt="The Portal Logo"
-              style={{ animation: 'logo-levitate 5s ease-in-out infinite' }}
+              style={{ 
+                animation: 'logo-levitate 5s ease-in-out infinite',
+                filter: 'drop-shadow(0 0 30px rgba(168,85,247,0.9)) drop-shadow(0 0 60px rgba(99,102,241,0.6)) brightness(1.35) contrast(1.15)'
+              }}
               className="w-[80%] max-w-[400px] md:max-w-[480px] max-h-[38vh] object-contain select-none relative z-10"
             />
 
@@ -4579,13 +4621,16 @@ export default function App() {
               style={{ animation: 'fade-up 1.2s ease-out both', animationDelay: '0.4s' }}>
               <span className="text-[10px] font-bold uppercase tracking-[0.35em]"
                 style={{ background: 'linear-gradient(90deg,#a78bfa,#e879f9,#818cf8)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-                NextGen Desktop OS Shell
+                NEXTGEN WORKSPACE
               </span>
             </div>
           </div>
 
           {/* ════ RIGHT: AUTH PANEL ════ */}
-          <div className="flex-1 h-[55vh] md:h-full flex items-center justify-center p-4 sm:p-10 relative">
+          <div className="flex-1 h-[55vh] md:h-full flex items-center justify-center p-4 sm:p-10 relative overflow-hidden">
+            {/* High-tech dynamic ambient light streams behind the auth card */}
+            <div className="absolute top-1/4 right-1/4 w-96 h-96 rounded-full bg-[radial-gradient(circle,rgba(192,38,211,0.18)_0%,transparent_70%)] blur-[90px] pointer-events-none animate-pulse" />
+            <div className="absolute bottom-1/4 left-1/4 w-96 h-96 rounded-full bg-[radial-gradient(circle,rgba(99,102,241,0.15)_0%,transparent_70%)] blur-[90px] pointer-events-none animate-pulse" style={{ animationDelay: '2s' }} />
 
             {/* Form card */}
             <div className="relative w-full max-w-md"
@@ -4853,7 +4898,131 @@ export default function App() {
                   style={{ color: 'rgba(139,92,246,0.35)' }}>
                   V2.4.0 • ZERO CLOUD DATA LEAKAGE • ENCRYPTED LOCAL STORAGE
                 </div>
+
+                <div className="text-center pt-1.5">
+                  <a
+                    href="/privacy"
+                    onClick={(e) => { e.preventDefault(); haptic(5); setShowPrivacyPolicy(true); }}
+                    className="text-[9px] font-bold text-purple-400/50 hover:text-purple-300 transition-all cursor-pointer uppercase tracking-widest hover:underline"
+                  >
+                    Privacy Policy & Rift Protocols
+                  </a>
+                </div>
               </div>
+
+              {/* ── PRIVACY POLICY MODAL ── */}
+              {showPrivacyPolicy && (
+                <div
+                  className="fixed inset-0 z-[10000] flex items-center justify-center p-4 overflow-y-auto animate-[fadeIn_0.3s_ease]"
+                  style={{ background: 'rgba(5,2,15,0.92)', backdropFilter: 'blur(24px)' }}
+                  onClick={() => setShowPrivacyPolicy(false)}
+                >
+                  <div
+                    className="relative w-full max-w-2xl rounded-3xl overflow-hidden shadow-[0_0_80px_rgba(168,85,247,0.3)] border border-purple-500/20 max-h-[85vh] flex flex-col"
+                    style={{ background: 'rgba(12,4,32,0.98)' }}
+                    onClick={e => e.stopPropagation()}
+                  >
+                    {/* Top aesthetic shimmer */}
+                    <div className="h-[2px] w-full bg-gradient-to-r from-purple-600 via-pink-500 to-indigo-600" />
+                    
+                    {/* Header */}
+                    <div className="p-6 border-b border-purple-500/10 flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <Shield className="w-5 h-5 text-purple-400 animate-pulse" />
+                        <div className="text-left">
+                          <h2 className="text-sm font-black tracking-[0.2em] uppercase text-white">RIFT PROTOCOLS & PRIVACY DECREE</h2>
+                          <p className="text-[9px] font-bold text-purple-400/60 uppercase tracking-widest mt-0.5">Quantum Secure Identity Directives</p>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setShowPrivacyPolicy(false)}
+                        className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white transition-all cursor-pointer"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+
+                    {/* Scrollable Content */}
+                    <div className="p-6 space-y-6 overflow-y-auto custom-scrollbar text-xs leading-relaxed text-slate-300 text-left">
+                      
+                      <div className="p-4 rounded-2xl bg-purple-500/5 border border-purple-500/15 space-y-2">
+                        <div className="flex items-center gap-2 font-bold text-white uppercase text-[10px] tracking-wider">
+                          <Brain className="w-4 h-4 text-pink-400" />
+                          <span>Pledge of Total Data Sovereignty</span>
+                        </div>
+                        <p className="text-slate-400 text-[11px]">
+                          At <strong className="text-purple-300">The Portal</strong>, we believe your digital footprint is your sacred domain. 
+                          Whether you are a casual traveler or an architect of the rift, our systems are engineered 
+                          to respect, protect, and completely localize your active consciousness logs. 
+                          This app is 100% free, subscriptionless, and forever decoupled from predatory tracking syndicates.
+                        </p>
+                      </div>
+
+                      <div className="space-y-4">
+                        <div className="flex items-center gap-2 border-b border-purple-500/10 pb-1.5">
+                          <Cpu className="w-3.5 h-3.5 text-indigo-400" />
+                          <h3 className="font-bold text-[11px] text-white uppercase tracking-wider">1. Spatial Telemetry & Local Hashing</h3>
+                        </div>
+                        <p className="text-slate-400 text-[11px]">
+                          Your Traveler credentials (including locally claimed Traveler IDs and passwords) never cross the astral void to external servers. 
+                          They are hashed on-device using a cryptographic singularity and saved inside highly secure, encrypted local environments. 
+                          What happens in your rift stays in your rift.
+                        </p>
+                      </div>
+
+                      <div className="space-y-4">
+                        <div className="flex items-center gap-2 border-b border-purple-500/10 pb-1.5">
+                          <Database className="w-3.5 h-3.5 text-purple-400" />
+                          <h3 className="font-bold text-[11px] text-white uppercase tracking-wider">2. Zero Cloud Memory Footprint</h3>
+                        </div>
+                        <p className="text-slate-400 text-[11px]">
+                          Our servers act purely as conduits for real-time interactions, streaming lyrics, and audio alignment. 
+                          No user database logs are archived in cloud clusters. Upon terminal logout, 
+                          your active session token is immediately purged, leaving zero traces for cyber-scrapers.
+                        </p>
+                      </div>
+
+                      <div className="space-y-4">
+                        <div className="flex items-center gap-2 border-b border-purple-500/10 pb-1.5">
+                          <Fingerprint className="w-3.5 h-3.5 text-pink-400" />
+                          <h3 className="font-bold text-[11px] text-white uppercase tracking-wider">3. Google & Spotify Linkages</h3>
+                        </div>
+                        <p className="text-slate-400 text-[11px]">
+                          When continuing via Google Auth or connecting Spotify high-fidelity audio streams, 
+                          The Portal directly interfaces with the respective secure endpoints. 
+                          No tokens are leaked, sold, or shared. 
+                          We query only public identity payloads to display your customizable traveler avatar and track names.
+                        </p>
+                      </div>
+
+                      <div className="space-y-4">
+                        <div className="flex items-center gap-2 border-b border-purple-500/10 pb-1.5">
+                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                          <h3 className="font-bold text-[11px] text-white uppercase tracking-wider">4. Total Freedom and Control</h3>
+                        </div>
+                        <p className="text-slate-400 text-[11px]">
+                          Need to disappear? Use the Settings console at any time to purge your localized cache, remove all OAuth ties, 
+                          and restore the system shell to its factory-default singularity state.
+                        </p>
+                      </div>
+
+                    </div>
+
+                    {/* Footer */}
+                    <div className="p-4 bg-purple-950/20 border-t border-purple-500/10 flex justify-between items-center text-[10px] font-mono text-slate-500">
+                      <span>Rift Protocol: Active V2.4</span>
+                      <button
+                        type="button"
+                        onClick={() => setShowPrivacyPolicy(false)}
+                        className="px-5 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold tracking-widest uppercase transition-all duration-200 cursor-pointer text-[9px]"
+                      >
+                        Acknowledge & Sync
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* ── GOOGLE SIGN-IN MODAL ── */}
               {showGoogleModal && (
@@ -8931,6 +9100,12 @@ export default function App() {
                 >
                   👤 PECOS Onboarding
                 </button>
+                <button 
+                  onClick={() => { haptic(5); setSettingsSubTab('permissions'); }}
+                  className={`px-4 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${settingsSubTab === 'permissions' ? 'bg-[#a29bfe]/20 border border-[#a29bfe]/40 text-[#a29bfe]' : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white'}`}
+                >
+                  🛡️ Access & Permissions
+                </button>
               </div>
 
               {settingsSubTab === 'session' && (
@@ -10415,6 +10590,11 @@ export default function App() {
                   </div>
                 </div>
               )}
+              {settingsSubTab === 'permissions' && (
+                <div className="animate-[fadeIn_0.3s_ease-out]">
+                  <AccessMatrix toast={toast} haptic={haptic} />
+                </div>
+              )}
             </div>
           )}
 
@@ -11232,6 +11412,39 @@ export default function App() {
               >
                 Save Profile
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* ACCESS & PERMISSIONS PORTAL OVERLAY */}
+      {showPermissionsPrompt && (
+        <div 
+          className="fixed inset-0 bg-slate-950/85 backdrop-blur-xl z-50 flex items-center justify-center p-4 overflow-y-auto animate-[fadeIn_0.3s_ease-out]"
+        >
+          <div 
+            className="w-full max-w-lg rounded-3xl p-1 shadow-3xl flex flex-col relative animate-[scaleIn_0.3s_ease-out]"
+            style={{
+              background: 'linear-gradient(135deg, rgba(43,16,85,0.95), rgba(20,8,48,0.98))',
+              border: '1px solid rgba(162,155,254,0.3)',
+              boxShadow: '0 30px 70px rgba(108, 92, 231, 0.25)',
+            }}
+          >
+            <div className="absolute top-4 right-4 z-20">
+              <button 
+                onClick={() => { haptic(5); setShowPermissionsPrompt(false); }}
+                className="p-1.5 rounded-full hover:bg-white/10 transition cursor-pointer text-purple-300 hover:text-white"
+                title="Dismiss permissions overlay"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            <div className="p-2 sm:p-4 overflow-y-auto max-h-[85vh]">
+              <AccessMatrix 
+                toast={toast} 
+                haptic={haptic} 
+                onClose={() => setShowPermissionsPrompt(false)} 
+              />
             </div>
           </div>
         </div>

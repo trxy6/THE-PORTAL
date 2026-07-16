@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import type { User, CraiveTypeProfile, FoodMixResult } from '../types';
 import { SpinnerIcon, MusicOnIcon, MusicOffIcon, BellIcon } from '../components/Icons';
@@ -89,9 +88,9 @@ export const CraiveMePage: React.FC<{
                  </div>
                  <button onClick={handleTeachMilaSave} className="w-full text-center p-3 bg-gold text-white font-bold hover:bg-deep-green rounded-lg">Save Preferences</button>
                  <button onClick={() => setView('main')} className="w-full text-center p-2 text-deep-green/70 font-semibold hover:bg-gold-light/30 rounded-lg">Cancel</button>
-            </div>
-        );
-    }
+             </div>
+         );
+     }
 
     // Main View
     return (

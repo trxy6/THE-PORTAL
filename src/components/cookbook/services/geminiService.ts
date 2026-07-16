@@ -1,7 +1,18 @@
 import { GoogleGenAI, Type, Modality } from "@google/genai";
 import type { Suggestion, CraveScope, CraiveTypeProfile, QuizAnswer, User, FoodMixResult, CraveSyncUserInput, CraveSyncOption } from '../types';
 
-if (!process.env.API_KEY) {
+const getApiKey = () => {
+    try {
+        if (typeof process !== 'undefined' && process.env && process.env.API_KEY) {
+            return process.env.API_KEY;
+        }
+    } catch (e) {}
+    return undefined;
+};
+
+const apiKey = getApiKey();
+
+if (!apiKey) {
     console.warn("API_KEY environment variable not set. Running in Local AI fallback mode.");
 }
 
@@ -307,12 +318,13 @@ const localAI = {
 // ==========================================
 
 export const getFoodSuggestions = async (userInput: string): Promise<Suggestion[]> => {
-    if (!process.env.API_KEY) {
+    const activeKey = getApiKey();
+    if (!activeKey) {
         console.log("No API Key detected, running Local AI Suggestions.");
         return localAI.getFoodSuggestions(userInput);
     }
     try {
-        const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+        const ai = new GoogleGenAI({ apiKey: activeKey });
         const prompt = `You are Mila, a friendly and creative AI flavor guide. A user is craving '${userInput}'. Generate exactly 4 crave-worthy, creative, and delicious food ideas based on this. Provide a short, mouth-watering description for each. Respond ONLY with a valid JSON array of objects, adhering to the provided schema.`;
 
         const response = await ai.models.generateContent({
@@ -342,12 +354,13 @@ export const getFoodSuggestions = async (userInput: string): Promise<Suggestion[
 };
 
 export const getCraiveScope = async (birthday: string, isUnder21: boolean): Promise<CraveScope> => {
-    if (!process.env.API_KEY) {
+    const activeKey = getApiKey();
+    if (!activeKey) {
         console.log("No API Key detected, running Local AI CraiveScope.");
         return localAI.getCraiveScope(birthday, isUnder21);
     }
     try {
-        const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+        const ai = new GoogleGenAI({ apiKey: activeKey });
         const prompt = `You are an AI astrologer named Mila, specializing in "Food Astrology."
         A user was born on ${birthday}. 
         Based on their birth date, determine their astrological sign and generate a "Flavor Forecast" for today.
@@ -374,12 +387,13 @@ export const getCraiveScope = async (birthday: string, isUnder21: boolean): Prom
 };
 
 export const getCraiveType = async (answers: QuizAnswer[]): Promise<CraiveTypeProfile> => {
-    if (!process.env.API_KEY) {
+    const activeKey = getApiKey();
+    if (!activeKey) {
         console.log("No API Key detected, running Local AI CraiveType analysis.");
         return localAI.getCraiveType(answers);
     }
     try {
-        const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+        const ai = new GoogleGenAI({ apiKey: activeKey });
         const answersString = answers.map(a => `- "${a.question}": ${a.answer}/10`).join('\n');
         
         const prompt = `You are a "Food Psychologist" AI named Mila. You will analyze a user's answers to a personality quiz and assign them one of the following CraiveTypes:
@@ -415,12 +429,13 @@ export const getCraiveType = async (answers: QuizAnswer[]): Promise<CraiveTypePr
 };
 
 export const generatePersonalizedWelcome = async (user: User): Promise<string> => {
-    if (!process.env.API_KEY) {
+    const activeKey = getApiKey();
+    if (!activeKey) {
         console.log("No API Key detected, running Local AI Welcome message.");
         return localAI.generatePersonalizedWelcome(user);
     }
     try {
-        const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+        const ai = new GoogleGenAI({ apiKey: activeKey });
         const preferences = [
             user.allergies && `Allergies: ${user.allergies}`,
             user.dislikes && `Dislikes: ${user.dislikes}`,
@@ -442,12 +457,13 @@ export const generatePersonalizedWelcome = async (user: User): Promise<string> =
 };
 
 export const generateFoodMix = async (ingredients: string, user: User | null): Promise<FoodMixResult[]> => {
-    if (!process.env.API_KEY) {
+    const activeKey = getApiKey();
+    if (!activeKey) {
         console.log("No API Key detected, running Local AI FoodMix combos.");
         return localAI.generateFoodMix(ingredients, user);
     }
     try {
-        const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+        const ai = new GoogleGenAI({ apiKey: activeKey });
         let userContext = "The user is looking for creative food combinations.";
         if (user) {
             const preferences = [
@@ -506,12 +522,13 @@ export const generateCraveSyncSuggestions = async (
     groupInputs: CraveSyncUserInput[],
     location: { latitude: number; longitude: number } | null
 ): Promise<CraveSyncOption[]> => {
-    if (!process.env.API_KEY) {
+    const activeKey = getApiKey();
+    if (!activeKey) {
         console.log("No API Key detected, running Local AI CraveSync suggestions.");
         return localAI.generateCraveSyncSuggestions(groupInputs, location);
     }
     try {
-        const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+        const ai = new GoogleGenAI({ apiKey: activeKey });
         const groupPreferencesString = groupInputs.map((input, index) => 
             `User ${index + 1}: Loves [${input.loves.join(', ')}], Hates [${input.hates.join(', ')}], Vibe: "${input.vibe}"`
         ).join('\n');
@@ -537,7 +554,7 @@ export const generateCraveSyncSuggestions = async (
         - "cuisine": The primary cuisine type.
         - "price": The price range as "$", "$$", "$$$", or "$$$$".
         - "distance": An estimated distance like "0.5 miles".
-
+        
         Do not include any URLs, links, markdown, or any text outside of the JSON array.`;
 
         const config: any = {
@@ -581,11 +598,12 @@ export const generateCraveSyncSuggestions = async (
 };
 
 export const generateSpeech = async (textToSpeak: string): Promise<string | undefined> => {
-    if (!process.env.API_KEY) {
+    const activeKey = getApiKey();
+    if (!activeKey) {
         return localAI.generateSpeech(textToSpeak);
     }
     try {
-        const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+        const ai = new GoogleGenAI({ apiKey: activeKey });
         const response = await ai.models.generateContent({
             model: "gemini-2.5-flash-preview-tts",
             contents: [{ parts: [{ text: textToSpeak }] }],

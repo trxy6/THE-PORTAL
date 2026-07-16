@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import type { User, CraiveTypeProfile, FoodMixResult, CraveSyncUserInput, CraveSyncOption, CraveSyncResult } from '../types';
 import { generateFoodMix, generateCraveSyncSuggestions } from '../services/geminiService';
 import { SpinnerIcon, GroupIcon } from '../components/Icons';
@@ -383,23 +383,23 @@ const CraveSyncPage: React.FC<{ user: User | null; onBack: () => void; }> = ({ u
                 if (!currentOption) return null;
                 return (
                      <div className="animate-fade-in-up text-center">
-                         <h2 className="text-3xl font-bold text-deep-green mb-2">Roulette Round</h2>
-                         <p className="text-deep-green/80 mb-6">Swipe your decision! ({currentOptionIndex + 1}/{options.length})</p>
-                         <div className="relative w-full max-w-sm mx-auto h-64">
-                            <div className="bg-white p-6 rounded-2xl shadow-xl border-2 border-gold-light flex flex-col justify-between items-center h-full">
-                                <h3 className="text-3xl font-bold text-deep-green">{currentOption.name}</h3>
-                                <div>
-                                    <p className="text-lg text-deep-green/80">{currentOption.cuisine}</p>
-                                    <p className="font-semibold text-gold">{currentOption.price} • {currentOption.distance}</p>
-                                </div>
-                            </div>
-                         </div>
-                         <div className="flex justify-center items-center gap-6 mt-8">
-                             <button onClick={() => handleVote(currentOption.name, 'no')} className="p-4 rounded-full bg-red-200 text-red-700 shadow-lg text-4xl">👎</button>
-                             <button onClick={() => handleVote(currentOption.name, 'superlike')} className="p-6 rounded-full bg-blue-200 text-blue-700 shadow-lg text-5xl">🤩</button>
-                             <button onClick={() => handleVote(currentOption.name, 'yes')} className="p-4 rounded-full bg-green-200 text-green-700 shadow-lg text-4xl">👍</button>
-                         </div>
-                     </div>
+                          <h2 className="text-3xl font-bold text-deep-green mb-2">Roulette Round</h2>
+                          <p className="text-deep-green/80 mb-6">Swipe your decision! ({currentOptionIndex + 1}/{options.length})</p>
+                          <div className="relative w-full max-w-sm mx-auto h-64">
+                             <div className="bg-white p-6 rounded-2xl shadow-xl border-2 border-gold-light flex flex-col justify-between items-center h-full">
+                                 <h3 className="text-3xl font-bold text-deep-green">{currentOption.name}</h3>
+                                 <div>
+                                     <p className="text-lg text-deep-green/80">{currentOption.cuisine}</p>
+                                     <p className="font-semibold text-gold">{currentOption.price} • {currentOption.distance}</p>
+                                 </div>
+                             </div>
+                          </div>
+                          <div className="flex justify-center items-center gap-6 mt-8">
+                              <button onClick={() => handleVote(currentOption.name, 'no')} className="p-4 rounded-full bg-red-200 text-red-700 shadow-lg text-4xl">👎</button>
+                              <button onClick={() => handleVote(currentOption.name, 'superlike')} className="p-6 rounded-full bg-blue-200 text-blue-700 shadow-lg text-5xl">🤩</button>
+                              <button onClick={() => handleVote(currentOption.name, 'yes')} className="p-4 rounded-full bg-green-200 text-green-700 shadow-lg text-4xl">👍</button>
+                          </div>
+                      </div>
                 );
             case 'results':
                 return (
