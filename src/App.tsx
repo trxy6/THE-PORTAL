@@ -30,23 +30,58 @@ import AccessMatrix from './components/AccessMatrix';
 const SPORTS_LEAGUES = {
   mlb: {
     label: 'MLB Baseball',
+    shortLabel: 'MLB',
     url: 'https://site.api.espn.com/apis/site/v2/sports/baseball/mlb/scoreboard',
+  },
+  mls: {
+    label: 'MLS Soccer',
+    shortLabel: 'MLS',
+    url: 'https://site.api.espn.com/apis/site/v2/sports/soccer/usa.1/scoreboard',
+  },
+  wnba: {
+    label: 'WNBA Basketball',
+    shortLabel: 'WNBA',
+    url: 'https://site.api.espn.com/apis/site/v2/sports/basketball/wnba/scoreboard',
   },
   eng1: {
     label: 'Premier League',
+    shortLabel: 'EPL',
     url: 'https://site.api.espn.com/apis/site/v2/sports/soccer/eng.1/scoreboard',
+  },
+  esp1: {
+    label: 'La Liga Soccer',
+    shortLabel: 'La Liga',
+    url: 'https://site.api.espn.com/apis/site/v2/sports/soccer/esp.1/scoreboard',
+  },
+  champions: {
+    label: 'UEFA Champions League',
+    shortLabel: 'UCL',
+    url: 'https://site.api.espn.com/apis/site/v2/sports/soccer/uefa.champions/scoreboard',
   },
   nba: {
     label: 'NBA Basketball',
+    shortLabel: 'NBA',
     url: 'https://site.api.espn.com/apis/site/v2/sports/basketball/nba/scoreboard',
   },
   nfl: {
     label: 'NFL Football',
+    shortLabel: 'NFL',
     url: 'https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard',
   },
   nhl: {
     label: 'NHL Hockey',
+    shortLabel: 'NHL',
     url: 'https://site.api.espn.com/apis/site/v2/sports/hockey/nhl/scoreboard',
+  },
+  ncaaf: {
+    label: 'NCAA Football',
+    shortLabel: 'CFB',
+    url: 'https://site.api.espn.com/apis/site/v2/sports/football/college-football/scoreboard',
+  },
+  ncaam: {
+    label: 'NCAA Men\'s Basketball',
+    shortLabel: 'CBB',
+    url: 'https://site.api.espn.com/apis/site/v2/sports/basketball/mens-college-basketball/scoreboard',
   },
 };
 
@@ -8592,7 +8627,7 @@ export default function App() {
                     } : undefined}
                     onClick={() => { haptic(8); setActiveSportsLeague(key as SportsLeague); }}
                   >
-                    {league.label.split(' ')[0]}
+                    {league.shortLabel || league.label}
                   </button>
                 ))}
               </div>
