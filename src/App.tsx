@@ -8599,7 +8599,7 @@ export default function App() {
           )}
 
           {/* MAPS WORKSPACE (SOVEREIGN GRID NAVIGATOR) */}
-          {activeTab === 'maps' && (
+          <div className={`w-full h-full min-h-0 ${activeTab === 'maps' ? 'flex flex-col' : 'hidden'}`}>
             <SovereignMapWorkspace 
               themeColor={themeColor} 
               portalDarkMode={portalDarkMode} 
@@ -8607,7 +8607,7 @@ export default function App() {
               toast={toast}
               haptic={haptic}
             />
-          )}
+          </div>
 
           {/* CODE WORKSPACE COMPILER */}
           {activeTab === 'code' && (

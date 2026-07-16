@@ -6,6 +6,11 @@ import {
   Cpu, Database, Radio, RefreshCw
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import {
+  createAccuracyCircle,
+  PortalDestination,
+  usePortalNavigation,
+} from "./usePortalNavigation";
 
 // Free, unlimited OpenStreetMap Engine (requires no API keys)
 
@@ -37,6 +42,36 @@ export default function SovereignMapWorkspace({
 }: SovereignMapWorkspaceProps) {
   const [mapMode, setMapMode] = useState<'offline' | 'online'>('offline');
   const accentColor = getThemeHex();
+
+  const mapIframeRef = useRef<HTMLIFrameElement | null>(null);
+
+  const gpsDestination: PortalDestination | null = activePoi
+    ? {
+        latitude: activePoi.lat,
+        longitude: activePoi.lng,
+        name: activePoi.title || "Selected destination",
+      }
+    : null;
+
+  const navigation = usePortalNavigation({
+    destination: gpsDestination,
+    voiceEnabled: true,
+    followLocation: true,
+  });
+
+  // Post real-time navigation updates to the Leaflet map iframe
+  useEffect(() => {
+    const iframe = mapIframeRef.current;
+    if (!iframe || !iframe.contentWindow) return;
+    
+    iframe.contentWindow.postMessage({
+      type: 'navigation-update',
+      position: navigation.position,
+      route: navigation.route,
+      followLocation: navigation.followLocation && navigation.isTracking,
+      isNavigating: navigation.isNavigating
+    }, '*');
+  }, [navigation.position, navigation.route, navigation.followLocation, navigation.isTracking, navigation.isNavigating]);
 
   // --- Offline Sovereign Grid State ---
   const [offlineNodes, setOfflineNodes] = useState<OfflineNode[]>(() => {
@@ -613,6 +648,61 @@ export default function SovereignMapWorkspace({
                   ))}
                 </div>
 
+                {activePoi && (
+                  <div className="p-3 bg-purple-500/5 border border-purple-500/20 rounded-xl space-y-3 text-left mt-4 animate-[fadeIn_0.3s_ease-out]">
+                    <span className="text-[10px] font-bold text-purple-400 flex items-center gap-1 uppercase tracking-wider">
+                      <MapPin className="w-3.5 h-3.5" />
+                      Active Destination Node
+                    </span>
+                    <div className="space-y-1">
+                      <h4 className="text-xs font-bold text-white leading-snug">{activePoi.title}</h4>
+                      <p className="text-[10px] text-slate-400 leading-normal">{activePoi.description}</p>
+                    </div>
+
+                    <div className="flex gap-2 pt-1.5">
+                      <button
+                        onClick={() => {
+                          haptic(10);
+                          if (navigation.isTracking) {
+                            navigation.stopTracking();
+                            toast("GPS sensor tracking paused.", "info");
+                          } else {
+                            navigation.startTracking();
+                            toast("GPS sensor tracking activated.", "success");
+                          }
+                        }}
+                        className={`flex-1 py-2 rounded-lg text-[10px] font-black uppercase tracking-wider border text-center transition-all cursor-pointer select-none ${
+                          navigation.isTracking 
+                            ? 'bg-purple-500/20 border-purple-400/40 text-purple-300' 
+                            : 'bg-slate-900 border-white/5 text-slate-400 hover:bg-slate-800 hover:text-white'
+                        }`}
+                      >
+                        {navigation.isTracking ? '📡 GPS ON' : '📡 GPS OFF'}
+                      </button>
+                      <button
+                        onClick={async () => {
+                          haptic(20);
+                          if (navigation.isNavigating) {
+                            navigation.stopNavigation();
+                            toast("Navigation stopped.", "info");
+                          } else {
+                            toast("Calculating GPS routing grid...", "info");
+                            await navigation.startNavigation();
+                          }
+                        }}
+                        disabled={navigation.isRouting}
+                        className={`flex-1 py-2 rounded-lg text-[10px] font-black uppercase tracking-wider text-white text-center cursor-pointer transition-all select-none ${
+                          navigation.isNavigating 
+                            ? 'bg-rose-600 hover:bg-rose-500 border border-rose-500/20 shadow-lg' 
+                            : 'bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 disabled:cursor-not-allowed shadow-lg'
+                        }`}
+                      >
+                        {navigation.isRouting ? 'Routing...' : navigation.isNavigating ? 'Stop Nav' : 'Start Nav'}
+                      </button>
+                    </div>
+                  </div>
+                )}
+
                 <div className="p-3 bg-purple-950/10 border border-purple-500/15 rounded-xl space-y-2 text-left mt-4">
                   <span className="text-[10px] font-bold text-purple-400 flex items-center gap-1">
                     <Shield className="w-3.5 h-3.5" />
@@ -1026,11 +1116,61 @@ export default function SovereignMapWorkspace({
             <div className="flex-1 flex flex-col relative h-full">
               <div className="flex-1 w-full h-full relative">
                 <iframe
+                  ref={mapIframeRef}
                   title="Sovereign Online Map"
-                  srcDoc={generateMapHTML(mapCenter.lat, mapCenter.lng, mapZoom, activePoi, POIS)}
+                  srcDoc={generateMapHTML(
+                    mapCenter.lat,
+                    mapCenter.lng,
+                    mapZoom,
+                    activePoi,
+                    POIS,
+                    navigation.position,
+                    navigation.route,
+                    navigation.followLocation && navigation.isTracking,
+                    navigation.isNavigating
+                  )}
                   className="w-full h-full border-0"
                   sandbox="allow-scripts allow-same-origin"
                 />
+
+                {/* DOWNSIDE DRIVING DIRECTIONS HUD OVERLAY */}
+                {navigation.isNavigating && (
+                  <div className="absolute top-4 left-4 right-4 bg-slate-900/90 border border-purple-500/25 rounded-2xl p-4 shadow-[0_15px_30px_rgba(0,0,0,0.5)] backdrop-blur text-left space-y-2 z-10 select-none animate-[slideDown_0.3s_ease]">
+                    <div className="flex justify-between items-start gap-4">
+                      <div className="space-y-0.5 min-w-0 flex-1">
+                        <span className="text-[9px] uppercase font-bold tracking-widest text-purple-400 block font-mono">
+                          🚘 Navigation Active (Online Only)
+                        </span>
+                        <h3 className="text-sm font-black text-white leading-snug">
+                          {navigation.currentInstruction}
+                        </h3>
+                      </div>
+                      <button
+                        onClick={() => { haptic(15); navigation.stopNavigation(); }}
+                        className="px-3 py-1.5 bg-rose-500/10 border border-rose-500/25 hover:bg-rose-500 text-rose-500 hover:text-white rounded-xl text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer select-none"
+                      >
+                        End Route
+                      </button>
+                    </div>
+                    
+                    <div className="flex gap-4 text-[10px] font-mono text-slate-400 border-t border-white/5 pt-2">
+                      <p><span className="text-slate-500">Distance:</span> <strong className="text-slate-200">{navigation.formattedDistance}</strong></p>
+                      <p><span className="text-slate-500">Time:</span> <strong className="text-slate-200">{navigation.formattedDuration}</strong></p>
+                      {navigation.offRoute && (
+                        <p className="text-amber-400 animate-pulse font-bold ml-auto flex items-center gap-1">
+                          ⚠️ Recalculating...
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* GPS Sensor Error Overlay */}
+                {navigation.gpsError && (
+                  <div className="absolute bottom-4 left-4 bg-rose-950/90 border border-rose-500/30 text-rose-200 rounded-xl p-3 max-w-sm text-left text-[10px] font-semibold backdrop-blur shadow-2xl z-10">
+                    {navigation.gpsError}
+                  </div>
+                )}
 
                 {/* Search query state details badge overlay */}
                 <div className="absolute top-4 right-4 bg-slate-900/95 border border-white/10 rounded-2xl p-3 shadow-xl text-left text-[10px] font-mono pointer-events-none space-y-1">
@@ -1048,7 +1188,17 @@ export default function SovereignMapWorkspace({
 }
 
 // Generates an interactive, dark-styled OpenStreetMap Leaflet page with glowing neon markers
-function generateMapHTML(lat: number, lng: number, zoom: number, activePoi: any, pois: any[]) {
+function generateMapHTML(
+  lat: number,
+  lng: number,
+  zoom: number,
+  activePoi: any,
+  pois: any[],
+  initialPosition: any,
+  initialRoute: any,
+  initialFollowLocation: boolean,
+  initialIsNavigating: boolean
+) {
   return `
 <!DOCTYPE html>
 <html>
@@ -1107,6 +1257,12 @@ function generateMapHTML(lat: number, lng: number, zoom: number, activePoi: any,
       border-radius: 50%;
       box-shadow: 0 0 12px #38bdf8, 0 0 24px #38bdf8;
       animation: pulse-marker 1.5s infinite;
+    }
+    .gps-marker-icon {
+      background: #8b5cf6;
+      border: 2.5px solid #ffffff;
+      border-radius: 50%;
+      box-shadow: 0 0 12px #8b5cf6, 0 0 24px #8b5cf6;
     }
     @keyframes pulse-marker {
       0% { transform: scale(1); opacity: 1; }
@@ -1175,6 +1331,102 @@ function generateMapHTML(lat: number, lng: number, zoom: number, activePoi: any,
         </div>
       \`).openPopup();
     }
+
+    // Real-time GPS and routing layer variables
+    let gpsMarker = null;
+    let accuracyCircle = null;
+    let routeLineOutline = null;
+    let routeLine = null;
+
+    function updateNavigationLayers(position, route, followLocation, isNavigating) {
+      // 1. Position update
+      if (position) {
+        const pos = [position.latitude, position.longitude];
+        if (!gpsMarker) {
+          gpsMarker = L.marker(pos, {
+            icon: L.divIcon({
+              className: 'gps-marker-icon',
+              iconSize: [14, 14],
+              iconAnchor: [7, 7]
+            })
+          }).addTo(map);
+        } else {
+          gpsMarker.setLatLng(pos);
+        }
+
+        if (accuracyCircle) {
+          map.removeLayer(accuracyCircle);
+        }
+        accuracyCircle = L.circle(pos, {
+          radius: position.accuracy,
+          color: '#8b5cf6',
+          fillColor: '#8b5cf6',
+          fillOpacity: 0.12,
+          weight: 1
+        }).addTo(map);
+
+        if (followLocation) {
+          map.setView(pos, isNavigating ? 16 : 14);
+        }
+      } else {
+        if (gpsMarker) {
+          map.removeLayer(gpsMarker);
+          gpsMarker = null;
+        }
+        if (accuracyCircle) {
+          map.removeLayer(accuracyCircle);
+          accuracyCircle = null;
+        }
+      }
+
+      // 2. Route update
+      if (route && route.coordinates && route.coordinates.length > 0) {
+        const latLngs = route.coordinates.map(c => [c[1], c[0]]);
+        if (!routeLineOutline) {
+          routeLineOutline = L.polyline(latLngs, {
+            color: '#24123f',
+            weight: 10,
+            opacity: 0.85
+          }).addTo(map);
+        } else {
+          routeLineOutline.setLatLngs(latLngs);
+        }
+
+        if (!routeLine) {
+          routeLine = L.polyline(latLngs, {
+            color: '#a855f7',
+            weight: 6,
+            opacity: 0.95
+          }).addTo(map);
+        } else {
+          routeLine.setLatLngs(latLngs);
+        }
+      } else {
+        if (routeLineOutline) {
+          map.removeLayer(routeLineOutline);
+          routeLineOutline = null;
+        }
+        if (routeLine) {
+          map.removeLayer(routeLine);
+          routeLine = null;
+        }
+      }
+    }
+
+    // Initialize with template data if present
+    const initPos = ${initialPosition ? JSON.stringify(initialPosition) : 'null'};
+    const initRoute = ${initialRoute ? JSON.stringify(initialRoute) : 'null'};
+    const initFollow = ${initialFollowLocation ? 'true' : 'false'};
+    const initNav = ${initialIsNavigating ? 'true' : 'false'};
+    updateNavigationLayers(initPos, initRoute, initFollow, initNav);
+
+    // Listen for parent messages
+    window.addEventListener('message', (e) => {
+      const { type, position, route, followLocation, isNavigating } = e.data || {};
+      if (type === 'navigation-update') {
+        updateNavigationLayers(position, route, followLocation, isNavigating);
+      }
+    });
   </script>
 </body>
 </html>
