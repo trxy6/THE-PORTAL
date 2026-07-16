@@ -419,7 +419,7 @@ export default function App() {
   }, []);
 
   // --- Secure Storage & Sub-tab States ---
-  const [settingsSubTab, setSettingsSubTab] = useState<'appearance' | 'spotify' | 'session' | 'onboarding' | 'system' | 'permissions'>('appearance');
+  const [settingsSubTab, setSettingsSubTab] = useState<'appearance' | 'theme' | 'spotify' | 'session' | 'onboarding' | 'system' | 'permissions'>('appearance');
   
   // --- Local & Sync Features state ---
   const [localExecution, setLocalExecution] = useState(() => store.get('sys_local_exec', true));
@@ -9008,6 +9008,12 @@ export default function App() {
                   🎭 Appearance & Visuals
                 </button>
                 <button 
+                  onClick={() => { haptic(5); setSettingsSubTab('theme'); }}
+                  className={`px-4 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${settingsSubTab === 'theme' ? 'bg-[#8b5cf6]/20 border border-[#8b5cf6]/40 text-[#8b5cf6]' : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white'}`}
+                >
+                  🎨 Themes & Styling
+                </button>
+                <button 
                   onClick={() => { haptic(5); setSettingsSubTab('system'); }}
                   className={`px-4 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${settingsSubTab === 'system' ? 'bg-cyan-500/20 border border-cyan-500/40 text-cyan-600 dark:text-cyan-400' : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white'}`}
                 >
@@ -9351,7 +9357,7 @@ export default function App() {
               </div>
               )}
 
-              {settingsSubTab === 'appearance' && (
+              {settingsSubTab === 'theme' && (
                 <div className="space-y-6 animate-[fadeIn_0.3s_ease-out]">
                   {/* 4. APPEARANCE & BACKGROUND PORTAL */}
                   <div className="glass-panel border border-purple-500/15 bg-purple-500/5 hover:border-purple-500/35 transition-all duration-300 rounded-2xl p-5 space-y-4 group">
@@ -9827,6 +9833,62 @@ export default function App() {
                     </div>
                   </div>
 
+                  {/* Aesthetic Sliders */}
+                  <div className="glass-panel border border-indigo-500/15 bg-indigo-500/5 rounded-xl p-4 space-y-3">
+                    <span className="text-[10px] uppercase font-bold text-indigo-600 dark:text-indigo-400 tracking-wider flex items-center gap-1.5">
+                      <Sparkles className="w-3.5 h-3.5" /> Mood-Responsive & Cyber Fine-Tuning
+                    </span>
+                    <div className="space-y-3 text-xs">
+                      <div className="flex justify-between items-center">
+                        <div>
+                          <p className="font-bold">Mood-Responsive UI</p>
+                          <p className="text-[9px] text-slate-400">Dynamic color palettes that adapt to user preferences and companion states.</p>
+                        </div>
+                        <button onClick={() => { haptic(5); setMoodResponsive(!moodResponsive); }} className={`w-8 h-4 rounded-full relative p-0.5 transition-colors ${moodResponsive ? 'bg-indigo-500' : 'bg-slate-300 dark:bg-slate-800'}`}>
+                          <div className={`w-3 h-3 rounded-full bg-white transition-transform ${moodResponsive ? 'translate-x-4' : 'translate-x-0'}`} />
+                        </button>
+                      </div>
+
+                      <div className="flex justify-between items-center border-t border-slate-100 dark:border-white/5 pt-2">
+                        <div>
+                          <p className="font-bold">Minimalist Cyber Aesthetic</p>
+                          <p className="text-[9px] text-slate-400">Bounding layouts with subtle glowing trim accents and Starfield visuals.</p>
+                        </div>
+                        <button onClick={() => { haptic(5); setCyberAesthetic(!cyberAesthetic); }} className={`w-8 h-4 rounded-full relative p-0.5 transition-colors ${cyberAesthetic ? 'bg-indigo-500' : 'bg-slate-300 dark:bg-slate-800'}`}>
+                          <div className={`w-3 h-3 rounded-full bg-white transition-transform ${cyberAesthetic ? 'translate-x-4' : 'translate-x-0'}`} />
+                        </button>
+                      </div>
+
+                      <div className="space-y-1 pt-1 border-t border-slate-100 dark:border-white/5">
+                        <div className="flex justify-between text-[10px] font-bold text-slate-500">
+                          <span>Glowing Trim Radius</span>
+                          <span className="font-mono">{glowTrim}px</span>
+                        </div>
+                        <input type="range" min="0" max="24" value={glowTrim} onChange={(e) => setGlowTrim(Number(e.target.value))} className="w-full h-1 accent-indigo-500 bg-slate-200 dark:bg-slate-800 appearance-none rounded" />
+                      </div>
+
+                      <div className="space-y-1">
+                        <div className="flex justify-between text-[10px] font-bold text-slate-500">
+                          <span>Component Corner Radius</span>
+                          <span className="font-mono">{borderRadiusSlider}px</span>
+                        </div>
+                        <input type="range" min="0" max="32" value={borderRadiusSlider} onChange={(e) => setBorderRadiusSlider(Number(e.target.value))} className="w-full h-1 accent-indigo-500 bg-slate-200 dark:bg-slate-800 appearance-none rounded" />
+                      </div>
+
+                      <div className="space-y-1">
+                        <div className="flex justify-between text-[10px] font-bold text-slate-500">
+                          <span>Nebula Opacity</span>
+                          <span className="font-mono">{nebulaOpacity}%</span>
+                        </div>
+                        <input type="range" min="0" max="100" value={nebulaOpacity} onChange={(e) => setNebulaOpacity(Number(e.target.value))} className="w-full h-1 accent-indigo-500 bg-slate-200 dark:bg-slate-800 appearance-none rounded" />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {settingsSubTab === 'appearance' && (
+                <div className="space-y-6 animate-[fadeIn_0.3s_ease-out]">
                   {/* 5. FEEDBACK */}
                   <div className="glass-panel border border-indigo-500/15 bg-indigo-500/5 hover:border-indigo-500/35 transition-all duration-300 rounded-2xl p-5 space-y-4 group">
                 <span className="text-[10px] uppercase font-bold text-indigo-600 tracking-wider flex items-center gap-1.5">
@@ -10085,58 +10147,6 @@ export default function App() {
                           <option value="es-ES-Female">🇪🇸 Elena (Spanish)</option>
                           <option value="ja-JP-Female">🇯🇵 Sakura (Japanese)</option>
                         </select>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Aesthetic Sliders */}
-                  <div className="glass-panel border border-indigo-500/15 bg-indigo-500/5 rounded-xl p-4 space-y-3">
-                    <span className="text-[10px] uppercase font-bold text-indigo-600 dark:text-indigo-400 tracking-wider flex items-center gap-1.5">
-                      <Sparkles className="w-3.5 h-3.5" /> Mood-Responsive & Cyber Fine-Tuning
-                    </span>
-                    <div className="space-y-3 text-xs">
-                      <div className="flex justify-between items-center">
-                        <div>
-                          <p className="font-bold">Mood-Responsive UI</p>
-                          <p className="text-[9px] text-slate-400">Dynamic color palettes that adapt to user preferences and companion states.</p>
-                        </div>
-                        <button onClick={() => { haptic(5); setMoodResponsive(!moodResponsive); }} className={`w-8 h-4 rounded-full relative p-0.5 transition-colors ${moodResponsive ? 'bg-indigo-500' : 'bg-slate-300 dark:bg-slate-800'}`}>
-                          <div className={`w-3 h-3 rounded-full bg-white transition-transform ${moodResponsive ? 'translate-x-4' : 'translate-x-0'}`} />
-                        </button>
-                      </div>
-
-                      <div className="flex justify-between items-center border-t border-slate-100 dark:border-white/5 pt-2">
-                        <div>
-                          <p className="font-bold">Minimalist Cyber Aesthetic</p>
-                          <p className="text-[9px] text-slate-400">Bounding layouts with subtle glowing trim accents and Starfield visuals.</p>
-                        </div>
-                        <button onClick={() => { haptic(5); setCyberAesthetic(!cyberAesthetic); }} className={`w-8 h-4 rounded-full relative p-0.5 transition-colors ${cyberAesthetic ? 'bg-indigo-500' : 'bg-slate-300 dark:bg-slate-800'}`}>
-                          <div className={`w-3 h-3 rounded-full bg-white transition-transform ${cyberAesthetic ? 'translate-x-4' : 'translate-x-0'}`} />
-                        </button>
-                      </div>
-
-                      <div className="space-y-1 pt-1 border-t border-slate-100 dark:border-white/5">
-                        <div className="flex justify-between text-[10px] font-bold text-slate-500">
-                          <span>Glowing Trim Radius</span>
-                          <span className="font-mono">{glowTrim}px</span>
-                        </div>
-                        <input type="range" min="0" max="24" value={glowTrim} onChange={(e) => setGlowTrim(Number(e.target.value))} className="w-full h-1 accent-indigo-500 bg-slate-200 dark:bg-slate-800 appearance-none rounded" />
-                      </div>
-
-                      <div className="space-y-1">
-                        <div className="flex justify-between text-[10px] font-bold text-slate-500">
-                          <span>Component Corner Radius</span>
-                          <span className="font-mono">{borderRadiusSlider}px</span>
-                        </div>
-                        <input type="range" min="0" max="32" value={borderRadiusSlider} onChange={(e) => setBorderRadiusSlider(Number(e.target.value))} className="w-full h-1 accent-indigo-500 bg-slate-200 dark:bg-slate-800 appearance-none rounded" />
-                      </div>
-
-                      <div className="space-y-1">
-                        <div className="flex justify-between text-[10px] font-bold text-slate-500">
-                          <span>Nebula Opacity</span>
-                          <span className="font-mono">{nebulaOpacity}%</span>
-                        </div>
-                        <input type="range" min="0" max="100" value={nebulaOpacity} onChange={(e) => setNebulaOpacity(Number(e.target.value))} className="w-full h-1 accent-indigo-500 bg-slate-200 dark:bg-slate-800 appearance-none rounded" />
                       </div>
                     </div>
                   </div>
