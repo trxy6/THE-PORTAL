@@ -1154,7 +1154,13 @@ export default function SovereignMapWorkspace({
           ) : (
             // --- SOVEREIGN ONLINE ENGINE (OpenStreetMap / Leaflet, 100% Free & Unlimited) ---
             <div className="flex-1 flex flex-col relative h-full">
-              <div className="flex-1 w-full h-full relative">
+              <div 
+                className="flex-1 w-full h-full relative overflow-hidden"
+                style={{
+                  perspective: mapMode === 'gps' ? '1200px' : 'none',
+                  perspectiveOrigin: '50% 50%',
+                }}
+              >
                 <iframe
                   ref={mapIframeRef}
                   title="Sovereign Online Map"
@@ -1169,7 +1175,13 @@ export default function SovereignMapWorkspace({
                     navigation.followLocation && navigation.isTracking,
                     navigation.isNavigating
                   )}
-                  className="w-full h-full border-0"
+                  className="w-full h-full border-0 transition-transform duration-500 ease-out"
+                  style={{
+                    transform: mapMode === 'gps' 
+                      ? 'rotateX(25deg) scale(1.6)' 
+                      : 'none',
+                    transformOrigin: 'center center',
+                  }}
                   sandbox="allow-scripts allow-same-origin"
                 />
 
@@ -1408,7 +1420,7 @@ function generateMapHTML(
         }).addTo(map);
 
         if (followLocation) {
-          map.setView(pos, isNavigating ? 16 : 14);
+          map.setView(pos, isNavigating ? 18 : 17);
         }
       } else {
         if (gpsMarker) {
