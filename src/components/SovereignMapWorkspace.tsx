@@ -662,6 +662,26 @@ export default function SovereignMapWorkspace({
                       <p className="text-[10px] text-slate-400 leading-normal">{activePoi.description}</p>
                     </div>
 
+                    {/* GPS Travel Mode Select */}
+                    <div className="space-y-1.5">
+                      <label className="text-[9px] font-bold text-slate-400 uppercase tracking-widest block font-mono">
+                        🧭 Routing Profile
+                      </label>
+                      <select
+                        value={navigation.routingProfile}
+                        onChange={(e) => {
+                          haptic(10);
+                          navigation.setRoutingProfile(e.target.value as any);
+                          toast(`Routing profile updated to ${e.target.value}`, 'info');
+                        }}
+                        className="w-full bg-slate-950/60 border border-white/5 rounded-lg px-2 py-1 text-[10px] text-zinc-200 font-bold focus:outline-none focus:border-purple-500/50 cursor-pointer"
+                      >
+                        <option value="driving">🚗 Driving (OSRM Car)</option>
+                        <option value="walking">🚶 Walking (OSRM Foot)</option>
+                        <option value="bicycling">🚲 Bicycling (OSRM Bicycle)</option>
+                      </select>
+                    </div>
+
                     <div className="flex gap-2 pt-1.5">
                       <button
                         onClick={() => {
@@ -1142,7 +1162,9 @@ export default function SovereignMapWorkspace({
                     <div className="flex justify-between items-start gap-4">
                       <div className="space-y-0.5 min-w-0 flex-1">
                         <span className="text-[9px] uppercase font-bold tracking-widest text-purple-400 block font-mono">
-                          🚘 Navigation Active (Online Only)
+                          {navigation.routingProfile === 'walking' ? '🚶 Walking Navigation' :
+                           navigation.routingProfile === 'bicycling' ? '🚲 Bicycling Navigation' :
+                           '🚘 Driving Navigation'} Active (Online Only)
                         </span>
                         <h3 className="text-sm font-black text-white leading-snug">
                           {navigation.currentInstruction}

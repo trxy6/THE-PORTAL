@@ -70,6 +70,7 @@ type UsePortalNavigationOptions = {
   voiceEnabled?: boolean;
   followLocation?: boolean;
   routingServer?: string;
+  defaultProfile?: 'driving' | 'walking' | 'bicycling';
   onLocationChange?: (
     position: PortalGpsPosition
   ) => void;
@@ -298,10 +299,14 @@ export function usePortalNavigation({
   followLocation = true,
   routingServer =
     "https://router.project-osrm.org",
+  defaultProfile = "driving",
   onLocationChange,
 }: UsePortalNavigationOptions) {
   const [position, setPosition] =
     useState<PortalGpsPosition | null>(null);
+
+  const [routingProfile, setRoutingProfile] =
+    useState<'driving' | 'walking' | 'bicycling'>(defaultProfile);
 
   const [route, setRoute] =
     useState<PortalRoute | null>(null);
@@ -405,8 +410,12 @@ export function usePortalNavigation({
           `${origin.longitude},${origin.latitude};` +
           `${target.longitude},${target.latitude}`;
 
+        const profilePath =
+          routingProfile === 'walking' ? 'foot' :
+          routingProfile === 'bicycling' ? 'bicycle' : 'driving';
+
         const url =
-          `${routingServer}/route/v1/driving/` +
+          `${routingServer}/route/v1/${profilePath}/` +
           `${coordinates}` +
           "?overview=full" +
           "&geometries=geojson" +
@@ -516,7 +525,7 @@ export function usePortalNavigation({
         setIsRouting(false);
       }
     },
-    [routingServer, speak]
+    [routingServer, speak, routingProfile]
   );
 
   const updateNavigation = useCallback(
@@ -871,5 +880,7 @@ export function usePortalNavigation({
     startNavigation,
     stopNavigation,
     speak,
+    routingProfile,
+    setRoutingProfile,
   };
 }
