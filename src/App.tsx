@@ -4586,16 +4586,15 @@ export default function App() {
                     Initialize Rift
                   </button>
                   <button type="button"
-                    onClick={() => { haptic(10); setLoginTab('display'); setAuthError(''); }}
-                    className="flex-1 py-2 rounded-lg cursor-pointer transition-all duration-300 font-black flex items-center justify-center gap-1 text-purple-200"
-                    style={loginTab === 'display' ? {
-                      background: 'linear-gradient(135deg,rgba(168,85,247,0.5),rgba(139,92,246,0.4))',
-                      color: '#ffffff',
-                      boxShadow: '0 0 15px rgba(168,85,247,0.4)',
-                      border: '1px solid rgba(168,85,247,0.6)',
-                    } : { color: 'rgba(167,139,250,0.45)', border: '1px solid transparent' }}>
-                    <Glasses className="w-3.5 h-3.5 text-purple-300" />
-                    Glasses Mode
+                    onClick={() => { haptic(10); setDisplayModeInitial('selection'); setShowDisplayMode(true); setLoginTab('display'); setAuthError(''); }}
+                    className="flex-1 py-2 rounded-lg cursor-pointer transition-all duration-300 font-black flex items-center justify-center gap-1.5 text-white shadow-lg animate-pulse"
+                    style={{
+                      background: 'linear-gradient(135deg, rgba(168,85,247,0.5), rgba(16,185,129,0.4))',
+                      border: '1px solid rgba(16,185,129,0.7)',
+                      boxShadow: '0 0 16px rgba(16,185,129,0.4)',
+                    }}>
+                    <Glasses className="w-4 h-4 text-emerald-300" />
+                    <span>👓 Glasses Mode</span>
                   </button>
                 </div>
 
