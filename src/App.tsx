@@ -4560,7 +4560,7 @@ export default function App() {
                 </div>
 
                 {/* Tab Switcher */}
-                <div className="flex w-full p-1 rounded-xl text-[10px] font-bold"
+                <div className="flex w-full p-1 rounded-xl text-[10px] font-bold gap-1"
                   style={{ background: 'rgba(139,92,246,0.08)', border: '1px solid rgba(139,92,246,0.15)' }}>
                   <button type="button"
                     onClick={() => { haptic(5); setLoginTab('login'); setAuthError(''); }}
@@ -4583,6 +4583,17 @@ export default function App() {
                       border: '1px solid rgba(139,92,246,0.4)',
                     } : { color: 'rgba(167,139,250,0.45)', border: '1px solid transparent' }}>
                     Initialize Rift
+                  </button>
+                  <button type="button"
+                    onClick={() => { haptic(10); setShowDisplayMode(true); }}
+                    className="flex-1 py-2 rounded-lg cursor-pointer transition-all duration-300 font-black flex items-center justify-center gap-1 text-purple-200"
+                    style={{
+                      background: 'linear-gradient(135deg,rgba(168,85,247,0.35),rgba(139,92,246,0.25))',
+                      border: '1px solid rgba(168,85,247,0.5)',
+                      boxShadow: '0 0 10px rgba(168,85,247,0.3)',
+                    }}>
+                    <Glasses className="w-3.5 h-3.5 text-purple-300" />
+                    Glasses Mode
                   </button>
                 </div>
 
@@ -4638,6 +4649,15 @@ export default function App() {
                       onMouseLeave={e => { (e.target as HTMLButtonElement).style.boxShadow = '0 0 24px rgba(139,92,246,0.45), 0 4px 12px rgba(0,0,0,0.3)'; }}>
                       <Lock className="w-3.5 h-3.5" />
                       Open The Rift
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => { haptic(10); setShowDisplayMode(true); }}
+                      className="w-full py-2.5 rounded-xl font-black text-xs uppercase tracking-wider text-purple-200 bg-purple-950/60 border border-purple-500/60 hover:bg-purple-900/80 transition-all cursor-pointer flex items-center justify-center gap-2 shadow-[0_0_16px_rgba(139,92,246,0.4)]"
+                    >
+                      <Glasses className="w-4 h-4 text-purple-400 animate-pulse" />
+                      <span>👓 Using Glasses? Click to Pair or Test</span>
                     </button>
 
                     {/* Divider */}

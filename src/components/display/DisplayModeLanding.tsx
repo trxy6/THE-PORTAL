@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { Smartphone, Glasses, CheckCircle2, ShieldCheck, Zap, ArrowRight, X, KeyRound, Radio } from 'lucide-react';
+import { Smartphone, Glasses, CheckCircle2, ShieldCheck, Zap, ArrowRight, X, KeyRound, Radio, Monitor, Hand } from 'lucide-react';
 import { displaySync, DisplayPairingState } from '../../lib/displaySync';
 import PortalDisplayHUD from './PortalDisplayHUD';
 
@@ -13,7 +13,7 @@ interface DisplayModeLandingProps {
 }
 
 export default function DisplayModeLanding({ onClose }: DisplayModeLandingProps) {
-  const [mode, setMode] = useState<'selection' | 'phone' | 'glasses'>('selection');
+  const [mode, setMode] = useState<'selection' | 'phone' | 'glasses_choice' | 'glasses_real' | 'glasses_sim'>('selection');
   const [selectedIndex, setSelectedIndex] = useState<number>(0);
   const [pairingState, setPairingState] = useState<DisplayPairingState>(displaySync.getState());
   const [pinInput, setPinInput] = useState<string>('');
@@ -29,18 +29,28 @@ export default function DisplayModeLanding({ onClose }: DisplayModeLandingProps)
 
   // Neural Band Gesture Listener for Selection Screen
   useEffect(() => {
-    if (mode !== 'selection') return;
+    if (mode !== 'selection' && mode !== 'glasses_choice') return;
 
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'ArrowUp' || e.key === 'ArrowLeft') {
-        setSelectedIndex(0);
-      } else if (e.key === 'ArrowDown' || e.key === 'ArrowRight') {
-        setSelectedIndex(1);
-      } else if (e.key === 'Enter' || e.key === ' ') {
-        if (selectedIndex === 0) {
-          setMode('phone');
-        } else {
-          setMode('glasses');
+      if (mode === 'selection') {
+        if (e.key === 'ArrowUp' || e.key === 'ArrowLeft') {
+          setSelectedIndex(0);
+        } else if (e.key === 'ArrowDown' || e.key === 'ArrowRight') {
+          setSelectedIndex(1);
+        } else if (e.key === 'Enter' || e.key === ' ') {
+          if (selectedIndex === 0) setMode('phone');
+          else setMode('glasses_choice');
+        }
+      } else if (mode === 'glasses_choice') {
+        if (e.key === 'ArrowUp' || e.key === 'ArrowLeft') {
+          setSelectedIndex(0);
+        } else if (e.key === 'ArrowDown' || e.key === 'ArrowRight') {
+          setSelectedIndex(1);
+        } else if (e.key === 'Enter' || e.key === ' ') {
+          if (selectedIndex === 0) setMode('glasses_real');
+          else setMode('glasses_sim');
+        } else if (e.key === 'Escape' || e.key === 'Backspace') {
+          setMode('selection');
         }
       }
     };
@@ -61,8 +71,12 @@ export default function DisplayModeLanding({ onClose }: DisplayModeLandingProps)
     }
   };
 
-  if (mode === 'glasses' || (pairingState.isPaired && mode === 'glasses')) {
-    return <PortalDisplayHUD onExit={() => setMode('selection')} />;
+  if (mode === 'glasses_real') {
+    return <PortalDisplayHUD isSimulator={false} onExit={() => setMode('selection')} />;
+  }
+
+  if (mode === 'glasses_sim') {
+    return <PortalDisplayHUD isSimulator={true} onExit={() => setMode('selection')} />;
   }
 
   return (
@@ -94,7 +108,7 @@ export default function DisplayModeLanding({ onClose }: DisplayModeLandingProps)
         )}
       </div>
 
-      {/* Mode Selection */}
+      {/* Primary Mode Selection */}
       {mode === 'selection' && (
         <div className="max-w-2xl mx-auto w-full my-auto space-y-6 text-center py-6">
           <div className="space-y-2">
@@ -141,7 +155,7 @@ export default function DisplayModeLanding({ onClose }: DisplayModeLandingProps)
 
             {/* Option 2: Glasses */}
             <div
-              onClick={() => setMode('glasses')}
+              onClick={() => setMode('glasses_choice')}
               onMouseEnter={() => setSelectedIndex(1)}
               className={`p-6 rounded-2xl bg-black border transition-all cursor-pointer text-left space-y-4 relative overflow-hidden group ${
                 selectedIndex === 1
@@ -168,7 +182,99 @@ export default function DisplayModeLanding({ onClose }: DisplayModeLandingProps)
                 </p>
               </div>
               <div className="pt-2 border-t border-white/10 flex items-center justify-between text-xs text-purple-300 font-bold">
-                <span>Launch Glasses HUD</span>
+                <span>Glasses Options</span>
+                <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Secondary Glasses Choice: Real Glasses vs Desktop Simulator */}
+      {mode === 'glasses_choice' && (
+        <div className="max-w-2xl mx-auto w-full my-auto space-y-6 text-center py-6">
+          <div className="flex items-center justify-between">
+            <button
+              onClick={() => setMode('selection')}
+              className="text-xs font-bold text-slate-400 hover:text-white transition cursor-pointer flex items-center gap-1"
+            >
+              ← Back to main options
+            </button>
+            <span className="text-[10px] text-purple-300 font-mono">Select Environment</span>
+          </div>
+
+          <div className="space-y-2">
+            <h1 className="text-2xl font-black text-white tracking-tight uppercase">How are you testing?</h1>
+            <p className="text-xs text-slate-400 leading-relaxed max-w-md mx-auto">
+              Choose whether you are wearing actual smart glasses or testing the live HUD experience on your computer screen.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+            {/* Option A: Real Glasses */}
+            <div
+              onClick={() => setMode('glasses_real')}
+              onMouseEnter={() => setSelectedIndex(0)}
+              className={`p-6 rounded-2xl bg-black border transition-all cursor-pointer text-left space-y-4 relative overflow-hidden group ${
+                selectedIndex === 0
+                  ? 'border-[#8b5cf6] shadow-[0_0_25px_rgba(139,92,246,0.45)] ring-2 ring-[#8b5cf6]/50 translate-y-[-2px]'
+                  : 'border-slate-800 hover:border-slate-600'
+              }`}
+            >
+              <div className="flex items-center justify-between">
+                <div className="w-12 h-12 rounded-xl bg-purple-500/10 border border-purple-500/30 flex items-center justify-center text-purple-400">
+                  <Glasses className="w-6 h-6" />
+                </div>
+                {selectedIndex === 0 && (
+                  <span className="text-[10px] bg-[#8b5cf6] text-white px-2 py-0.5 rounded-full font-bold uppercase tracking-wider animate-pulse">
+                    Pinch / Enter
+                  </span>
+                )}
+              </div>
+              <div>
+                <h3 className="text-base font-black text-white flex items-center gap-2">
+                  🕶️ I am actually using Glasses
+                </h3>
+                <p className="text-xs text-slate-400 mt-1 leading-relaxed">
+                  Full-screen optical HUD. Black `#000000` background for transparent optics, white text & purple active outline.
+                </p>
+              </div>
+              <div className="pt-2 border-t border-white/10 flex items-center justify-between text-xs text-purple-300 font-bold">
+                <span>Launch Full Optical HUD</span>
+                <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+              </div>
+            </div>
+
+            {/* Option B: Desktop Simulator */}
+            <div
+              onClick={() => setMode('glasses_sim')}
+              onMouseEnter={() => setSelectedIndex(1)}
+              className={`p-6 rounded-2xl bg-black border transition-all cursor-pointer text-left space-y-4 relative overflow-hidden group ${
+                selectedIndex === 1
+                  ? 'border-[#8b5cf6] shadow-[0_0_25px_rgba(139,92,246,0.45)] ring-2 ring-[#8b5cf6]/50 translate-y-[-2px]'
+                  : 'border-slate-800 hover:border-slate-600'
+              }`}
+            >
+              <div className="flex items-center justify-between">
+                <div className="w-12 h-12 rounded-xl bg-purple-500/10 border border-purple-500/30 flex items-center justify-center text-purple-400">
+                  <Monitor className="w-6 h-6" />
+                </div>
+                {selectedIndex === 1 && (
+                  <span className="text-[10px] bg-[#8b5cf6] text-white px-2 py-0.5 rounded-full font-bold uppercase tracking-wider animate-pulse">
+                    Pinch / Enter
+                  </span>
+                )}
+              </div>
+              <div>
+                <h3 className="text-base font-black text-white flex items-center gap-2">
+                  🖥️ I am testing on my Computer
+                </h3>
+                <p className="text-xs text-slate-400 mt-1 leading-relaxed">
+                  Framed 600x600 Ray-Ban Display viewport with on-screen Neural Band controller dock for easy testing!
+                </p>
+              </div>
+              <div className="pt-2 border-t border-white/10 flex items-center justify-between text-xs text-purple-300 font-bold">
+                <span>Launch Desktop Simulator</span>
                 <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
               </div>
             </div>
