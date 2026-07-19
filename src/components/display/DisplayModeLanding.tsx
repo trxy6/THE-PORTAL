@@ -10,12 +10,19 @@ import PortalDisplayHUD from './PortalDisplayHUD';
 
 interface DisplayModeLandingProps {
   onClose?: () => void;
+  initialMode?: 'selection' | 'phone' | 'glasses_choice' | 'glasses_real' | 'glasses_sim';
 }
 
-export default function DisplayModeLanding({ onClose }: DisplayModeLandingProps) {
-  const [mode, setMode] = useState<'selection' | 'phone' | 'glasses_choice' | 'glasses_real' | 'glasses_sim'>('selection');
+export default function DisplayModeLanding({ onClose, initialMode = 'selection' }: DisplayModeLandingProps) {
+  const [mode, setMode] = useState<'selection' | 'phone' | 'glasses_choice' | 'glasses_real' | 'glasses_sim'>(initialMode);
   const [selectedIndex, setSelectedIndex] = useState<number>(0);
   const [pairingState, setPairingState] = useState<DisplayPairingState>(displaySync.getState());
+
+  useEffect(() => {
+    if (initialMode) {
+      setMode(initialMode);
+    }
+  }, [initialMode]);
   const [pinInput, setPinInput] = useState<string>('');
   const [pairError, setPairError] = useState<string>('');
   const [pairSuccess, setPairSuccess] = useState<boolean>(false);

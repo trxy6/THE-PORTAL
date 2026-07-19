@@ -9,7 +9,7 @@ import {
   Battery, AlertCircle, RefreshCw, Send, CheckCircle2, X, Fingerprint, Info,
   PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen, Dices, Trophy, Trash, CalendarRange, ChefHat,
   ArrowLeft, ArrowRight, Bot, Lock, Volume2, VolumeX, Link, Copy, Eye, Music, ExternalLink, Bookmark, Award, Mic,
-  Map as MapIcon, Glasses
+  Map as MapIcon, Glasses, Monitor, Smartphone
 } from 'lucide-react';
 import { AudioPlayer, TRACKS } from './components/AudioPlayer';
 import { NeonDriftGame } from './components/NeonDriftGame';
@@ -601,7 +601,7 @@ export default function App() {
   // --- User Authentication & Local Storage Scoped States ---
   const [currentUser, setCurrentUser] = useState<string | null>(() => localStorage.getItem('portal_current_user') || null);
   const [showStartScreen, setShowStartScreen] = useState(() => !localStorage.getItem('portal_current_user'));
-  const [loginTab, setLoginTab] = useState<'login' | 'signup'>('login');
+  const [loginTab, setLoginTab] = useState<'login' | 'signup' | 'display'>('login');
   const [loginUser, setLoginUser] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
   const [signupUser, setSignupUser] = useState('');
@@ -837,6 +837,7 @@ export default function App() {
   // --- Theme Mode (Dark Purple / White) ---
   const [portalDarkMode, setPortalDarkMode] = useState<boolean>(() => localStorage.getItem('portal_dark_mode') === 'true');
   const [showDisplayMode, setShowDisplayMode] = useState<boolean>(false);
+  const [displayModeInitial, setDisplayModeInitial] = useState<'selection' | 'phone' | 'glasses_choice' | 'glasses_real' | 'glasses_sim'>('selection');
   const togglePortalDarkMode = () => {
     setPortalDarkMode(prev => {
       const next = !prev;
@@ -4585,13 +4586,14 @@ export default function App() {
                     Initialize Rift
                   </button>
                   <button type="button"
-                    onClick={() => { haptic(10); setShowDisplayMode(true); }}
+                    onClick={() => { haptic(10); setLoginTab('display'); setAuthError(''); }}
                     className="flex-1 py-2 rounded-lg cursor-pointer transition-all duration-300 font-black flex items-center justify-center gap-1 text-purple-200"
-                    style={{
-                      background: 'linear-gradient(135deg,rgba(168,85,247,0.35),rgba(139,92,246,0.25))',
-                      border: '1px solid rgba(168,85,247,0.5)',
-                      boxShadow: '0 0 10px rgba(168,85,247,0.3)',
-                    }}>
+                    style={loginTab === 'display' ? {
+                      background: 'linear-gradient(135deg,rgba(168,85,247,0.5),rgba(139,92,246,0.4))',
+                      color: '#ffffff',
+                      boxShadow: '0 0 15px rgba(168,85,247,0.4)',
+                      border: '1px solid rgba(168,85,247,0.6)',
+                    } : { color: 'rgba(167,139,250,0.45)', border: '1px solid transparent' }}>
                     <Glasses className="w-3.5 h-3.5 text-purple-300" />
                     Glasses Mode
                   </button>
@@ -4651,14 +4653,47 @@ export default function App() {
                       Open The Rift
                     </button>
 
-                    <button
-                      type="button"
-                      onClick={() => { haptic(10); setShowDisplayMode(true); }}
-                      className="w-full py-2.5 rounded-xl font-black text-xs uppercase tracking-wider text-purple-200 bg-purple-950/60 border border-purple-500/60 hover:bg-purple-900/80 transition-all cursor-pointer flex items-center justify-center gap-2 shadow-[0_0_16px_rgba(139,92,246,0.4)]"
-                    >
-                      <Glasses className="w-4 h-4 text-purple-400 animate-pulse" />
-                      <span>👓 Using Glasses? Click to Pair or Test</span>
-                    </button>
+                    {/* Dedicated Glasses Mode Section directly under Open The Rift */}
+                    <div className="p-3.5 rounded-2xl border border-purple-500/50 bg-purple-950/40 space-y-3 shadow-[0_0_20px_rgba(139,92,246,0.25)]">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] font-black uppercase tracking-wider text-purple-200 flex items-center gap-1.5">
+                          <Glasses className="w-4 h-4 text-purple-400" />
+                          👓 Ray-Ban Display Smart Glasses
+                        </span>
+                        <span className="text-[9px] font-mono text-purple-300 bg-purple-900/60 px-2 py-0.5 rounded border border-purple-500/30 font-bold">
+                          Neural Band
+                        </span>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        <button
+                          type="button"
+                          onClick={() => { haptic(10); setDisplayModeInitial('glasses_real'); setShowDisplayMode(true); }}
+                          className="py-2.5 px-3 rounded-xl text-[11px] font-black uppercase tracking-wider text-black bg-[#10b981] hover:bg-[#34d399] transition-all cursor-pointer flex items-center justify-center gap-1.5 shadow-[0_0_15px_rgba(16,185,129,0.4)] active:scale-95 animate-pulse"
+                        >
+                          <Glasses className="w-4 h-4 text-black" />
+                          <span>🕶️ Using Glasses</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => { haptic(10); setDisplayModeInitial('glasses_sim'); setShowDisplayMode(true); }}
+                          className="py-2.5 px-3 rounded-xl text-[11px] font-black uppercase tracking-wider text-purple-100 bg-purple-900/60 hover:bg-purple-800/80 border border-purple-500/50 transition-all cursor-pointer flex items-center justify-center gap-1.5 shadow-[0_0_15px_rgba(139,92,246,0.3)] active:scale-95"
+                        >
+                          <Monitor className="w-4 h-4 text-purple-300" />
+                          <span>🖥️ Test on Computer</span>
+                        </button>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => { haptic(10); setDisplayModeInitial('phone'); setShowDisplayMode(true); }}
+                        className="w-full py-2 px-3 rounded-xl text-[10px] font-bold uppercase tracking-wider text-emerald-300 bg-slate-900/80 hover:bg-slate-800 border border-emerald-500/40 transition cursor-pointer flex items-center justify-center gap-1.5"
+                      >
+                        <Smartphone className="w-3.5 h-3.5 text-emerald-400" />
+                        <span>📱 Phone Sign In & Glasses Pairing PIN</span>
+                      </button>
+                    </div>
 
                     {/* Divider */}
                     <div className="flex items-center gap-3">
@@ -4698,18 +4733,62 @@ export default function App() {
                         >
                           ⚡ Or Enter as Guest Mode (Bypass Auth)
                         </button>
-
-                        <button
-                          type="button"
-                          onClick={() => setShowDisplayMode(true)}
-                          className="text-[10px] font-bold text-purple-300 hover:text-white bg-purple-900/40 border border-purple-500/40 px-3 py-1.5 rounded-lg transition cursor-pointer tracking-wider flex items-center gap-1.5 shadow-[0_0_12px_rgba(139,92,246,0.3)]"
-                        >
-                          <Glasses className="w-3.5 h-3.5 text-purple-400" />
-                          👓 Select Device Mode (Phone or Display Glasses)
-                        </button>
                       </div>
                     </div>
                   </form>
+                ) : loginTab === 'display' ? (
+                  <div className="space-y-4 py-2">
+                    <div className="p-4 rounded-2xl bg-purple-950/40 border border-purple-500/40 space-y-2 text-center shadow-[0_0_20px_rgba(139,92,246,0.3)]">
+                      <div className="w-12 h-12 rounded-2xl bg-purple-900/50 border border-purple-500/60 flex items-center justify-center text-purple-300 mx-auto shadow-[0_0_20px_rgba(139,92,246,0.4)]">
+                        <Glasses className="w-7 h-7 text-purple-300" />
+                      </div>
+                      <div>
+                        <h3 className="text-sm font-black text-white uppercase tracking-wider">Ray-Ban Display & Neural Band</h3>
+                        <p className="text-[11px] text-purple-200/80 mt-1 leading-relaxed">
+                          Select your mode. Pure black (#000000) optical HUD, white text & purple active outline.
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="space-y-2.5">
+                      <button
+                        type="button"
+                        onClick={() => { haptic(10); setDisplayModeInitial('glasses_real'); setShowDisplayMode(true); }}
+                        className="w-full py-3 px-4 rounded-xl text-xs font-black uppercase tracking-wider text-black bg-[#10b981] hover:bg-[#34d399] transition-all cursor-pointer flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(16,185,129,0.5)] active:scale-95 animate-pulse"
+                      >
+                        <Glasses className="w-4.5 h-4.5 text-black" />
+                        <span>🕶️ I AM ACTUALLY USING GLASSES</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => { haptic(10); setDisplayModeInitial('glasses_sim'); setShowDisplayMode(true); }}
+                        className="w-full py-3 px-4 rounded-xl text-xs font-black uppercase tracking-wider text-purple-100 bg-purple-900/60 hover:bg-purple-800/80 border border-purple-500/60 transition-all cursor-pointer flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(139,92,246,0.35)] active:scale-95"
+                      >
+                        <Monitor className="w-4.5 h-4.5 text-purple-300" />
+                        <span>🖥️ TEST ON COMPUTER (DESKTOP SIMULATOR)</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => { haptic(10); setDisplayModeInitial('phone'); setShowDisplayMode(true); }}
+                        className="w-full py-2.5 px-4 rounded-xl text-xs font-bold uppercase tracking-wider text-emerald-300 bg-slate-900 hover:bg-slate-800 border border-emerald-500/40 transition-all cursor-pointer flex items-center justify-center gap-2"
+                      >
+                        <Smartphone className="w-4 h-4 text-emerald-400" />
+                        <span>📱 PHONE PRE-AUTH & GLASSES PAIRING PIN</span>
+                      </button>
+                    </div>
+
+                    <div className="text-center pt-2">
+                      <button
+                        type="button"
+                        onClick={handleGuestMode}
+                        className="text-[10px] font-bold text-purple-400 hover:text-purple-300 hover:underline cursor-pointer tracking-wider"
+                      >
+                        ⚡ Or Enter as Guest Mode (Bypass Auth)
+                      </button>
+                    </div>
+                  </div>
                 ) : (
                   <form onSubmit={handleSignUpSubmit} className="space-y-4">
                     <div className="space-y-1.5">
@@ -11446,7 +11525,7 @@ export default function App() {
         </div>
       )}
       {showDisplayMode && (
-        <DisplayModeLanding onClose={() => setShowDisplayMode(false)} />
+        <DisplayModeLanding onClose={() => setShowDisplayMode(false)} initialMode={displayModeInitial} />
       )}
 
     </div>
