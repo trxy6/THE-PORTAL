@@ -4543,6 +4543,20 @@ export default function App() {
                     style={{ color: 'rgba(167,139,250,0.6)' }}>
                     Traveler Authentication Rift
                   </p>
+
+                  {/* Device Mode Select Banner */}
+                  <button
+                    type="button"
+                    onClick={() => { haptic(10); setShowDisplayMode(true); }}
+                    className="w-full mt-2 py-2 px-3 rounded-xl text-xs font-black uppercase tracking-wider text-purple-200 border transition-all cursor-pointer flex items-center justify-center gap-2 shadow-[0_0_18px_rgba(139,92,246,0.35)] animate-pulse"
+                    style={{
+                      background: 'linear-gradient(135deg, rgba(139,92,246,0.25), rgba(168,85,247,0.15))',
+                      borderColor: 'rgba(139,92,246,0.5)',
+                    }}
+                  >
+                    <Glasses className="w-4 h-4 text-purple-400" />
+                    <span>Select Device Mode: 📱 Phone or 👓 Display Glasses</span>
+                  </button>
                 </div>
 
                 {/* Tab Switcher */}
