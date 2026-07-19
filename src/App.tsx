@@ -9,7 +9,7 @@ import {
   Battery, AlertCircle, RefreshCw, Send, CheckCircle2, X, Fingerprint, Info,
   PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen, Dices, Trophy, Trash, CalendarRange, ChefHat,
   ArrowLeft, ArrowRight, Bot, Lock, Volume2, VolumeX, Link, Copy, Eye, Music, ExternalLink, Bookmark, Award, Mic,
-  Map as MapIcon
+  Map as MapIcon, Glasses
 } from 'lucide-react';
 import { AudioPlayer, TRACKS } from './components/AudioPlayer';
 import { NeonDriftGame } from './components/NeonDriftGame';
@@ -26,6 +26,7 @@ import PecosOnboarding from './components/PecosOnboarding';
 import PecosProfileEditor from './components/PecosProfileEditor';
 import WorkspaceSyncCenter from './components/WorkspaceSyncCenter';
 import AccessMatrix from './components/AccessMatrix';
+import DisplayModeLanding from './components/display/DisplayModeLanding';
 
 const SPORTS_LEAGUES = {
   mlb: {
@@ -835,6 +836,7 @@ export default function App() {
 
   // --- Theme Mode (Dark Purple / White) ---
   const [portalDarkMode, setPortalDarkMode] = useState<boolean>(() => localStorage.getItem('portal_dark_mode') === 'true');
+  const [showDisplayMode, setShowDisplayMode] = useState<boolean>(false);
   const togglePortalDarkMode = () => {
     setPortalDarkMode(prev => {
       const next = !prev;
@@ -4654,13 +4656,24 @@ export default function App() {
                     </button>
 
                     <div className="text-center">
-                      <button
-                        type="button"
-                        onClick={handleGuestMode}
-                        className="text-[10px] font-bold text-purple-400 hover:text-purple-300 hover:underline cursor-pointer tracking-wider"
-                      >
-                        ⚡ Or Enter as Guest Mode (Bypass Auth)
-                      </button>
+                      <div className="flex flex-col items-center gap-1.5 pt-1">
+                        <button
+                          type="button"
+                          onClick={handleGuestMode}
+                          className="text-[10px] font-bold text-purple-400 hover:text-purple-300 hover:underline cursor-pointer tracking-wider"
+                        >
+                          ⚡ Or Enter as Guest Mode (Bypass Auth)
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => setShowDisplayMode(true)}
+                          className="text-[10px] font-bold text-purple-300 hover:text-white bg-purple-900/40 border border-purple-500/40 px-3 py-1.5 rounded-lg transition cursor-pointer tracking-wider flex items-center gap-1.5 shadow-[0_0_12px_rgba(139,92,246,0.3)]"
+                        >
+                          <Glasses className="w-3.5 h-3.5 text-purple-400" />
+                          👓 Select Device Mode (Phone or Display Glasses)
+                        </button>
+                      </div>
                     </div>
                   </form>
                 ) : (
@@ -9043,6 +9056,13 @@ export default function App() {
                 >
                   🛡️ Access & Permissions
                 </button>
+                <button 
+                  onClick={() => { haptic(10); setShowDisplayMode(true); }}
+                  className="px-4 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer whitespace-nowrap bg-purple-600/30 border border-purple-500/50 text-purple-300 hover:bg-purple-600/50 shadow-[0_0_12px_rgba(139,92,246,0.3)] flex items-center gap-1.5"
+                >
+                  <Glasses className="w-3.5 h-3.5 text-purple-400" />
+                  👓 Meta Display Mode
+                </button>
               </div>
 
               {settingsSubTab === 'session' && (
@@ -11390,6 +11410,9 @@ export default function App() {
             </div>
           </div>
         </div>
+      )}
+      {showDisplayMode && (
+        <DisplayModeLanding onClose={() => setShowDisplayMode(false)} />
       )}
 
     </div>
