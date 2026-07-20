@@ -4598,68 +4598,62 @@ export default function App() {
                   </button>
                 </div>
 
-                {/* Error */}
-                {authError && (
-                  <div className="text-[9px] font-bold text-center px-3 py-2 rounded-xl"
-                    style={{ color: '#fca5a5', background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)' }}>
-                    {authError}
-                  </div>
-                )}
-
-                {loginTab === 'login' ? (
-                  <form onSubmit={handleLoginSubmit} className="space-y-4">
-                    <div className="space-y-1.5">
-                      <label className="text-[9px] uppercase font-bold tracking-widest block"
-                        style={{ color: 'rgba(167,139,250,0.7)' }}>Traveler ID</label>
-                      <input type="text" value={loginUser}
-                        onChange={e => setLoginUser(e.target.value)}
-                        placeholder="e.g. trxy6"
-                        className="w-full px-4 py-2.5 rounded-xl text-xs outline-none transition-all duration-200"
+                 {loginTab === 'login' ? (
+                  <div className="space-y-4">
+                    <form onSubmit={(e) => { e.preventDefault(); handleLoginSubmit(e); }} className="space-y-4">
+                      <div className="space-y-1.5">
+                        <label className="text-[9px] uppercase font-bold tracking-widest block"
+                          style={{ color: 'rgba(167,139,250,0.7)' }}>Traveler ID</label>
+                        <input type="text" value={loginUser}
+                          onChange={e => setLoginUser(e.target.value)}
+                          placeholder="e.g. trxy6"
+                          className="w-full px-4 py-2.5 rounded-xl text-xs outline-none transition-all duration-200"
+                          style={{
+                            background: 'rgba(139,92,246,0.06)',
+                            border: '1px solid rgba(139,92,246,0.25)',
+                            color: '#e2d9f3',
+                          }}
+                          onFocus={e => { e.target.style.border = '1px solid rgba(168,85,247,0.7)'; e.target.style.boxShadow = '0 0 0 3px rgba(139,92,246,0.12)'; }}
+                          onBlur={e => { e.target.style.border = '1px solid rgba(139,92,246,0.25)'; e.target.style.boxShadow = 'none'; }}
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="text-[9px] uppercase font-bold tracking-widest block"
+                          style={{ color: 'rgba(167,139,250,0.7)' }}>Password</label>
+                        <input type="password" value={loginPassword}
+                          onChange={e => setLoginPassword(e.target.value)}
+                          placeholder="Your password"
+                          className="w-full px-4 py-2.5 rounded-xl text-xs outline-none transition-all duration-200"
+                          style={{
+                            background: 'rgba(139,92,246,0.06)',
+                            border: '1px solid rgba(139,92,246,0.25)',
+                            color: '#e2d9f3',
+                          }}
+                          onFocus={e => { e.target.style.border = '1px solid rgba(168,85,247,0.7)'; e.target.style.boxShadow = '0 0 0 3px rgba(139,92,246,0.12)'; }}
+                          onBlur={e => { e.target.style.border = '1px solid rgba(139,92,246,0.25)'; e.target.style.boxShadow = 'none'; }}
+                        />
+                      </div>
+                      <button type="submit"
+                        className="w-full py-3 rounded-xl font-bold text-xs tracking-[0.2em] uppercase text-white cursor-pointer transition-all duration-200 active:scale-95 flex items-center justify-center gap-2"
                         style={{
-                          background: 'rgba(139,92,246,0.06)',
-                          border: '1px solid rgba(139,92,246,0.25)',
-                          color: '#e2d9f3',
+                          background: 'var(--theme-btn-gradient)',
+                          boxShadow: '0 0 24px rgba(139,92,246,0.45), 0 4px 12px rgba(0,0,0,0.3)',
                         }}
-                        onFocus={e => { e.target.style.border = '1px solid rgba(168,85,247,0.7)'; e.target.style.boxShadow = '0 0 0 3px rgba(139,92,246,0.12)'; }}
-                        onBlur={e => { e.target.style.border = '1px solid rgba(139,92,246,0.25)'; e.target.style.boxShadow = 'none'; }}
-                      />
-                    </div>
-                    <div className="space-y-1.5">
-                      <label className="text-[9px] uppercase font-bold tracking-widest block"
-                        style={{ color: 'rgba(167,139,250,0.7)' }}>Password</label>
-                      <input type="password" value={loginPassword}
-                        onChange={e => setLoginPassword(e.target.value)}
-                        placeholder="Your password"
-                        className="w-full px-4 py-2.5 rounded-xl text-xs outline-none transition-all duration-200"
-                        style={{
-                          background: 'rgba(139,92,246,0.06)',
-                          border: '1px solid rgba(139,92,246,0.25)',
-                          color: '#e2d9f3',
-                        }}
-                        onFocus={e => { e.target.style.border = '1px solid rgba(168,85,247,0.7)'; e.target.style.boxShadow = '0 0 0 3px rgba(139,92,246,0.12)'; }}
-                        onBlur={e => { e.target.style.border = '1px solid rgba(139,92,246,0.25)'; e.target.style.boxShadow = 'none'; }}
-                      />
-                    </div>
-                    <button type="submit"
-                      className="w-full py-3 rounded-xl font-bold text-xs tracking-[0.2em] uppercase text-white cursor-pointer transition-all duration-200 active:scale-95 flex items-center justify-center gap-2"
-                      style={{
-                        background: 'var(--theme-btn-gradient)',
-                        boxShadow: '0 0 24px rgba(139,92,246,0.45), 0 4px 12px rgba(0,0,0,0.3)',
-                      }}
-                      onMouseEnter={e => { (e.target as HTMLButtonElement).style.boxShadow = '0 0 36px rgba(168,85,247,0.65), 0 4px 16px rgba(0,0,0,0.4)'; }}
-                      onMouseLeave={e => { (e.target as HTMLButtonElement).style.boxShadow = '0 0 24px rgba(139,92,246,0.45), 0 4px 12px rgba(0,0,0,0.3)'; }}>
-                      <Lock className="w-3.5 h-3.5" />
-                      Open The Rift
-                    </button>
+                        onMouseEnter={e => { (e.target as HTMLButtonElement).style.boxShadow = '0 0 36px rgba(168,85,247,0.65), 0 4px 16px rgba(0,0,0,0.4)'; }}
+                        onMouseLeave={e => { (e.target as HTMLButtonElement).style.boxShadow = '0 0 24px rgba(139,92,246,0.45), 0 4px 12px rgba(0,0,0,0.3)'; }}>
+                        <Lock className="w-3.5 h-3.5 pointer-events-none" />
+                        <span className="pointer-events-none">Open The Rift</span>
+                      </button>
+                    </form>
 
-                    {/* Dedicated Glasses Mode Section directly under Open The Rift */}
+                    {/* Dedicated Glasses Mode Section */}
                     <div className="p-3.5 rounded-2xl border border-purple-500/50 bg-purple-950/40 space-y-3 shadow-[0_0_20px_rgba(139,92,246,0.25)]">
                       <div className="flex items-center justify-between">
-                        <span className="text-[10px] font-black uppercase tracking-wider text-purple-200 flex items-center gap-1.5">
-                          <Glasses className="w-4 h-4 text-purple-400" />
+                        <span className="text-[10px] font-black uppercase tracking-wider text-purple-200 flex items-center gap-1.5 pointer-events-none">
+                          <Glasses className="w-4 h-4 text-purple-400 pointer-events-none" />
                           👓 Ray-Ban Display Smart Glasses
                         </span>
-                        <span className="text-[9px] font-mono text-purple-300 bg-purple-900/60 px-2 py-0.5 rounded border border-purple-500/30 font-bold">
+                        <span className="text-[9px] font-mono text-purple-300 bg-purple-900/60 px-2 py-0.5 rounded border border-purple-500/30 font-bold pointer-events-none">
                           Neural Band
                         </span>
                       </div>
@@ -4667,30 +4661,30 @@ export default function App() {
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                         <button
                           type="button"
-                          onClick={() => { haptic(10); setDisplayModeInitial('glasses_real'); setShowDisplayMode(true); }}
+                          onClick={(e) => { e.preventDefault(); e.stopPropagation(); haptic(10); setDisplayModeInitial('glasses_real'); setShowDisplayMode(true); }}
                           className="py-2.5 px-3 rounded-xl text-[11px] font-black uppercase tracking-wider text-black bg-[#10b981] hover:bg-[#34d399] transition-all cursor-pointer flex items-center justify-center gap-1.5 shadow-[0_0_15px_rgba(16,185,129,0.4)] active:scale-95 animate-pulse"
                         >
-                          <Glasses className="w-4 h-4 text-black" />
-                          <span>🕶️ Using Glasses</span>
+                          <Glasses className="w-4 h-4 text-black pointer-events-none" />
+                          <span className="pointer-events-none">🕶️ Using Glasses</span>
                         </button>
 
                         <button
                           type="button"
-                          onClick={() => { haptic(10); setDisplayModeInitial('glasses_sim'); setShowDisplayMode(true); }}
+                          onClick={(e) => { e.preventDefault(); e.stopPropagation(); haptic(10); setDisplayModeInitial('glasses_sim'); setShowDisplayMode(true); }}
                           className="py-2.5 px-3 rounded-xl text-[11px] font-black uppercase tracking-wider text-purple-100 bg-purple-900/60 hover:bg-purple-800/80 border border-purple-500/50 transition-all cursor-pointer flex items-center justify-center gap-1.5 shadow-[0_0_15px_rgba(139,92,246,0.3)] active:scale-95"
                         >
-                          <Monitor className="w-4 h-4 text-purple-300" />
-                          <span>🖥️ Test on Computer</span>
+                          <Monitor className="w-4 h-4 text-purple-300 pointer-events-none" />
+                          <span className="pointer-events-none">🖥️ Test on Computer</span>
                         </button>
                       </div>
 
                       <button
                         type="button"
-                        onClick={() => { haptic(10); setDisplayModeInitial('phone'); setShowDisplayMode(true); }}
+                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); haptic(10); setDisplayModeInitial('phone'); setShowDisplayMode(true); }}
                         className="w-full py-2 px-3 rounded-xl text-[10px] font-bold uppercase tracking-wider text-emerald-300 bg-slate-900/80 hover:bg-slate-800 border border-emerald-500/40 transition cursor-pointer flex items-center justify-center gap-1.5"
                       >
-                        <Smartphone className="w-3.5 h-3.5 text-emerald-400" />
-                        <span>📱 Phone Sign In & Glasses Pairing PIN</span>
+                        <Smartphone className="w-3.5 h-3.5 text-emerald-400 pointer-events-none" />
+                        <span className="pointer-events-none">📱 Phone Sign In & Glasses Pairing PIN</span>
                       </button>
                     </div>
 
@@ -4704,7 +4698,7 @@ export default function App() {
                     {/* Google Sign-in */}
                     <button type="button"
                       id="google-signin-btn-login"
-                      onClick={() => { haptic(10); setShowGoogleModal(true); }}
+                      onClick={(e) => { e.preventDefault(); e.stopPropagation(); haptic(10); setShowGoogleModal(true); }}
                       className="w-full py-2.5 rounded-xl font-bold text-xs cursor-pointer transition-all duration-200 active:scale-95 flex items-center justify-center gap-2.5"
                       style={{
                         background: 'rgba(255,255,255,0.05)',
@@ -4714,36 +4708,36 @@ export default function App() {
                       }}
                       onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(255,255,255,0.1)'; (e.currentTarget as HTMLButtonElement).style.border = '1px solid rgba(255,255,255,0.22)'; }}
                       onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(255,255,255,0.05)'; (e.currentTarget as HTMLButtonElement).style.border = '1px solid rgba(255,255,255,0.12)'; }}>
-                      <svg width="14" height="14" viewBox="0 0 24 24">
+                      <svg width="14" height="14" viewBox="0 0 24 24" className="pointer-events-none">
                         <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
                         <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
                         <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/>
                         <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
                       </svg>
-                      Continue with Google
+                      <span className="pointer-events-none">Continue with Google</span>
                     </button>
 
                     <div className="text-center">
                       <div className="flex flex-col items-center gap-1.5 pt-1">
                         <button
                           type="button"
-                          onClick={handleGuestMode}
+                          onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleGuestMode(); }}
                           className="text-[10px] font-bold text-purple-400 hover:text-purple-300 hover:underline cursor-pointer tracking-wider"
                         >
-                          ⚡ Or Enter as Guest Mode (Bypass Auth)
+                          <span className="pointer-events-none">⚡ Or Enter as Guest Mode (Bypass Auth)</span>
                         </button>
                       </div>
                     </div>
-                  </form>
+                  </div>
                 ) : loginTab === 'display' ? (
                   <div className="space-y-4 py-2">
                     <div className="p-4 rounded-2xl bg-purple-950/40 border border-purple-500/40 space-y-2 text-center shadow-[0_0_20px_rgba(139,92,246,0.3)]">
-                      <div className="w-12 h-12 rounded-2xl bg-purple-900/50 border border-purple-500/60 flex items-center justify-center text-purple-300 mx-auto shadow-[0_0_20px_rgba(139,92,246,0.4)]">
-                        <Glasses className="w-7 h-7 text-purple-300" />
+                      <div className="w-12 h-12 rounded-2xl bg-purple-900/50 border border-purple-500/60 flex items-center justify-center text-purple-300 mx-auto shadow-[0_0_20px_rgba(139,92,246,0.4)] pointer-events-none">
+                        <Glasses className="w-7 h-7 text-purple-300 pointer-events-none" />
                       </div>
                       <div>
-                        <h3 className="text-sm font-black text-white uppercase tracking-wider">Ray-Ban Display & Neural Band</h3>
-                        <p className="text-[11px] text-purple-200/80 mt-1 leading-relaxed">
+                        <h3 className="text-sm font-black text-white uppercase tracking-wider pointer-events-none">Ray-Ban Display & Neural Band</h3>
+                        <p className="text-[11px] text-purple-200/80 mt-1 leading-relaxed pointer-events-none">
                           Select your mode. Pure black (#000000) optical HUD, white text & purple active outline.
                         </p>
                       </div>
@@ -4752,39 +4746,39 @@ export default function App() {
                     <div className="space-y-2.5">
                       <button
                         type="button"
-                        onClick={() => { haptic(10); setDisplayModeInitial('glasses_real'); setShowDisplayMode(true); }}
+                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); haptic(10); setDisplayModeInitial('glasses_real'); setShowDisplayMode(true); }}
                         className="w-full py-3 px-4 rounded-xl text-xs font-black uppercase tracking-wider text-black bg-[#10b981] hover:bg-[#34d399] transition-all cursor-pointer flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(16,185,129,0.5)] active:scale-95 animate-pulse"
                       >
-                        <Glasses className="w-4.5 h-4.5 text-black" />
-                        <span>🕶️ I AM ACTUALLY USING GLASSES</span>
+                        <Glasses className="w-4.5 h-4.5 text-black pointer-events-none" />
+                        <span className="pointer-events-none">🕶️ I AM ACTUALLY USING GLASSES</span>
                       </button>
 
                       <button
                         type="button"
-                        onClick={() => { haptic(10); setDisplayModeInitial('glasses_sim'); setShowDisplayMode(true); }}
-                        className="w-full py-3 px-4 rounded-xl text-xs font-black uppercase tracking-wider text-purple-100 bg-purple-900/60 hover:bg-purple-800/80 border border-purple-500/60 transition-all cursor-pointer flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(139,92,246,0.35)] active:scale-95"
+                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); haptic(10); setDisplayModeInitial('glasses_sim'); setShowDisplayMode(true); }}
+                        className="w-full py-3 px-4 rounded-xl text-xs font-black uppercase tracking-wider text-purple-100 bg-purple-900/60 hover:bg-purple-800/80 border border-purple-500/60 transition-all cursor-pointer flex items-center justify-center gap-2 shadow-[0_0_25px_rgba(139,92,246,0.35)] active:scale-95"
                       >
-                        <Monitor className="w-4.5 h-4.5 text-purple-300" />
-                        <span>🖥️ TEST ON COMPUTER (DESKTOP SIMULATOR)</span>
+                        <Monitor className="w-4.5 h-4.5 text-purple-300 pointer-events-none" />
+                        <span className="pointer-events-none">🖥️ TEST ON COMPUTER (DESKTOP SIMULATOR)</span>
                       </button>
 
                       <button
                         type="button"
-                        onClick={() => { haptic(10); setDisplayModeInitial('phone'); setShowDisplayMode(true); }}
+                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); haptic(10); setDisplayModeInitial('phone'); setShowDisplayMode(true); }}
                         className="w-full py-2.5 px-4 rounded-xl text-xs font-bold uppercase tracking-wider text-emerald-300 bg-slate-900 hover:bg-slate-800 border border-emerald-500/40 transition-all cursor-pointer flex items-center justify-center gap-2"
                       >
-                        <Smartphone className="w-4 h-4 text-emerald-400" />
-                        <span>📱 PHONE PRE-AUTH & GLASSES PAIRING PIN</span>
+                        <Smartphone className="w-4 h-4 text-emerald-400 pointer-events-none" />
+                        <span className="pointer-events-none">📱 PHONE PRE-AUTH & GLASSES PAIRING PIN</span>
                       </button>
                     </div>
 
                     <div className="text-center pt-2">
                       <button
                         type="button"
-                        onClick={handleGuestMode}
+                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleGuestMode(); }}
                         className="text-[10px] font-bold text-purple-400 hover:text-purple-300 hover:underline cursor-pointer tracking-wider"
                       >
-                        ⚡ Or Enter as Guest Mode (Bypass Auth)
+                        <span className="pointer-events-none">⚡ Or Enter as Guest Mode (Bypass Auth)</span>
                       </button>
                     </div>
                   </div>
