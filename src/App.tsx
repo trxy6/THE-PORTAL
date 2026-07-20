@@ -5220,6 +5220,9 @@ export default function App() {
           </div>
         </div>
       </div>
+      {showDisplayMode && (
+        <DisplayModeLanding key={`login-${displayModeInitial}-${Date.now()}`} onClose={() => setShowDisplayMode(false)} initialMode={displayModeInitial} />
+      )}
     </>
   );
 }
