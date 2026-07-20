@@ -129,15 +129,15 @@ export default function PortalDisplayHUD({ onExit, isSimulator = false }: Portal
         {/* Top Status Header */}
         <div className="flex items-center justify-between border-b border-purple-500/30 pb-2">
           <div className="flex items-center gap-2">
-            <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+            <div className={`w-2 h-2 rounded-full ${syncState.isPaired ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400 animate-ping'}`} />
             <span className="text-xs font-black uppercase tracking-wider text-white flex items-center gap-1.5">
               <Glasses className="w-4 h-4 text-purple-400" /> PORTAL HUD
             </span>
           </div>
 
           <div className="flex items-center gap-3 text-[10px] font-mono text-purple-300">
-            <span className="bg-purple-950/60 border border-purple-500/40 px-2 py-0.5 rounded-full font-bold">
-              PIN: {syncState.pin}
+            <span className={`px-2 py-0.5 rounded-full font-bold border ${syncState.isPaired ? 'bg-emerald-950/60 border-emerald-500/50 text-emerald-300' : 'bg-purple-950/60 border-purple-500/40 text-purple-200'}`}>
+              {syncState.isPaired ? '🟢 PHONE SYNCED' : '🔒 UNPAIRED'}
             </span>
             {onExit && (
               <button onClick={onExit} className="hover:text-white cursor-pointer">
@@ -145,6 +145,25 @@ export default function PortalDisplayHUD({ onExit, isSimulator = false }: Portal
               </button>
             )}
           </div>
+        </div>
+
+        {/* Glasses Unique Pairing PIN Banner */}
+        <div className={`p-2.5 rounded-xl border flex items-center justify-between text-xs my-1 font-mono transition-all ${
+          syncState.isPaired 
+            ? 'bg-emerald-950/40 border-emerald-500/50 text-emerald-300 shadow-[0_0_15px_rgba(16,185,129,0.3)]'
+            : 'bg-purple-950/60 border-[#8b5cf6] text-purple-200 shadow-[0_0_20px_rgba(139,92,246,0.4)] animate-pulse'
+        }`}>
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] font-bold uppercase tracking-wider">
+              {syncState.isPaired ? '🟢 PAIRED PIN:' : '🔑 GLASSES PAIRING CODE:'}
+            </span>
+            <span className="text-sm font-black text-white tracking-widest bg-black px-2.5 py-0.5 rounded-lg border border-purple-500/50 shadow-[0_0_10px_rgba(139,92,246,0.5)]">
+              {syncState.pin}
+            </span>
+          </div>
+          <span className="text-[9px] font-bold text-slate-300">
+            {syncState.isPaired ? 'YouTube TV & PECOS Credentials Live' : 'Enter PIN on Phone to connect'}
+          </span>
         </div>
 
         {/* PECOS Assistant Quick Banner */}

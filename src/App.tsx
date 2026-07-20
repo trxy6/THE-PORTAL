@@ -834,10 +834,27 @@ export default function App() {
     };
   }, []);
 
-  // --- Theme Mode (Dark Purple / White) ---
   const [portalDarkMode, setPortalDarkMode] = useState<boolean>(() => localStorage.getItem('portal_dark_mode') === 'true');
   const [showDisplayMode, setShowDisplayMode] = useState<boolean>(false);
   const [displayModeInitial, setDisplayModeInitial] = useState<'selection' | 'phone' | 'glasses_choice' | 'glasses_real' | 'glasses_sim'>('selection');
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const modeParam = params.get('mode') || params.get('device');
+      if (modeParam === 'glasses' || modeParam === 'glasses_real') {
+        setDisplayModeInitial('glasses_real');
+        setShowDisplayMode(true);
+      } else if (modeParam === 'sim' || modeParam === 'glasses_sim') {
+        setDisplayModeInitial('glasses_sim');
+        setShowDisplayMode(true);
+      } else if (modeParam === 'phone') {
+        setDisplayModeInitial('phone');
+        setShowDisplayMode(true);
+      }
+    }
+  }, []);
+
   const togglePortalDarkMode = () => {
     setPortalDarkMode(prev => {
       const next = !prev;
