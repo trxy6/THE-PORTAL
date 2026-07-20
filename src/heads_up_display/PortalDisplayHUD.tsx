@@ -4,8 +4,9 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { Glasses, Tv, Utensils, Calculator, Gamepad2, Compass, Activity, CloudSun, Mic, ShieldCheck, X, Monitor, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, Hand, CornerUpLeft } from 'lucide-react';
+import { Glasses, Tv, Utensils, Calculator, Gamepad2, Compass, Activity, CloudSun, Mic, ShieldCheck, X, Monitor, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, Hand, CornerUpLeft, Radio } from 'lucide-react';
 import { displaySync, DisplayPairingState } from './displaySync';
+import { metaWearableSDK } from './metaWearableSDK';
 import GlassesYouTube from './GlassesYouTube';
 import GlassesRecipeCompanion from './GlassesRecipeCompanion';
 import GlassesNeuralCalculator from './GlassesNeuralCalculator';
@@ -38,6 +39,20 @@ export default function PortalDisplayHUD({ onExit, isSimulator = false }: Portal
     const unsub = displaySync.subscribe((s) => setSyncState(s));
     return unsub;
   }, []);
+
+  // Meta Neural Band EMG Gesture Listener
+  useEffect(() => {
+    const unsub = metaWearableSDK.onGesture((detail) => {
+      if (detail.gesture === 'SWIPE_UP') dispatchGesture('up');
+      else if (detail.gesture === 'SWIPE_DOWN') dispatchGesture('down');
+      else if (detail.gesture === 'SWIPE_LEFT') dispatchGesture('left');
+      else if (detail.gesture === 'SWIPE_RIGHT') dispatchGesture('right');
+      else if (detail.gesture === 'PINCH' || detail.gesture === 'MICRO_TAP') dispatchGesture('pinch');
+      else if (detail.gesture === 'DOUBLE_PINCH' || detail.gesture === 'WRIST_FLICK') dispatchGesture('back');
+      else if (detail.gesture === 'HOLD_PINCH') triggerPecosVoice();
+    });
+    return unsub;
+  }, [activeApp, selectedIndex]);
 
   // Neural Band Gesture Listener for HUD Grid
   useEffect(() => {

@@ -10,3 +10,4 @@ export { default as GlassesRecipeCompanion } from './GlassesRecipeCompanion';
 export { default as GlassesNeuralCalculator } from './GlassesNeuralCalculator';
 export { default as GlassesNeuralGames } from './GlassesNeuralGames';
 export * from './displaySync';
+export * from './metaWearableSDK';
