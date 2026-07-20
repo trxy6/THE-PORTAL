@@ -87,7 +87,7 @@ export default function DisplayModeLanding({ onClose, initialMode = 'selection' 
   }
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/95 backdrop-blur-xl text-white flex flex-col justify-between p-6 select-none font-sans overflow-y-auto">
+    <div className="fixed inset-0 z-[99999] bg-black/95 backdrop-blur-xl text-white flex flex-col justify-between p-6 select-none font-sans overflow-y-auto">
       {/* Top Header */}
       <div className="flex items-center justify-between border-b border-purple-500/30 pb-4">
         <div className="flex items-center gap-3">

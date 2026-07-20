@@ -218,7 +218,7 @@ export default function PortalDisplayHUD({ onExit, isSimulator = false }: Portal
   // If in Simulator mode, wrap in a desktop simulator frame with interactive band controls
   if (isSimulator) {
     return (
-      <div className="fixed inset-0 z-50 bg-black/95 backdrop-blur-2xl text-white flex flex-col items-center justify-center p-4 font-sans select-none overflow-y-auto">
+      <div className="fixed inset-0 z-[99999] bg-black/95 backdrop-blur-2xl text-white flex flex-col items-center justify-center p-4 font-sans select-none overflow-y-auto">
         <div className="w-full max-w-4xl flex flex-col md:flex-row items-center justify-center gap-6">
           {/* Glasses Frame Viewport Container (600x600 display ratio) */}
           <div className="relative">

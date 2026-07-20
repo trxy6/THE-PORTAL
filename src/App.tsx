@@ -11518,7 +11518,7 @@ export default function App() {
         </div>
       )}
       {showDisplayMode && (
-        <DisplayModeLanding onClose={() => setShowDisplayMode(false)} initialMode={displayModeInitial} />
+        <DisplayModeLanding key={`${displayModeInitial}-${Date.now()}`} onClose={() => setShowDisplayMode(false)} initialMode={displayModeInitial} />
       )}
 
     </div>
