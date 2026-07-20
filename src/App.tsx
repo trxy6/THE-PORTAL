@@ -26,7 +26,7 @@ import PecosOnboarding from './components/PecosOnboarding';
 import PecosProfileEditor from './components/PecosProfileEditor';
 import WorkspaceSyncCenter from './components/WorkspaceSyncCenter';
 import AccessMatrix from './components/AccessMatrix';
-import DisplayModeLanding from './components/display/DisplayModeLanding';
+import DisplayModeLanding from './AR_glasses/DisplayModeLanding';
 
 const SPORTS_LEAGUES = {
   mlb: {
